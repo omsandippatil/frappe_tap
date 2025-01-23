@@ -1,9 +1,14 @@
+# Handles syncing when changes happen in Frappe.
+# When something changes in Frappe (like teacher details),
+# It automatically updates the corresponding data in Glific
+
+# Think of it as "Frappe telling Glific about changes"
 import frappe
 from frappe import _
 import json
 import requests
-from .glific_integration import get_glific_auth_headers, get_glific_settings,create_contact,get_contact_by_phone,send_glific_update
-from .api import get_model_for_school
+from .glific_integration import get_glific_auth_headers, get_glific_settings,create_contact,get_contact_by_phone#,send_glific_update
+# from .api import get_model_for_school
 
 @frappe.whitelist()
 def update_glific_contact(doc, method):
@@ -14,11 +19,11 @@ def update_glific_contact(doc, method):
 
 
     if doc.doctype != "Teacher":
-        frappe.logger().error(f"update_glific_contact called with invalid doctype {doc.doctype}\n")
+        frappe.logger().error(f"\nupdate_glific_contact called with invalid doctype {doc.doctype}\n")
         return
 
     try:
-        #! new code using phone number
+        #! get contact using phone number
         # Use get_contact_by_phone instead of get_glific_contact
         glific_contact = get_contact_by_phone(doc.phone_number)
         frappe.logger().error(f"\nFetched Glific contact using get_contact_by_phone(): {glific_contact}\n")
@@ -34,45 +39,23 @@ def update_glific_contact(doc, method):
             frappe.logger().error(f"Updated Glific ID for teacher {doc.name} to {doc.glific_id}\n")
 
 
-
-        # ! CHECK: automatically create a new teacher in glific after adding to frappe
-        # if not doc.glific_id:
-        #     frappe.logger().warning(f"No Glific ID found for teacher {doc.name}. Attempting to create or find Glific contact.")
-        #     glific_contact = create_or_get_glific_contact(doc)
-        #     if glific_contact and 'id' in glific_contact:
-        #         doc.glific_id = glific_contact['id']
-        #         doc.save(ignore_permissions=True)
-        #     else:
-        #         frappe.logger().error(f"Failed to create or find Glific contact for teacher {doc.name}")
-        #         return
-
-        
-        # # Fetch Glific contact details
-        # glific_contact = get_glific_contact(doc.glific_id)
-        # frappe.logger().info(f"Fetched Glific contact using get_glific_contact(): {glific_contact}")
-        # if not glific_contact:
-        #     #! this is the error i am getting while creating a new teacher as it gets created in frappe but not in glific
-        #     frappe.logger().error(f"Glific contact not found for teacher {doc.name}")
-        #     return
-
-
-
         # Prepare update payload
         update_payload = prepare_update_payload(doc, glific_contact)
         if not update_payload:
-            frappe.logger().info(f"No updates needed for Glific contact {doc.glific_id}\n")
+            # frappe.logger().info(f"No updates needed for Glific contact {doc.glific_id}\n")
             #! used for debugging purposes
             frappe.logger().error(f"No updates needed for Glific contact {doc.glific_id}\n")
             return
 
         # Send update to Glific
+        frappe.logger().error(f"\n\n✈️Sending update to Glific for teacher {doc.name}.....\n")
         success = send_glific_update(doc.glific_id, update_payload)
         if success:
-            frappe.logger().info(f"Successfully updated Glific contact for teacher {doc.name}\n")
+            # frappe.logger().info(f"Successfully updated Glific contact for teacher {doc.name}\n")
             #! used for debugging purposes
-            frappe.logger().error(f"Successfully updated Glific contact for teacher {doc.name}\n")
+            frappe.logger().error(f"\n\nSuccessfully updated Glific contact for teacher {doc.name}\n")
         else:
-            frappe.logger().error(f"Failed to update Glific contact for teacher {doc.name}\n")
+            frappe.logger().error(f"\n\nFailed to update Glific contact for teacher {doc.name}\n")
 
     except Exception as e:
         frappe.logger().error(f"\nError updating Glific contact for teacher {doc.name}: {str(e)}")
@@ -226,79 +209,95 @@ def prepare_update_payload(doc, glific_contact):
 
 
 
-def send_glific_update(glific_id, update_payload):
-    settings = get_glific_settings()
-    url = f"{settings.api_url}/api"
-    headers = get_glific_auth_headers()
+def send_glific_update(phone_number, update_payload):
+    """
+    Updates a Glific contact by first getting their ID using phone number,
+    then updating their details using the ID.
+    
+    FLOW
+    Get contact by phone number → get ID
+    Use ID to update contact details
+    Verify the update was successful
 
-    query = """
-    mutation updateContact($id: ID!, $input: ContactInput!) {
-      updateContact(id: $id, input: $input) {
-        contact {
-          id
-          fields
-          language {
-            label
+    Args:
+        phone_number: Contact's phone number
+        update_payload: Dict containing fields to update
+        
+    Returns:
+        bool: True if update successful, False otherwise
+    """
+    try:
+        settings = get_glific_settings()
+        url = f"{settings.api_url}/api"
+        headers = get_glific_auth_headers()
+
+        # First get contact by phone
+        contact = get_contact_by_phone(phone_number)
+        if not contact or 'id' not in contact:
+            frappe.logger().error(f"\n❌Could not find contact with phone number: {phone_number}")
+            return False
+            
+        contact_id = contact['id']
+        frappe.logger().error(f"\n✅Found contact ID: {contact_id} for phone: {phone_number}")
+
+        # Update mutation
+        query = """
+        mutation updateContact($id: ID!, $input: ContactInput!) {
+          updateContact(id: $id, input: $input) {
+            contact {
+              id
+              name
+              phone
+              fields
+              language {
+                id
+                label
+              }
+            }
+            errors {
+              key
+              message
+            }
           }
         }
-        errors {
-          key
-          message
+        """
+
+        variables = {
+            "id": contact_id,
+            "input": update_payload
         }
-      }
-    }
-    """
 
-    variables = {
-        "id": glific_id,
-        "input": update_payload
-    }
-
-    response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
-    if response.status_code == 200:
+        frappe.logger().error(f"\n\n✈️Attempting to update contact {contact_id} with payload: {update_payload}")
+        
+        response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
+        response.raise_for_status()
         data = response.json()
+        
+        frappe.logger().error(f"\n------------\n📩Response from Glific API: {data}\n---------------\n")
+
         if "errors" in data:
-            frappe.logger().error(f"Glific API Error: {data['errors']}")
+            frappe.logger().error(f"❌Glific API Error: {data['errors']}")
             return False
-        return True
-    return False
+
+        result = data.get("data", {}).get("updateContact", {})
+        
+        if result.get("errors"):
+            frappe.logger().error(f"\n❌Update failed: {result['errors']}")
+            return False
+            
+        updated_contact = result.get("contact")
+        if updated_contact:
+            frappe.logger().error(f"\n\n✅Contact updated successfully: {updated_contact}")
+            return True
+        else:
+            frappe.logger().error("\n\n❌Update response doesn't contain contact data")
+            return False
+
+    except requests.exceptions.RequestException as e:
+        frappe.logger().error(f"Error calling Glific API: {str(e)}")
+        return False
+    except Exception as e:
+        frappe.logger().error(f"Unexpected error: {str(e)}")
+        return False
 
 
-# ! additonal code
-def create_or_get_glific_contact(doc):
-    # glific_contact = create_contact(
-    #     doc.first_name,
-    #     doc.phone_number,
-    #     frappe.get_value("School", doc.school_id, "name1"),
-    #     get_model_for_school(doc.school_id),
-    #     frappe.get_value("TAP Language", doc.language, "glific_language_id")
-    # )
-
-    # if not glific_contact:
-    #     glific_contact = get_contact_by_phone(doc.phone_number)
-
-    # return glific_contact
-    
-    # First, try to get the existing contact by phone number
-    glific_contact = get_contact_by_phone(doc.phone_number)
-
-    if glific_contact:
-        frappe.logger().info(f"Existing Glific contact found for phone number {doc.phone_number}")
-        return glific_contact
-
-    # If no existing contact is found, create a new one
-    frappe.logger().info(f"No existing Glific contact found. Creating new contact for {doc.first_name} with phone {doc.phone_number}")
-    glific_contact = create_contact(
-        doc.first_name,
-        doc.phone_number,
-        frappe.get_value("School", doc.school_id, "name1"),
-        get_model_for_school(doc.school_id),
-        frappe.get_value("TAP Language", doc.language, "glific_language_id")
-    )
-
-    if glific_contact:
-        frappe.logger().info(f"New Glific contact created successfully for {doc.first_name}")
-    else:
-        frappe.logger().error(f"Failed to create new Glific contact for {doc.first_name}")
-
-    return glific_contact
