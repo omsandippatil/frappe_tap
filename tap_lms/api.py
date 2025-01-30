@@ -1100,9 +1100,9 @@ def create_teacher_web():
                     "inserted_at": frappe.utils.now_datetime().isoformat()
                 },
                 "batch_id": {
-                    "value": batch_id, #! Using batch_id from request data
+                    "value": data['batch_id'], #! Using batch_id from request data
                     "type": "string",
-                    "inserted_at": datetime.now(timezone.utc).isoformat()
+                    "inserted_at": frappe.utils.now_datetime().isoformat()
                 }
             }
 
@@ -1120,12 +1120,14 @@ def create_teacher_web():
             if update_success:
                 # Fetch the updated contact
                 # glific_contact = get_contact_by_phone(data['phone'])
+
                 frappe.logger().error(f"\n\n✅ Successfully updated Glific contact: {glific_contact}\n\n")
-                return {
-                    "status": "success",
-                    "message": "Successfully updated existing Glific contact",
-                    "glific_contact_id": glific_contact['id']
-                }
+                # ! returning here causes the entire flow to terminate before creating teacher document in frappe
+                # return {
+                #     "status": "success",
+                #     "message": "Successfully updated existing Glific contact",
+                #     "glific_contact_id": glific_contact['id']
+                # }
             else:
                 frappe.logger().error(f"\n\n❌ Failed to update Glific contact\n\n")
                 return {
