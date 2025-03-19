@@ -10,27 +10,32 @@
  "engine": "InnoDB",
  "field_order": [
   "name1",
+  "section_break_fxvp",
   "model",
   "type",
+  "status",
   "board",
   "department",
-  "status",
   "year",
+  "keyword",
+  "column_break_1olh",
   "address",
-  "country",
-  "state",
-  "district",
   "city",
   "pin",
-  "keyword",
+  "district",
+  "state",
+  "country",
+  "section_break_mjsn",
   "headmaster_name",
   "headmaster_phone",
   "is_tfi",
   "is_akanksha",
-  "poc",
+  "column_break_reih",
   "school_follow_up_frequency",
   "hm_follow_up_frequency",
-  "tap_poc"
+  "tap_poc",
+  "section_break_gmac",
+  "poc"
  ],
  "fields": [
   {
@@ -164,11 +169,31 @@
    "fieldtype": "Link",
    "label": "TAP  POC",
    "options": "User"
+  },
+  {
+   "fieldname": "section_break_fxvp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_1olh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_mjsn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_reih",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_gmac",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-09-15 02:00:59.314701",
+ "modified": "2025-03-19 09:16:12.106982",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "School",
