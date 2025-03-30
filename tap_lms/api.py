@@ -6,7 +6,7 @@ import requests
 import random
 import string
 import urllib.parse
-from .glific_integration import create_contact, start_contact_flow, get_contact_by_phone
+from .glific_integration import create_contact, start_contact_flow, get_contact_by_phone, update_contact_fields
 from .background_jobs import enqueue_glific_actions
 
 
@@ -19,6 +19,35 @@ def authenticate_api_key(api_key):
     except frappe.DoesNotExistError:
         # Handle the case where the API key does not exist or is not enabled
         return None
+
+
+
+def get_active_batch_for_school(school_id):
+    today = frappe.utils.today()
+
+    # Find active batch onboardings for this school
+    active_batch_onboardings = frappe.get_all(
+        "Batch onboarding",
+        filters={
+            "school": school_id,
+            "batch": ["in", frappe.get_all("Batch",
+                filters={"start_date": ["<=", today],
+                         "end_date": [">=", today],
+                         "active": 1},
+                pluck="name")]
+        },
+        fields=["batch"],
+        order_by="creation desc"
+    )
+
+    if active_batch_onboardings:
+        # Return batch_id from the Batch doctype
+        batch_name = active_batch_onboardings[0].batch
+        batch_id = frappe.db.get_value("Batch", batch_name, "batch_id")
+        return batch_id
+
+    frappe.logger().error(f"No active batch found for school {school_id}")
+    return ""  # Return empty string if no batch found, as batch_id is mandatory
 
 
 
@@ -1007,11 +1036,6 @@ def verify_otp():
         return {"status": "failure", "message": "An error occurred during OTP verification"}
 
 
-
-
-
-
-
 @frappe.whitelist(allow_guest=True)
 def create_teacher_web():
     try:
@@ -1071,23 +1095,34 @@ def create_teacher_web():
         if not language_id:
             language_id = frappe.db.get_value("TAP Language", {"language_name": "English"}, "glific_language_id")  # Default to English if not found
 
-        # Try to create contact in Glific
-        glific_contact = create_contact(
-            data['firstName'],
-            data['phone'],
-            school_name,
-            model_name,
-            language_id
-        )
+        # Get the active batch ID for this school
+        batch_id = get_active_batch_for_school(school)
+        if not batch_id:
+            frappe.logger().warning(f"No active batch found for school {school}. Using empty string for batch_id.")
+            batch_id = ""  # Fallback to empty string if no batch found
 
-        # If creation fails, try to get existing contact
-        if not glific_contact or 'id' not in glific_contact:
-            glific_contact = get_contact_by_phone(data['phone'])
-
+        # Check if the phone number already exists in Glific
+        glific_contact = get_contact_by_phone(data['phone'])
+        
         if glific_contact and 'id' in glific_contact:
+            # Contact exists in Glific, update fields
+            frappe.logger().info(f"Existing Glific contact found with ID: {glific_contact['id']}. Updating fields.")
+            
+            # Prepare fields to update
+            fields_to_update = {
+                "school": school_name,
+                "model": model_name,
+                "buddy_name": data['firstName'],
+                "batch_id": batch_id
+            }
+                
+            # Update the contact fields
+            update_success = update_contact_fields(glific_contact['id'], fields_to_update)
+            
+            # Always associate the teacher with the Glific contact, even if update fails
             new_teacher.glific_id = glific_contact['id']
             new_teacher.save(ignore_permissions=True)
-
+            
             # Enqueue Glific actions (optin and flow start) as a background job
             enqueue_glific_actions(
                 new_teacher.name,
@@ -1098,21 +1133,75 @@ def create_teacher_web():
                 data.get('language', ''),
                 model_name
             )
-
+            
             frappe.db.commit()
-            return {
-                "status": "success",
-                "message": "Teacher created successfully, Glific contact added or associated. Optin and flow start initiated.",
-                "teacher_id": new_teacher.name,
-                "glific_contact_id": new_teacher.glific_id
-            }
-        else:
-            frappe.db.rollback()
-            return {
-                "status": "failure",
-                "message": "Teacher created but failed to add or associate Glific contact",
-                "teacher_id": new_teacher.name
-            }
+            
+            if update_success:
+                return {
+                    "status": "success",
+                    "message": "Teacher created successfully, existing Glific contact updated and associated.",
+                    "teacher_id": new_teacher.name,
+                    "glific_contact_id": new_teacher.glific_id
+                }
+            else:
+                # Still return success but with a warning about field updating
+                return {
+                    "status": "partial_success",
+                    "message": "Teacher created and associated with existing Glific contact, but failed to update contact fields.",
+                    "teacher_id": new_teacher.name,
+                    "glific_contact_id": glific_contact['id']
+                }
+        
+        # If we've already handled an existing contact, skip this section
+        if not (glific_contact and 'id' in glific_contact):
+            # No existing contact found, create a new one
+            frappe.logger().info(f"Creating new Glific contact for teacher {new_teacher.name}")
+            glific_contact = create_contact(
+                data['firstName'],
+                data['phone'],
+                school_name,
+                model_name,
+                language_id,
+                batch_id
+            )
+
+            if glific_contact and 'id' in glific_contact:
+                new_teacher.glific_id = glific_contact['id']
+                new_teacher.save(ignore_permissions=True)
+
+                # Enqueue Glific actions (optin and flow start) as a background job
+                enqueue_glific_actions(
+                    new_teacher.name,
+                    data['phone'],
+                    data['firstName'],
+                    school,
+                    school_name,
+                    data.get('language', ''),
+                    model_name
+                )
+
+                frappe.db.commit()
+                return {
+                    "status": "success",
+                    "message": "Teacher created successfully, Glific contact added. Optin and flow start initiated.",
+                    "teacher_id": new_teacher.name,
+                    "glific_contact_id": new_teacher.glific_id
+                }
+            else:
+                # Keep the teacher but inform about the Glific contact failure
+                frappe.db.commit()  # Commit to save the teacher record
+                return {
+                    "status": "partial_success",
+                    "message": "Teacher created but failed to add Glific contact",
+                    "teacher_id": new_teacher.name
+                }
+        # This should never be reached as all paths above have return statements
+        frappe.db.commit()
+        return {
+            "status": "success", 
+            "message": "Teacher created successfully",
+            "teacher_id": new_teacher.name
+        }
 
     except Exception as e:
         frappe.db.rollback()
@@ -1123,9 +1212,7 @@ def create_teacher_web():
         }
     finally:
         frappe.flags.ignore_permissions = False
-
-
-
+   
 
 
 

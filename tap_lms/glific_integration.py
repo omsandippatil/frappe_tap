@@ -1,14 +1,11 @@
 import frappe
 import requests
 import json
-from datetime import datetime, timedelta,timezone
+from datetime import datetime, timedelta, timezone
 from dateutil.parser import isoparse
-
-
 
 def get_glific_settings():
     return frappe.get_single("Glific Settings")
-
 
 def get_glific_auth_headers():
     settings = get_glific_settings()
@@ -63,12 +60,7 @@ def get_glific_auth_headers():
             "Content-Type": "application/json"
         }
 
-
-
-
-
-
-def create_contact(name, phone, school_name, model_name, language_id):
+def create_contact(name, phone, school_name, model_name, language_id, batch_id):
     settings = get_glific_settings()
     url = f"{settings.api_url}/api"
     headers = get_glific_auth_headers()
@@ -89,8 +81,12 @@ def create_contact(name, phone, school_name, model_name, language_id):
             "value": name,
             "type": "string",
             "inserted_at": datetime.now(timezone.utc).isoformat()
+        },
+        "batch_id": {
+            "value": batch_id,
+            "type": "string",
+            "inserted_at": datetime.now(timezone.utc).isoformat()
         }
-
     }
 
     payload = {
@@ -105,7 +101,7 @@ def create_contact(name, phone, school_name, model_name, language_id):
         }
     }
 
-    frappe.logger().info(f"Attempting to create Glific contact. Name: {name}, Phone: {phone}, School: {school_name}, Model: {model_name}, Language ID: {language_id}")
+    frappe.logger().info(f"Attempting to create Glific contact. Name: {name}, Phone: {phone}, School: {school_name}, Model: {model_name}, Language ID: {language_id}, Batch ID: {batch_id}")
     frappe.logger().info(f"Glific API URL: {url}")
     frappe.logger().info(f"Glific API Headers: {headers}")
     frappe.logger().info(f"Glific API Payload: {payload}")
@@ -133,6 +129,126 @@ def create_contact(name, phone, school_name, model_name, language_id):
     except Exception as e:
         frappe.logger().error(f"Exception occurred while creating Glific contact: {str(e)}", exc_info=True)
         return None
+
+def update_contact_fields(contact_id, fields_to_update):
+    settings = get_glific_settings()
+    url = f"{settings.api_url}/api"
+    headers = get_glific_auth_headers()
+    
+    # First, fetch the current contact to get existing fields
+    fetch_payload = {
+        "query": """
+        query contact($id: ID!) {
+          contact(id: $id) {
+            contact {
+              id
+              name
+              phone
+              fields
+              language {
+                label
+              }
+            }
+          }
+        }
+        """,
+        "variables": {
+            "id": contact_id
+        }
+    }
+    
+    try:
+        # Get current contact data
+        fetch_response = requests.post(url, json=fetch_payload, headers=headers)
+        fetch_response.raise_for_status()
+        fetch_data = fetch_response.json()
+        
+        if "errors" in fetch_data:
+            frappe.logger().error(f"Glific API Error in fetching contact: {fetch_data['errors']}")
+            return False
+        
+        contact_data = fetch_data.get("data", {}).get("contact", {}).get("contact")
+        if not contact_data:
+            frappe.logger().error(f"Failed to fetch contact with ID: {contact_id}")
+            return False
+        
+        # Parse existing fields
+        existing_fields = {}
+        if contact_data.get("fields"):
+            try:
+                existing_fields = json.loads(contact_data.get("fields", "{}"))
+            except json.JSONDecodeError:
+                frappe.logger().error(f"Failed to parse fields JSON for contact {contact_id}")
+                existing_fields = {}
+        
+        # Log the existing fields for debugging
+        frappe.logger().info(f"Existing fields for contact {contact_id}: {existing_fields}")
+        
+        # Update fields - keep existing fields and update only those provided
+        updated_fields = existing_fields.copy()
+        for key, value in fields_to_update.items():
+            updated_fields[key] = {
+                "value": value,
+                "type": "string",
+                "inserted_at": datetime.now(timezone.utc).isoformat()
+            }
+        
+        # Use the updateContact mutation instead of updateContactFields
+        update_payload = {
+            "query": """
+            mutation updateContact($id: ID!, $input:ContactInput!) {
+              updateContact(id: $id, input: $input) {
+                contact {
+                  id
+                  name
+                  fields
+                }
+                errors {
+                  key
+                  message
+                }
+              }
+            }
+            """,
+            "variables": {
+                "id": contact_id,
+                "input": {
+                    "name": contact_data.get("name", ""),
+                    "fields": json.dumps(updated_fields)
+                }
+            }
+        }
+        
+        frappe.logger().info(f"Attempting to update Glific contact. ID: {contact_id}")
+        frappe.logger().info(f"Glific API URL: {url}")
+        frappe.logger().info(f"Glific API Headers: {headers}")
+        frappe.logger().info(f"Glific API Payload: {update_payload}")
+        
+        update_response = requests.post(url, json=update_payload, headers=headers)
+        frappe.logger().info(f"Glific API response status: {update_response.status_code}")
+        frappe.logger().info(f"Glific API response content: {update_response.text}")
+        
+        update_response.raise_for_status()
+        update_data = update_response.json()
+        
+        if "errors" in update_data:
+            frappe.logger().error(f"Glific API Error in updating contact: {update_data['errors']}")
+            return False
+        
+        contact = update_data.get("data", {}).get("updateContact", {}).get("contact")
+        if contact:
+            frappe.logger().info(f"Contact updated successfully: {contact}")
+            return True
+        else:
+            frappe.logger().error(f"Failed to update contact. Response: {update_data}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        frappe.logger().error(f"Error calling Glific API: {str(e)}")
+        return False
+    except Exception as e:
+        frappe.logger().error(f"Unexpected error in update_contact_fields: {str(e)}")
+        return False
 
 def get_contact_by_phone(phone):
     settings = get_glific_settings()
@@ -230,9 +346,6 @@ def optin_contact(phone, name):
         frappe.logger().error(f"Error calling Glific API to opt in contact: {str(e)}")
         return False
 
-
-
-
 def create_contact_old(name, phone):
     settings = get_glific_settings()
     url = f"{settings.api_url}/api"
@@ -276,12 +389,6 @@ def create_contact_old(name, phone):
         frappe.logger().error(f"Exception occurred while creating Glific contact: {str(e)}", exc_info=True)
         return None
 
-
-
-
-
-
-
 def start_contact_flow(flow_id, contact_id, default_results):
     settings = get_glific_settings()
     url = f"{settings.api_url}/api"
@@ -323,7 +430,6 @@ def start_contact_flow(flow_id, contact_id, default_results):
     except requests.exceptions.RequestException as e:
         frappe.logger().error(f"Error calling Glific API to start flow: {str(e)}")
         return False
-
 
 def update_student_glific_ids(batch_size=100):
     def format_phone(phone):
