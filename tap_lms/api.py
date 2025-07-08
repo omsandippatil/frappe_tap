@@ -1783,3 +1783,237 @@ def get_teacher_by_glific_id():
             "error": str(e)
         }
 
+
+
+@frappe.whitelist(allow_guest=True)
+def get_school_city():
+    """
+    Get city information of a school based on school name
+
+    Expected JSON payload:
+    {
+        "api_key": "your_api_key",
+        "school_name": "school_name1_value"
+    }
+    """
+    try:
+        # Get the JSON data from the request body
+        data = json.loads(frappe.request.data)
+        api_key = data.get('api_key')
+        school_name = data.get('school_name')
+
+        # Validate API key
+        if not api_key:
+            frappe.response.http_status_code = 400
+            return {"status": "error", "message": "API key is required"}
+
+        if not authenticate_api_key(api_key):
+            frappe.response.http_status_code = 401
+            return {"status": "error", "message": "Invalid API key"}
+
+        # Validate required fields
+        if not school_name:
+            frappe.response.http_status_code = 400
+            return {"status": "error", "message": "school_name is required"}
+
+        # Find school by name1
+        school = frappe.get_all(
+            "School",
+            filters={"name1": school_name},
+            fields=["name", "name1", "city", "state", "country", "address", "pin"]
+        )
+
+        if not school:
+            frappe.response.http_status_code = 404
+            return {
+                "status": "error",
+                "message": f"No school found with name: {school_name}"
+            }
+
+        school_data = school[0]
+
+        # Check if school has city
+        if not school_data.city:
+            # Get country name if available even without city
+            country_name = None
+            if school_data.country:
+                country_name = frappe.db.get_value("Country", school_data.country, "country_name")
+
+            # Get state name if available even without city
+            state_name = None
+            if school_data.state:
+                state_name = frappe.db.get_value("State", school_data.state, "state_name")
+
+            frappe.response.http_status_code = 200
+            return {
+                "status": "success",
+                "message": "School found but no city assigned",
+                "school_id": school_data.name,
+                "school_name": school_data.name1,
+                "city": None,
+                "city_name": None,
+                "district": None,
+                "district_name": None,
+                "state": school_data.state,
+                "state_name": state_name,
+                "country": school_data.country,
+                "country_name": country_name,
+                "address": school_data.address,
+                "pin": school_data.pin
+            }
+
+        # Get city details
+        city_doc = frappe.get_doc("City", school_data.city)
+
+        # Get district details if available
+        district_name = None
+        state_name_from_district = None
+        if city_doc.district:
+            district_doc = frappe.get_doc("District", city_doc.district)
+            district_name = district_doc.district_name
+
+            # Get state details from district if available
+            if district_doc.state:
+                state_doc = frappe.get_doc("State", district_doc.state)
+                state_name_from_district = state_doc.state_name
+
+        # Get state name directly from school if available, otherwise use from district
+        state_name = None
+        if school_data.state:
+            state_name = frappe.db.get_value("State", school_data.state, "state_name")
+        elif state_name_from_district:
+            state_name = state_name_from_district
+
+        # Get country name if available
+        country_name = None
+        if school_data.country:
+            country_name = frappe.db.get_value("Country", school_data.country, "country_name")
+
+        frappe.response.http_status_code = 200
+        return {
+            "status": "success",
+            "message": "City information retrieved successfully",
+            "school_id": school_data.name,
+            "school_name": school_data.name1,
+            "city": school_data.city,
+            "city_name": city_doc.city_name,
+            "district": city_doc.district,
+            "district_name": district_name,
+            "state": school_data.state,
+            "state_name": state_name,
+            "country": school_data.country,
+            "country_name": country_name,
+            "address": school_data.address,
+            "pin": school_data.pin
+        }
+
+    except frappe.DoesNotExistError as e:
+        frappe.log_error(f"Get School City Error - Document not found: {str(e)}", "Get School City API")
+        frappe.response.http_status_code = 404
+        return {
+            "status": "error",
+            "message": "Referenced location data not found",
+            "error": str(e)
+        }
+    except Exception as e:
+        frappe.log_error(f"Get School City Error: {str(e)}", "Get School City API")
+        frappe.response.http_status_code = 500
+        return {
+            "status": "error",
+            "message": "An unexpected error occurred",
+            "error": str(e)
+        }
+
+
+@frappe.whitelist(allow_guest=True)
+def search_schools_by_city():
+    """
+    Search schools by city name
+
+    Expected JSON payload:
+    {
+        "api_key": "your_api_key",
+        "city_name": "city_name_to_search"
+    }
+    """
+    try:
+        # Get the JSON data from the request body
+        data = json.loads(frappe.request.data)
+        api_key = data.get('api_key')
+        city_name = data.get('city_name')
+
+        # Validate API key
+        if not api_key:
+            frappe.response.http_status_code = 400
+            return {"status": "error", "message": "API key is required"}
+
+        if not authenticate_api_key(api_key):
+            frappe.response.http_status_code = 401
+            return {"status": "error", "message": "Invalid API key"}
+
+        # Validate required fields
+        if not city_name:
+            frappe.response.http_status_code = 400
+            return {"status": "error", "message": "city_name is required"}
+
+        # Find city by name
+        city = frappe.get_all(
+            "City",
+            filters={"city_name": city_name},
+            fields=["name", "city_name", "district"]
+        )
+
+        if not city:
+            frappe.response.http_status_code = 404
+            return {
+                "status": "error",
+                "message": f"No city found with name: {city_name}"
+            }
+
+        city_id = city[0].name
+
+        # Find all schools in this city
+        schools = frappe.get_all(
+            "School",
+            filters={"city": city_id},
+            fields=[
+                "name", "name1", "type", "board", "status",
+                "address", "pin", "headmaster_name", "headmaster_phone"
+            ],
+            order_by="name1"
+        )
+
+        # Get district and state information
+        district_name = None
+        state_name = None
+        if city[0].district:
+            district_doc = frappe.get_doc("District", city[0].district)
+            district_name = district_doc.district_name
+            if district_doc.state:
+                state_doc = frappe.get_doc("State", district_doc.state)
+                state_name = state_doc.state_name
+
+        frappe.response.http_status_code = 200
+        return {
+            "status": "success",
+            "message": f"Found {len(schools)} schools in {city_name}",
+            "data": {
+                "city": {
+                    "id": city_id,
+                    "name": city_name,
+                    "district": district_name,
+                    "state": state_name
+                },
+                "school_count": len(schools),
+                "schools": schools
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Search Schools by City Error: {str(e)}", "Search Schools API")
+        frappe.response.http_status_code = 500
+        return {
+            "status": "error",
+            "message": "An unexpected error occurred",
+            "error": str(e)
+        }
