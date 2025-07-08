@@ -90,7 +90,7 @@
    "fieldname": "year",
    "fieldtype": "Select",
    "label": "Onboarding Year",
-   "options": "2022\n2023\n2024"
+   "options": "2022\n2023\n2024\n2025"
   },
   {
    "fieldname": "status",
@@ -193,7 +193,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-19 09:16:12.106982",
+ "modified": "2025-07-08 23:26:33.487842",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "School",
