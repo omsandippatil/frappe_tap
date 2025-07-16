@@ -4,7 +4,7 @@ from frappe import _
 from frappe.utils import now_datetime, today, get_datetime
 import traceback
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def track_interaction():
     """
     Stage-based webhook handler for tracking student interactions
@@ -91,7 +91,7 @@ def track_interaction():
         frappe.log_error(f"Error tracking interaction: {str(e)}\n{error_traceback}", "Journey Tracking Error")
         return {"success": False, "message": str(e)}
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def update_student_stage(student_id, stage_name, event_type="manual_assignment", course_context=None):
     """
     Direct API endpoint for external apps to update student stages

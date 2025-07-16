@@ -4,7 +4,7 @@ from frappe import _
 import traceback
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def get_profile(student_id=None, phone=None, glific_id=None):
     """
     Get student profile details
@@ -83,7 +83,7 @@ def get_profile(student_id=None, phone=None, glific_id=None):
         return {"success": False, "message": str(e)}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def search(query=None, offset=0, limit=20):
     """
     Search for students by name, phone, or glific ID
@@ -403,7 +403,7 @@ def get_stage_details(stage_id):
         }
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def get_student_glific_groups(student_id=None, phone=None, glific_id=None):
     """
     Get Glific contact groups associated with a student
@@ -658,7 +658,7 @@ def get_student_glific_groups(student_id=None, phone=None, glific_id=None):
 
 
 # Modified get_student_minimal_details function with Course Vertical from Backend Students
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def get_student_minimal_details(glific_id=None, phone=None, name=None):
     """
     Get student minimal details by Glific ID, with optional phone and name for disambiguation
@@ -1092,7 +1092,7 @@ def find_appropriate_course_level(student, course_vertical_id, grade=None):
         }
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False)
 def update_student_fields(student_id=None, glific_id=None, phone=None, name=None, updates=None):
     """
     Update specific fields for a student and their latest enrollment
@@ -1429,3 +1429,149 @@ def update_student_fields(student_id=None, glific_id=None, phone=None, name=None
             "error": str(e)
         }
 
+
+@frappe.whitelist(allow_guest=False)
+def get_siblings(phone, glific_id=None):
+    """
+    Check for siblings (students with same phone number)
+    
+    Args:
+        phone (str): Phone number (required)
+        glific_id (str, optional): Glific ID for additional filtering
+        
+    Returns:
+        dict: Siblings information with profile details
+    """
+    try:
+        # Authentication check
+        if frappe.session.user == 'Guest':
+            frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+        
+        # Validate phone parameter
+        if not phone:
+            frappe.local.response.http_status_code = 400
+            return {"success": False, "error": "Phone number is required"}
+        
+        # Format phone number using existing logic
+        formatted_phone = format_phone_number(phone)
+        
+        # Build filters
+        filters = {"phone": formatted_phone}
+        if glific_id:
+            filters["glific_id"] = glific_id
+        
+        # Find all students with the same phone number
+        student_records = frappe.get_all(
+            "Student",
+            filters=filters,
+            fields=["name", "name1", "phone", "glific_id", "gender", "grade", "creation"],
+            order_by="creation desc"
+        )
+        
+        # If no records found, try phone without 91 prefix (fallback logic)
+        if not student_records and formatted_phone and formatted_phone.startswith('91') and len(formatted_phone) == 12:
+            phone_without_prefix = formatted_phone[2:]
+            filters["phone"] = phone_without_prefix
+            
+            student_records = frappe.get_all(
+                "Student",
+                filters=filters,
+                fields=["name", "name1", "phone", "glific_id", "gender", "grade", "creation"],
+                order_by="creation desc"
+            )
+        
+        if not student_records:
+            frappe.local.response.http_status_code = 404
+            return {"success": False, "error": "No students found with the provided phone number"}
+        
+        # Determine if multiple profiles exist
+        profile_count = len(student_records)
+        multiple_profiles = "Yes" if profile_count > 1 else "No"
+        
+        # Build profile details
+        profile_details = {}
+        
+        for i, student_record in enumerate(student_records, 1):
+            try:
+                # Get full student document
+                student = frappe.get_doc("Student", student_record.name)
+                
+                # Initialize profile data
+                profile_data = {
+                    "student_id": student.name,
+                    "name": student.name1 or None,
+                    "course": None,
+                    "grade": str(student.grade) if student.grade else None
+                }
+                
+                # Get course from latest enrollment
+                course_name = None
+                enrollment_grade = None
+                
+                if hasattr(student, 'enrollment') and student.enrollment:
+                    # Get latest enrollment
+                    sorted_enrollments = sorted(
+                        student.enrollment,
+                        key=lambda x: x.date_joining if x.date_joining else frappe.utils.datetime.datetime.min,
+                        reverse=True
+                    )
+                    
+                    if sorted_enrollments:
+                        latest_enrollment = sorted_enrollments[0]
+                        enrollment_grade = str(latest_enrollment.grade) if latest_enrollment.grade else None
+                        
+                        # Get course vertical name2 from course level
+                        if latest_enrollment.course:
+                            try:
+                                course_doc = frappe.get_doc("Course Level", latest_enrollment.course)
+                                if hasattr(course_doc, 'vertical') and course_doc.vertical:
+                                    vertical_doc = frappe.get_doc("Course Verticals", course_doc.vertical)
+                                    course_name = vertical_doc.name2 if hasattr(vertical_doc, 'name2') else None
+                            except Exception as e:
+                                frappe.log_error(f"Error fetching course details for student {student.name}: {str(e)}", "Siblings API Error")
+                
+                # Use enrollment grade if available, otherwise use student grade
+                if enrollment_grade:
+                    profile_data["grade"] = enrollment_grade
+                
+                # Set course name
+                profile_data["course"] = course_name
+                
+                # Add to profile details with string key
+                profile_details[str(i)] = profile_data
+                
+            except Exception as e:
+                frappe.log_error(f"Error processing student {student_record.name}: {str(e)}", "Siblings API Error")
+                # Add minimal profile data in case of error
+                profile_details[str(i)] = {
+                    "student_id": student_record.name,
+                    "name": student_record.name1 or None,
+                    "course": None,
+                    "grade": str(student_record.grade) if student_record.grade else None
+                }
+        
+        # Build response
+        response = {
+            "multiple_profiles": multiple_profiles,
+            "count": str(profile_count),
+            "profile_details": profile_details
+        }
+        
+        return response
+        
+    except frappe.AuthenticationError as e:
+        frappe.local.response.http_status_code = 401
+        frappe.log_error(
+            f"Authentication error: {str(e)}",
+            "Siblings API Error"
+        )
+        return {"success": False, "error": str(e)}
+    
+    except Exception as e:
+        frappe.local.response.http_status_code = 500
+        error_traceback = traceback.format_exc()
+        frappe.log_error(
+            f"Error getting siblings: {str(e)}\n{error_traceback}",
+            "Siblings API Error"
+        )
+        return {"success": False, "error": str(e)}
