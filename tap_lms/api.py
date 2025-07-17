@@ -1064,7 +1064,6 @@ def send_otp_mock():
 
 
 
-
 @frappe.whitelist(allow_guest=True)
 def verify_otp():
     try:
@@ -1112,58 +1111,102 @@ def verify_otp():
             SET verified = 1
             WHERE name = %s
         """, (verification.name,))
-        
+
         # Parse the context
         context = json.loads(verification.context) if verification.context else {}
         action_type = context.get("action_type", "new_teacher")
-        
+
         # Handle update_batch action directly in verify_otp
         if action_type == "update_batch":
             try:
                 teacher_id = context.get("teacher_id")
                 batch_info = context.get("batch_info")
                 school_id = context.get("school_id")
-                
+
                 if not all([teacher_id, batch_info, school_id]):
                     frappe.response.http_status_code = 400
                     return {"status": "failure", "message": "Invalid context data"}
-                
+
                 # Get teacher document
                 teacher = frappe.get_doc("Teacher", teacher_id)
-                
+
                 # Get model for the school (might have changed if batch has different model)
                 model_name = get_model_for_school(school_id)
-                
-                # Update only model and batch_id in Glific contact fields
+
+                # FIXED: Handle missing glific_id by creating/linking Glific contact
+                if not teacher.glific_id:
+                    frappe.logger().warning(f"Teacher {teacher_id} has no Glific ID. Attempting to create/link.")
+
+                    # Try to find existing Glific contact by phone
+                    glific_contact = get_contact_by_phone(teacher.phone_number)
+
+                    if glific_contact and 'id' in glific_contact:
+                        # Found existing contact, link it
+                        teacher.glific_id = glific_contact['id']
+                        teacher.save(ignore_permissions=True)
+                        frappe.logger().info(f"Linked teacher {teacher_id} to existing Glific contact {glific_contact['id']}")
+                    else:
+                        # No existing contact, create new one
+                        school_name = frappe.db.get_value("School", school_id, "name1")
+
+                        # Get language_id for Glific
+                        language_id = None
+                        if teacher.language:
+                            language_id = frappe.db.get_value("TAP Language", teacher.language, "glific_language_id")
+
+                        if not language_id:
+                            language_id = frappe.db.get_value("TAP Language", {"language_name": "English"}, "glific_language_id")
+
+                        if not language_id:
+                            frappe.logger().warning("No English language found in TAP Language. Using None for language_id.")
+                            language_id = None
+
+                        new_contact = create_contact(
+                            teacher.first_name or "Teacher",  # Fallback if first_name is empty
+                            teacher.phone_number,
+                            school_name,
+                            model_name,
+                            language_id,
+                            batch_info["batch_id"]
+                        )
+
+                        if new_contact and 'id' in new_contact:
+                            teacher.glific_id = new_contact['id']
+                            teacher.save(ignore_permissions=True)
+                            frappe.logger().info(f"Created new Glific contact {new_contact['id']} for teacher {teacher_id}")
+                        else:
+                            frappe.logger().error(f"Failed to create Glific contact for teacher {teacher_id}")
+                            # Continue without failing - we'll handle this gracefully
+
+                # Update model and batch_id in Glific contact fields (only if we have glific_id)
                 if teacher.glific_id:
                     fields_to_update = {
                         "model": model_name,
                         "batch_id": batch_info["batch_id"]
                     }
-                    
+
                     update_success = update_contact_fields(teacher.glific_id, fields_to_update)
-                    
+
                     if not update_success:
                         frappe.logger().warning(f"Failed to update Glific contact fields for teacher {teacher_id}")
                 else:
-                    frappe.logger().error(f"Teacher {teacher_id} does not have a Glific ID")
-                    frappe.response.http_status_code = 400
-                    return {"status": "failure", "message": "Teacher not linked to Glific"}
-                
-                # Add teacher to new batch group
-                teacher_group = create_or_get_teacher_group_for_batch(
-                    batch_info["batch_name"], 
-                    batch_info["batch_id"]
-                )
-                
-                if teacher_group and teacher.glific_id:
-                    group_added = add_contact_to_group(teacher.glific_id, teacher_group["group_id"])
-                    if group_added:
-                        frappe.logger().info(f"Teacher {teacher_id} added to group {teacher_group['label']}")
-                    else:
-                        frappe.logger().warning(f"Failed to add teacher {teacher_id} to group")
-                
-                # Optional: Create batch history record to track which batches teacher has joined
+                    frappe.logger().warning(f"Teacher {teacher_id} still has no Glific ID after creation attempts. Continuing without Glific operations.")
+
+                # Add teacher to new batch group (only if we have glific_id)
+                if teacher.glific_id:
+                    teacher_group = create_or_get_teacher_group_for_batch(
+                        batch_info["batch_name"],
+                        batch_info["batch_id"]
+                    )
+
+                    if teacher_group:
+                        group_added = add_contact_to_group(teacher.glific_id, teacher_group["group_id"])
+                        if group_added:
+                            frappe.logger().info(f"Teacher {teacher_id} added to group {teacher_group['label']}")
+                        else:
+                            frappe.logger().warning(f"Failed to add teacher {teacher_id} to group")
+
+                # Create batch history record to track which batches teacher has joined
                 try:
                     frappe.get_doc({
                         "doctype": "Teacher Batch History",
@@ -1175,25 +1218,25 @@ def verify_otp():
                     }).insert(ignore_permissions=True)
                 except Exception as e:
                     frappe.logger().warning(f"Could not create batch history: {str(e)}")
-                
-                # Enqueue background job for flow
-                # Get school name from School doctype
-                school_name = frappe.db.get_value("School", school_id, "name1")
-                
-                enqueue_glific_actions(
-                    teacher.name,
-                    phone_number,
-                    teacher.first_name,
-                    school_id,
-                    school_name,
-                    teacher.language,
-                    model_name,
-                    batch_info["batch_name"],
-                    batch_info["batch_id"]
-                )
-                
+
+                # Enqueue background job for flow (only if we have glific_id)
+                if teacher.glific_id:
+                    school_name = frappe.db.get_value("School", school_id, "name1")
+
+                    enqueue_glific_actions(
+                        teacher.name,
+                        phone_number,
+                        teacher.first_name,
+                        school_id,
+                        school_name,
+                        teacher.language,
+                        model_name,
+                        batch_info["batch_name"],
+                        batch_info["batch_id"]
+                    )
+
                 frappe.db.commit()
-                
+
                 frappe.response.http_status_code = 200
                 return {
                     "status": "success",
@@ -1201,9 +1244,11 @@ def verify_otp():
                     "action_type": "update_batch",
                     "teacher_id": teacher_id,
                     "batch_id": batch_info["batch_id"],
-                    "model": model_name
+                    "model": model_name,
+                    "glific_contact_id": teacher.glific_id,
+                    "has_glific": bool(teacher.glific_id)
                 }
-                
+
             except Exception as e:
                 frappe.db.rollback()
                 frappe.log_error(f"Error updating teacher batch in verify_otp: {str(e)}", "Teacher Batch Update Error")
@@ -1213,7 +1258,7 @@ def verify_otp():
                     "message": "Failed to add teacher to new batch",
                     "error": str(e)
                 }
-        
+
         # For new teacher, just verify and return success
         else:
             frappe.db.commit()
@@ -1223,14 +1268,11 @@ def verify_otp():
                 "message": "Phone number verified successfully",
                 "action_type": "new_teacher"
             }
-            
+
     except Exception as e:
         frappe.log_error(f"OTP Verification Error: {str(e)}")
         frappe.response.http_status_code = 500
         return {"status": "failure", "message": "An error occurred during OTP verification"}
-
-
-
 
 
 
@@ -1301,6 +1343,7 @@ def create_teacher_web():
         if not batch_id:
             frappe.logger().warning(f"No active batch found for school {school}. Using empty string for batch_id.")
             batch_id = ""  # Fallback to empty string if no batch found
+            batch_name = ""  # Also set batch_name to empty string
 
         # Check if the phone number already exists in Glific
         glific_contact = get_contact_by_phone(data['phone'])
@@ -1373,6 +1416,7 @@ def create_teacher_web():
                 new_teacher.save(ignore_permissions=True)
 
                 # Enqueue Glific actions (optin and flow start) as a background job
+                # FIXED: Added batch_name and batch_id parameters
                 enqueue_glific_actions(
                     new_teacher.name,
                     data['phone'],
@@ -1380,7 +1424,9 @@ def create_teacher_web():
                     school,
                     school_name,
                     data.get('language', ''),
-                    model_name
+                    model_name,
+                    batch_name,  # ADDED: batch_name parameter
+                    batch_id     # ADDED: batch_id parameter
                 )
 
                 frappe.db.commit()
@@ -1398,6 +1444,7 @@ def create_teacher_web():
                     "message": "Teacher created but failed to add Glific contact",
                     "teacher_id": new_teacher.name
                 }
+        
         # This should never be reached as all paths above have return statements
         frappe.db.commit()
         return {
@@ -1415,7 +1462,7 @@ def create_teacher_web():
         }
     finally:
         frappe.flags.ignore_permissions = False
-   
+  
 
 
 
