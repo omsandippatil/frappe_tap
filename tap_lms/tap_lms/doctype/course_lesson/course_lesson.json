@@ -11,7 +11,8 @@
   "course_chapter",
   "description",
   "order",
-  "content_items"
+  "content_items",
+  "current_tier"
  ],
  "fields": [
   {
@@ -40,11 +41,17 @@
    "fieldtype": "Table",
    "label": "Content Items",
    "options": "Lesson Content Item"
+  },
+  {
+   "fieldname": "current_tier",
+   "fieldtype": "Select",
+   "label": "Current Tier",
+   "options": "Remedial\nBasic\nIntermediate\nAdvanced"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-17 16:12:27.604996",
+ "modified": "2025-07-22 09:47:42.824493",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "Course Lesson",
