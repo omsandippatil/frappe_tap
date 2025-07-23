@@ -657,7 +657,6 @@ def get_student_glific_groups(student_id=None, phone=None, glific_id=None):
 
 
 
-# Modified get_student_minimal_details function with Course Vertical from Backend Students
 @frappe.whitelist(allow_guest=False)
 def get_student_minimal_details(glific_id=None, phone=None, name=None):
     """
@@ -671,6 +670,7 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
     Returns:
         dict: Student minimal information with latest enrollment details and course vertical
               Uses phone+name combination to find unique student when multiple exist
+              Includes multi_enrollment indicator
     """
     try:
         # Authentication check
@@ -788,9 +788,16 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
         # Get the first (most recently created) student document
         student = frappe.get_doc("Student", student_records[0].name)
 
-        # Get the latest enrollment (most recent date_joining)
+        # Check for multiple enrollments and get the latest enrollment
+        multi_enrollment = "No"
         latest_enrollment = None
+        
         if hasattr(student, 'enrollment') and student.enrollment:
+            # Check if student has multiple enrollments
+            if len(student.enrollment) > 1:
+                multi_enrollment = "Yes"
+            
+            # Get the latest enrollment (most recent date_joining) - EXISTING LOGIC UNCHANGED
             sorted_enrollments = sorted(
                 student.enrollment,
                 key=lambda x: x.date_joining if x.date_joining else frappe.utils.datetime.datetime.min,
@@ -815,10 +822,11 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
             "district": None,
             "batch_id": None,
             "batch_name": None,
-            "batch_skeyword": None
+            "batch_skeyword": None,
+            "multi_enrollment": multi_enrollment  # NEW PARAMETER
         }
 
-        # Get course vertical from Backend Students table
+        # Get course vertical from Backend Students table (Primary Source)
         try:
             backend_student = frappe.get_all(
                 "Backend Students",
@@ -844,7 +852,7 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
             except Exception as e:
                 frappe.log_error(f"Error fetching language details: {str(e)}", "Student Minimal Details API Error")
 
-        # Process enrollment details
+        # Process enrollment details (using latest enrollment)
         if latest_enrollment:
             # Get grade from latest enrollment
             response_data["grade"] = str(latest_enrollment.grade) if latest_enrollment.grade else None
@@ -875,10 +883,13 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
                     course_doc = frappe.get_doc("Course Level", latest_enrollment.course)
                     course_name = course_doc.name1 if hasattr(course_doc, 'name1') else None
 
-                    if not course_name and hasattr(course_doc, 'vertical') and course_doc.vertical:
+                    # If course vertical not found from Backend Students, get it from enrollment
+                    if not response_data["course_vertical"] and hasattr(course_doc, 'vertical') and course_doc.vertical:
                         try:
                             vertical_doc = frappe.get_doc("Course Verticals", course_doc.vertical)
-                            course_name = vertical_doc.name1 if hasattr(vertical_doc, 'name1') else None
+                            response_data["course_vertical"] = vertical_doc.name1 if hasattr(vertical_doc, 'name1') else None
+                            response_data["course_vertical_short"] = vertical_doc.name2 if hasattr(vertical_doc, 'name2') else None
+                            course_name = vertical_doc.name1 if not course_name else course_name
                         except Exception as ve:
                             frappe.log_error(f"Error fetching vertical details: {str(ve)}", "Student Minimal Details API Error")
 
@@ -968,7 +979,6 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
             "Student Minimal Details API Error"
         )
         return {"error": str(e)}
-
 
 
 def find_appropriate_course_level(student, course_vertical_id, grade=None):
