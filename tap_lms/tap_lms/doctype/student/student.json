@@ -31,7 +31,9 @@
   "backend_onboarding",
   "peer_groups",
   "mentor_role",
-  "mentee_role"
+  "mentee_role",
+  "preferred_time",
+  "preferred_day"
  ],
  "fields": [
   {
@@ -160,11 +162,22 @@
    "fieldtype": "Table",
    "label": "Mentee Role",
    "options": "StudentMenteeRole"
+  },
+  {
+   "fieldname": "preferred_time",
+   "fieldtype": "Time",
+   "label": "Preferred Time"
+  },
+  {
+   "fieldname": "preferred_day",
+   "fieldtype": "Select",
+   "label": "Preferred Day",
+   "options": "Monday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday\nDaily"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-04 21:20:16.520841",
+ "modified": "2025-07-23 17:39:27.928124",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "Student",
