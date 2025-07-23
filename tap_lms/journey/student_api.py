@@ -984,9 +984,12 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
 def find_appropriate_course_level(student, course_vertical_id, grade=None):
     """
     Find the appropriate Course Level for a student based on:
+    - Grade Course Level Mapping (NEW - primary method)
     - Course Vertical
     - Student's grade
-    - Batch constraints
+    - Student type (New/Old)
+    - Academic Year
+    - Batch constraints (fallback)
     
     Args:
         student: Student document
@@ -1006,14 +1009,104 @@ def find_appropriate_course_level(student, course_vertical_id, grade=None):
                 "error": "Student has no grade specified"
             }
         
-        # Convert grade to integer
+        # Convert grade to string for mapping lookup
         try:
-            grade_int = int(grade_to_check)
+            grade_str = str(grade_to_check)
         except (ValueError, TypeError):
             return {
                 "found": False,
                 "course_level_id": None,
                 "error": f"Invalid grade format: {grade_to_check}"
+            }
+        
+        # NEW: Try Grade Course Level Mapping first
+        try:
+            # Determine student type using phone + name combination
+            student_type = determine_student_type_api(student.phone, student.name1, course_vertical_id)
+            
+            # Get current academic year
+            academic_year = get_current_academic_year_api()
+            
+            frappe.log_error(
+                f"API: Course level mapping lookup: vertical={course_vertical_id}, grade={grade_str}, type={student_type}, year={academic_year}",
+                "API Course Level Mapping Lookup"
+            )
+            
+            # Try manual mapping with current academic year
+            if academic_year:
+                mapping = frappe.get_all(
+                    "Grade Course Level Mapping",
+                    filters={
+                        "academic_year": academic_year,
+                        "course_vertical": course_vertical_id,
+                        "grade": grade_str,
+                        "student_type": student_type,
+                        "is_active": 1
+                    },
+                    fields=["assigned_course_level", "mapping_name"],
+                    order_by="modified desc",
+                    limit=1
+                )
+                
+                if mapping:
+                    frappe.log_error(
+                        f"API: Found mapping: {mapping[0].mapping_name} -> {mapping[0].assigned_course_level}",
+                        "API Course Level Mapping Found"
+                    )
+                    return {
+                        "found": True,
+                        "course_level_id": mapping[0].assigned_course_level,
+                        "course_level_name": None,  # Will be fetched separately if needed
+                        "error": None,
+                        "method": "grade_mapping_with_year"
+                    }
+            
+            # Try mapping with academic_year = null (flexible mappings)
+            mapping_null = frappe.get_all(
+                "Grade Course Level Mapping",
+                filters={
+                    "academic_year": ["is", "not set"],
+                    "course_vertical": course_vertical_id,
+                    "grade": grade_str,
+                    "student_type": student_type,
+                    "is_active": 1
+                },
+                fields=["assigned_course_level", "mapping_name"],
+                order_by="modified desc",
+                limit=1
+            )
+            
+            if mapping_null:
+                frappe.log_error(
+                    f"API: Found flexible mapping: {mapping_null[0].mapping_name} -> {mapping_null[0].assigned_course_level}",
+                    "API Course Level Flexible Mapping Found"
+                )
+                return {
+                    "found": True,
+                    "course_level_id": mapping_null[0].assigned_course_level,
+                    "course_level_name": None,
+                    "error": None,
+                    "method": "grade_mapping_flexible"
+                }
+            
+            frappe.log_error(
+                f"API: No mapping found for vertical={course_vertical_id}, grade={grade_str}, type={student_type}, year={academic_year}. Using Stage Grades fallback.",
+                "API Course Level Mapping Fallback"
+            )
+            
+        except Exception as mapping_error:
+            frappe.log_error(f"API: Error in course level mapping: {str(mapping_error)}", "API Course Level Mapping Error")
+            # Continue to fallback logic
+        
+        # FALLBACK: Original Stage Grades logic
+        # Convert grade to integer for stage logic
+        try:
+            grade_int = int(grade_str)
+        except (ValueError, TypeError):
+            return {
+                "found": False,
+                "course_level_id": None,
+                "error": f"Invalid grade format for fallback: {grade_str}"
             }
         
         # Get all course levels for this vertical
@@ -1030,8 +1123,10 @@ def find_appropriate_course_level(student, course_vertical_id, grade=None):
                 "error": f"No course levels found for the selected vertical"
             }
         
-        # Find the student's batch
+        # Find the student's batch for kit_less logic
         latest_batch = None
+        kitless = False
+        
         if hasattr(student, 'enrollment') and student.enrollment:
             sorted_enrollments = sorted(
                 student.enrollment,
@@ -1053,33 +1148,53 @@ def find_appropriate_course_level(student, course_vertical_id, grade=None):
             if backend_student:
                 latest_batch = backend_student[0].batch
         
-        # Check each course level for grade compatibility
+        # Get kitless status from batch
+        if latest_batch:
+            try:
+                batch_onboarding = frappe.get_all(
+                    "Batch onboarding",
+                    filters={"batch": latest_batch},
+                    fields=["kit_less"],
+                    limit=1
+                )
+                if batch_onboarding:
+                    kitless = batch_onboarding[0].kit_less
+            except Exception as e:
+                frappe.log_error(f"Error getting kitless status: {str(e)}", "Course Level Selection Error")
+        
+        # Check each course level for grade compatibility using Stage Grades
         valid_course_levels = []
         
         for cl in course_levels:
             if cl.stage:
                 # Get stage details
-                stage = frappe.get_doc("Stage Grades", cl.stage)
-                
                 try:
+                    stage = frappe.get_doc("Stage Grades", cl.stage)
+                    
                     from_grade = int(stage.from_grade) if stage.from_grade else 1
                     to_grade = int(stage.to_grade) if stage.to_grade else 12
-                except (ValueError, TypeError):
+                    
+                    # Check if student's grade is within stage range
+                    if from_grade <= grade_int <= to_grade:
+                        # Apply kit_less filtering if needed
+                        if kitless and hasattr(cl, 'kit_less') and not cl.kit_less:
+                            continue  # Skip non-kitless courses for kitless batches
+                        
+                        valid_course_levels.append({
+                            "id": cl.name,
+                            "name": cl.name1,
+                            "priority": abs(grade_int - from_grade)  # Closer to from_grade = higher priority
+                        })
+                        
+                except Exception as stage_error:
+                    frappe.log_error(f"Error processing stage {cl.stage}: {str(stage_error)}", "Course Level Selection Error")
                     continue
-                
-                # Check if student's grade is within stage range
-                if from_grade <= grade_int <= to_grade:
-                    valid_course_levels.append({
-                        "id": cl.name,
-                        "name": cl.name1,
-                        "priority": abs(grade_int - from_grade)  # Closer to from_grade = higher priority
-                    })
         
         if not valid_course_levels:
             return {
                 "found": False,
                 "course_level_id": None,
-                "error": f"No course level found matching grade {grade_to_check} for the selected vertical"
+                "error": f"No course level found matching grade {grade_str} for the selected vertical (fallback method)"
             }
         
         # Sort by priority (closest match to grade)
@@ -1090,7 +1205,8 @@ def find_appropriate_course_level(student, course_vertical_id, grade=None):
             "found": True,
             "course_level_id": valid_course_levels[0]["id"],
             "course_level_name": valid_course_levels[0]["name"],
-            "error": None
+            "error": None,
+            "method": "stage_grades_fallback"
         }
         
     except Exception as e:
@@ -1101,6 +1217,68 @@ def find_appropriate_course_level(student, course_vertical_id, grade=None):
             "error": f"Error finding course level: {str(e)}"
         }
 
+def determine_student_type_api(phone_number, student_name, course_vertical):
+    """
+    Determine if student is New or Old based on previous enrollment in same vertical
+    Uses phone + name1 combination to uniquely identify the student
+    (Same logic as backend version but for API context)
+    
+    Args:
+        phone_number: Student's phone number
+        student_name: Student's name (name1 field)
+        course_vertical: Course vertical name/ID
+    
+    Returns:
+        "Old" if student has previous enrollment in same vertical, "New" otherwise
+    """
+    try:
+        existing_enrollment = frappe.db.sql("""
+            SELECT s.name 
+            FROM `tabStudent` s
+            INNER JOIN `tabEnrollment` e ON e.parent = s.name  
+            INNER JOIN `tabCourse Level` cl ON cl.name = e.course
+            INNER JOIN `tabCourse Verticals` cv ON cv.name = cl.vertical
+            WHERE s.phone = %s AND s.name1 = %s AND cv.name = %s
+            LIMIT 1
+        """, (phone_number, student_name, course_vertical))
+        
+        student_type = "Old" if existing_enrollment else "New"
+        
+        frappe.log_error(
+            f"API: Student type determination: phone={phone_number}, name={student_name}, vertical={course_vertical}, type={student_type}",
+            "API Student Type Classification"
+        )
+        
+        return student_type
+        
+    except Exception as e:
+        frappe.log_error(f"API: Error determining student type: {str(e)}", "API Student Type Error")
+        return "New"  # Default to New on error
+
+def get_current_academic_year_api():
+    """
+    Get current academic year based on current date
+    Academic year runs from April to March
+    (Same logic as backend version)
+    
+    Returns:
+        Academic year string in format "YYYY-YY" (e.g., "2025-26")
+    """
+    try:
+        current_date = frappe.utils.getdate()
+        
+        if current_date.month >= 4:  # April onwards = new academic year
+            academic_year = f"{current_date.year}-{str(current_date.year + 1)[-2:]}"
+        else:
+            academic_year = f"{current_date.year - 1}-{str(current_date.year)[-2:]}"
+        
+        frappe.log_error(f"API: Current academic year determined: {academic_year}", "API Academic Year Calculation")
+        
+        return academic_year
+        
+    except Exception as e:
+        frappe.log_error(f"API: Error calculating academic year: {str(e)}", "API Academic Year Error")
+        return None
 
 @frappe.whitelist(allow_guest=False)
 def update_student_fields(student_id=None, glific_id=None, phone=None, name=None, updates=None):
