@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:{student}-{###}",
  "creation": "2025-04-19 11:55:56.826380",
  "default_view": "List",
  "doctype": "DocType",
@@ -87,10 +88,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-20 20:54:07.864523",
+ "modified": "2025-07-28 13:21:15.530777",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "EngagementState",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

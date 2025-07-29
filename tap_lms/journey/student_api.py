@@ -655,8 +655,6 @@ def get_student_glific_groups(student_id=None, phone=None, glific_id=None):
         return {"success": False, "message": str(e)}
 
 
-
-
 @frappe.whitelist(allow_guest=False)
 def get_student_minimal_details(glific_id=None, phone=None, name=None):
     """
@@ -797,10 +795,37 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
             if len(student.enrollment) > 1:
                 multi_enrollment = "Yes"
             
-            # Get the latest enrollment (most recent date_joining) - EXISTING LOGIC UNCHANGED
+            # FIXED: Handle both date and datetime objects properly
+            def get_date_for_sorting(enrollment):
+                """Convert date_joining to datetime for consistent sorting"""
+                if not enrollment.date_joining:
+                    return frappe.utils.datetime.datetime.min
+                
+                # If it's already a datetime, return as is
+                if isinstance(enrollment.date_joining, frappe.utils.datetime.datetime):
+                    return enrollment.date_joining
+                
+                # If it's a date, convert to datetime
+                if isinstance(enrollment.date_joining, frappe.utils.datetime.date):
+                    return frappe.utils.datetime.datetime.combine(enrollment.date_joining, frappe.utils.datetime.time.min)
+                
+                # If it's a string, try to parse it
+                if isinstance(enrollment.date_joining, str):
+                    try:
+                        return frappe.utils.datetime.datetime.strptime(enrollment.date_joining, '%Y-%m-%d')
+                    except ValueError:
+                        try:
+                            return frappe.utils.datetime.datetime.strptime(enrollment.date_joining, '%Y-%m-%d %H:%M:%S')
+                        except ValueError:
+                            return frappe.utils.datetime.datetime.min
+                
+                # Fallback
+                return frappe.utils.datetime.datetime.min
+            
+            # Get the latest enrollment using the fixed sorting function
             sorted_enrollments = sorted(
                 student.enrollment,
-                key=lambda x: x.date_joining if x.date_joining else frappe.utils.datetime.datetime.min,
+                key=get_date_for_sorting,
                 reverse=True
             )
             latest_enrollment = sorted_enrollments[0] if sorted_enrollments else None
@@ -979,6 +1004,8 @@ def get_student_minimal_details(glific_id=None, phone=None, name=None):
             "Student Minimal Details API Error"
         )
         return {"error": str(e)}
+
+
 
 
 def find_appropriate_course_level(student, course_vertical_id, grade=None):
