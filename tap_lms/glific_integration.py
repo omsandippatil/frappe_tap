@@ -664,7 +664,7 @@ def add_contact_to_group(contact_id, group_id):
 
 
 
-def add_student_to_glific_for_onboarding(student_name, phone, school_name, batch_name, group_id, language_id=None):
+def add_student_to_glific_for_onboarding(student_name, phone, school_name, batch_name, group_id, language_id=None, course_level_name=None, course_vertical_name=None, grade=None):
     """
     Function dedicated to backend onboarding that:
     1. Formats the phone number correctly
@@ -679,6 +679,9 @@ def add_student_to_glific_for_onboarding(student_name, phone, school_name, batch
         batch_name: Name of the batch
         group_id: Glific group ID to add contact to
         language_id: Glific language ID from TAP Language
+        course_level_name: Course level name for Glific
+        course_vertical_name: Course vertical name for Glific
+        grade: Student grade for Glific
         
     Returns:
         Contact information if successful, None otherwise
@@ -726,6 +729,12 @@ def add_student_to_glific_for_onboarding(student_name, phone, school_name, batch
         }
         if school_name:
             fields_to_update["school"] = school_name
+        if course_level_name:
+            fields_to_update["course_level"] = course_level_name
+        if course_vertical_name:
+            fields_to_update["course"] = course_vertical_name
+        if grade:
+            fields_to_update["grade"] = grade
 
         update_contact_fields(existing_contact['id'], fields_to_update)
 
@@ -787,6 +796,27 @@ def add_student_to_glific_for_onboarding(student_name, phone, school_name, batch
         if batch_name:
             fields["batch_id"] = {
                 "value": batch_name,
+                "type": "string",
+                "inserted_at": datetime.now(timezone.utc).isoformat()
+            }
+
+        if course_level_name:
+            fields["course_level"] = {
+                "value": course_level_name,
+                "type": "string",
+                "inserted_at": datetime.now(timezone.utc).isoformat()
+            }
+
+        if course_vertical_name:
+            fields["course"] = {
+                "value": course_vertical_name,
+                "type": "string",
+                "inserted_at": datetime.now(timezone.utc).isoformat()
+            }
+
+        if grade:
+            fields["grade"] = {
+                "value": grade,
                 "type": "string",
                 "inserted_at": datetime.now(timezone.utc).isoformat()
             }

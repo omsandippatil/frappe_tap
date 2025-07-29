@@ -227,14 +227,33 @@ def process_batch_job(batch_id):
                 
                 # 1. First, handle Glific contact creation/retrieval
                 try:
-                    glific_contact = process_glific_contact(student, glific_group)
+                    # Get course level for Glific (will be reused for enrollment)
+                    course_level_for_glific = None
+                    if hasattr(student, 'batch_skeyword') and student.batch_skeyword and student.course_vertical and student.grade:
+                        batch_onboarding = frappe.get_all(
+                            "Batch onboarding",
+                            filters={"batch_skeyword": student.batch_skeyword},
+                            fields=["name", "kit_less"]
+                        )
+                        
+                        if batch_onboarding:
+                            kitless = batch_onboarding[0].kit_less
+                            course_level_for_glific = get_course_level_with_validation_backend(
+                                student.course_vertical,
+                                student.grade,
+                                student.phone,
+                                student.student_name,
+                                kitless
+                            )
+                    
+                    glific_contact = process_glific_contact(student, glific_group, course_level_for_glific)
                 except Exception as e:
                     frappe.log_error(f"Error processing Glific contact for {student.student_name}: {str(e)}", 
                                    "Backend Student Onboarding")
                     glific_contact = None
                 
                 # 2. Then create/update student record
-                student_doc = process_student_record(student, glific_contact, batch_id, initial_stage)
+                student_doc = process_student_record(student, glific_contact, batch_id, initial_stage, course_level_for_glific)
                 
                 # 3. Update Backend Students record
                 update_backend_student_status(student, "Success", student_doc)
@@ -345,13 +364,14 @@ def update_job_progress(current, total):
                 frappe.db.commit()
                 print(f"Processed {current+1} of {total} students")
 
-def process_glific_contact(student, glific_group):
+def process_glific_contact(student, glific_group, course_level=None):
     """
     Process Glific contact creation or retrieval
     
     Args:
         student: Backend Students document
         glific_group: Glific group information
+        course_level: Optional course level name for Glific
     
     Returns:
         Glific contact information if successful, None otherwise
@@ -381,6 +401,21 @@ def process_glific_contact(student, glific_group):
         except Exception as e:
             frappe.logger().warning(f"Error getting glific_language_id: {str(e)}")
     
+    # Get course level name for Glific
+    course_level_name = ""
+    # First try to get from student.course_level if it exists
+    if hasattr(student, 'course_level') and student.course_level:
+        course_level_name = frappe.get_value("Course Level", student.course_level, "name1") or ""
+    # If course_level parameter is provided, use it
+    elif course_level:
+        course_level_name = frappe.get_value("Course Level", course_level, "name1") or ""
+    # If not available, we'll need to determine it during processing
+    
+    # Get course vertical name for Glific
+    course_vertical_name = ""
+    if student.course_vertical:
+        course_vertical_name = frappe.get_value("Course Verticals", student.course_vertical, "name2") or ""
+    
     # Check if contact already exists in Glific
     existing_contact = get_contact_by_phone(phone)
     
@@ -391,7 +426,7 @@ def process_glific_contact(student, glific_group):
             add_contact_to_group(existing_contact['id'], glific_group.get("group_id"))
         
         # Update fields to ensure they're current
-        if student.batch or school_name:
+        if student.batch or school_name or course_level_name or course_vertical_name or student.grade:
             from tap_lms.glific_integration import update_contact_fields
             fields_to_update = {
                 "buddy_name": student.student_name,
@@ -399,19 +434,28 @@ def process_glific_contact(student, glific_group):
             }
             if school_name:
                 fields_to_update["school"] = school_name
+            if course_level_name:
+                fields_to_update["course_level"] = course_level_name
+            if course_vertical_name:
+                fields_to_update["course"] = course_vertical_name
+            if student.grade:
+                fields_to_update["grade"] = student.grade
             
             update_contact_fields(existing_contact['id'], fields_to_update)
         
         return existing_contact
     else:
-        # Create new contact and add to group, passing the language_id
+        # Create new contact and add to group, passing the language_id and additional fields
         contact = add_student_to_glific_for_onboarding(
             student.student_name,
             phone,
             school_name,
             batch_name,
             glific_group.get("group_id") if glific_group else None,
-            language_id # Pass the language_id here
+            language_id, # Pass the language_id here
+            course_level_name, # Pass course level name
+            course_vertical_name, # Pass course vertical name
+            student.grade # Pass student grade
         )
         
         if not contact or 'id' not in contact:
@@ -941,10 +985,17 @@ def get_course_level_with_validation_backend(course_vertical, grade, phone_numbe
             return None
 
 
-def process_student_record(student, glific_contact, batch_id, initial_stage):
+def process_student_record(student, glific_contact, batch_id, initial_stage, course_level=None):
     """
     Create or update student record based on duplicate handling logic
     UPDATED: Enhanced error handling for broken enrollment data
+    
+    Args:
+        student: Backend Students document
+        glific_contact: Glific contact information
+        batch_id: Backend onboarding batch ID
+        initial_stage: Initial onboarding stage
+        course_level: Pre-determined course level (optional)
     """
     try:
         # Check for duplicate using normalized phone number comparison
@@ -1016,51 +1067,57 @@ def process_student_record(student, glific_contact, batch_id, initial_stage):
             
             # ALWAYS ADD NEW ENROLLMENT (regardless of existing enrollments)
             if student.batch:
-                # Get course level using enhanced error handling
-                course_level = None
-                try:
-                    if hasattr(student, 'batch_skeyword') and student.batch_skeyword and student.course_vertical and student.grade:
-                        # Get batch onboarding details using batch_skeyword
-                        batch_onboarding = frappe.get_all(
-                            "Batch onboarding",
-                            filters={"batch_skeyword": student.batch_skeyword},
-                            fields=["name", "kit_less"]
-                        )
+                # Use pre-determined course level if available, otherwise determine it
+                if course_level is None:
+                    try:
+                        if hasattr(student, 'batch_skeyword') and student.batch_skeyword and student.course_vertical and student.grade:
+                            # Get batch onboarding details using batch_skeyword
+                            batch_onboarding = frappe.get_all(
+                                "Batch onboarding",
+                                filters={"batch_skeyword": student.batch_skeyword},
+                                fields=["name", "kit_less"]
+                            )
+                            
+                            if batch_onboarding:
+                                kitless = batch_onboarding[0].kit_less
+                                
+                                # Use enhanced course level selection that handles broken data
+                                course_level = get_course_level_with_validation_backend(
+                                    student.course_vertical,
+                                    student.grade,
+                                    phone_12 or student.phone, # Use normalized phone
+                                    student.student_name, # Student name for unique identification
+                                    kitless # For fallback logic
+                                )
+                                
+                                # SHORTENED LOG MESSAGE
+                                frappe.log_error(
+                                    f"Course selected: {student.student_name} | {course_level or 'None'}",
+                                    "Backend Course Selection"
+                                )
                         
-                        if batch_onboarding:
-                            kitless = batch_onboarding[0].kit_less
-                            
-                            # Use enhanced course level selection that handles broken data
-                            course_level = get_course_level_with_validation_backend(
-                                student.course_vertical,
-                                student.grade,
-                                phone_12 or student.phone, # Use normalized phone
-                                student.student_name, # Student name for unique identification
-                                kitless # For fallback logic
-                            )
-                            
-                            # SHORTENED LOG MESSAGE
-                            frappe.log_error(
-                                f"Course selected: {student.student_name} | {course_level or 'None'}",
-                                "Backend Course Selection"
-                            )
-                    
-                    # If course_level is still None, try basic fallback
-                    if not course_level and student.course_vertical and student.grade:
-                        try:
-                            # Direct fallback to get_course_level without mapping
-                            course_level = get_course_level(student.course_vertical, student.grade, False)
-                            frappe.log_error(
-                                f"Fallback course selected: {student.student_name} | {course_level or 'None'}",
-                                "Backend Course Fallback"
-                            )
-                        except Exception as fallback_error:
-                            frappe.log_error(f"Fallback course selection failed: {str(fallback_error)}", "Backend Course Fallback Error")
-                            course_level = None
-                            
-                except Exception as e:
-                    frappe.log_error(f"Course selection error: {str(e)}", "Backend Course Error")
-                    course_level = None
+                        # If course_level is still None, try basic fallback
+                        if not course_level and student.course_vertical and student.grade:
+                            try:
+                                # Direct fallback to get_course_level without mapping
+                                course_level = get_course_level(student.course_vertical, student.grade, False)
+                                frappe.log_error(
+                                    f"Fallback course selected: {student.student_name} | {course_level or 'None'}",
+                                    "Backend Course Fallback"
+                                )
+                            except Exception as fallback_error:
+                                frappe.log_error(f"Fallback course selection failed: {str(fallback_error)}", "Backend Course Fallback Error")
+                                course_level = None
+                                
+                    except Exception as e:
+                        frappe.log_error(f"Course selection error: {str(e)}", "Backend Course Error")
+                        course_level = None
+                else:
+                    # Use the pre-determined course level
+                    frappe.log_error(
+                        f"Using pre-determined course level: {student.student_name} | {course_level}",
+                        "Backend Course Reuse"
+                    )
                 
                 # Create new enrollment (always) - with enhanced error handling
                 try:
@@ -1142,50 +1199,56 @@ def process_student_record(student, glific_contact, batch_id, initial_stage):
             
             # Add enrollment with course level for new student
             if student.batch:
-                # Get course level using enhanced error handling
-                course_level = None
-                try:
-                    if hasattr(student, 'batch_skeyword') and student.batch_skeyword and student.course_vertical and student.grade:
-                        # Get batch onboarding details using batch_skeyword
-                        batch_onboarding = frappe.get_all(
-                            "Batch onboarding",
-                            filters={"batch_skeyword": student.batch_skeyword},
-                            fields=["name", "kit_less"]
-                        )
+                # Use pre-determined course level if available, otherwise determine it
+                if course_level is None:
+                    try:
+                        if hasattr(student, 'batch_skeyword') and student.batch_skeyword and student.course_vertical and student.grade:
+                            # Get batch onboarding details using batch_skeyword
+                            batch_onboarding = frappe.get_all(
+                                "Batch onboarding",
+                                filters={"batch_skeyword": student.batch_skeyword},
+                                fields=["name", "kit_less"]
+                            )
+                            
+                            if batch_onboarding:
+                                kitless = batch_onboarding[0].kit_less
+                                
+                                # Use enhanced course level selection
+                                course_level = get_course_level_with_validation_backend(
+                                    student.course_vertical,
+                                    student.grade,
+                                    phone_12 or student.phone, # Use normalized phone
+                                    student.student_name, # Student name for unique identification
+                                    kitless # For fallback logic
+                                )
+                                
+                                # SHORTENED LOG MESSAGE
+                                frappe.log_error(
+                                    f"Course selected: {student.student_name} | {course_level or 'None'}",
+                                    "Backend Course Selection"
+                                )
                         
-                        if batch_onboarding:
-                            kitless = batch_onboarding[0].kit_less
-                            
-                            # Use enhanced course level selection
-                            course_level = get_course_level_with_validation_backend(
-                                student.course_vertical,
-                                student.grade,
-                                phone_12 or student.phone, # Use normalized phone
-                                student.student_name, # Student name for unique identification
-                                kitless # For fallback logic
-                            )
-                            
-                            # SHORTENED LOG MESSAGE
-                            frappe.log_error(
-                                f"Course selected: {student.student_name} | {course_level or 'None'}",
-                                "Backend Course Selection"
-                            )
-                    
-                    # If course_level is still None, try basic fallback
-                    if not course_level and student.course_vertical and student.grade:
-                        try:
-                            course_level = get_course_level(student.course_vertical, student.grade, False)
-                            frappe.log_error(
-                                f"Fallback course selected: {student.student_name} | {course_level or 'None'}",
-                                "Backend Course Fallback"
-                            )
-                        except Exception as fallback_error:
-                            frappe.log_error(f"Fallback course selection failed: {str(fallback_error)}", "Backend Course Fallback Error")
-                            course_level = None
-                            
-                except Exception as e:
-                    frappe.log_error(f"Course selection error: {str(e)}", "Backend Course Error")
-                    course_level = None
+                        # If course_level is still None, try basic fallback
+                        if not course_level and student.course_vertical and student.grade:
+                            try:
+                                course_level = get_course_level(student.course_vertical, student.grade, False)
+                                frappe.log_error(
+                                    f"Fallback course selected: {student.student_name} | {course_level or 'None'}",
+                                    "Backend Course Fallback"
+                                )
+                            except Exception as fallback_error:
+                                frappe.log_error(f"Fallback course selection failed: {str(fallback_error)}", "Backend Course Fallback Error")
+                                course_level = None
+                                
+                    except Exception as e:
+                        frappe.log_error(f"Course selection error: {str(e)}", "Backend Course Error")
+                        course_level = None
+                else:
+                    # Use the pre-determined course level
+                    frappe.log_error(
+                        f"Using pre-determined course level for new student: {student.student_name} | {course_level}",
+                        "Backend Course Reuse"
+                    )
                 
                 # Create enrollment with enhanced error handling
                 try:
