@@ -197,7 +197,7 @@ def process_batch_job(batch_id):
         # Get students to process (only pending or failed)
         students = frappe.get_all("Backend Students", 
                                  filters={"parent": batch_id, "processing_status": ["in", ["Pending", "Failed"]]},
-                                 fields=["name"])
+                                 fields=["name","batch_skeyword"])
         
         success_count = 0
         failure_count = 0
@@ -387,9 +387,14 @@ def update_job_progress(current, total):
                 frappe.db.commit()
                 print(f"Processed {current+1} of {total} students")
 
+
+
+
+
 def process_glific_contact(student, glific_group, course_level=None):
     """
     Process Glific contact creation or retrieval
+    FIXED: Shorter log messages to avoid 140-char limit
     
     Args:
         student: Backend Students document
@@ -426,13 +431,16 @@ def process_glific_contact(student, glific_group, course_level=None):
     
     # Get course level name for Glific
     course_level_name = ""
-    # First try to get from student.course_level if it exists
-    if hasattr(student, 'course_level') and student.course_level:
-        course_level_name = frappe.get_value("Course Level", student.course_level, "name1") or ""
-    # If course_level parameter is provided, use it
-    elif course_level:
-        course_level_name = frappe.get_value("Course Level", course_level, "name1") or ""
-    # If not available, we'll need to determine it during processing
+    if course_level:
+        try:
+            course_level_name = frappe.get_value("Course Level", course_level, "name1") or ""
+            # SHORTENED LOG
+            print(f"Course level: {course_level} -> '{course_level_name}'")
+        except Exception as e:
+            print(f"Course level error: {str(e)}")
+            course_level_name = ""
+    else:
+        print(f"No course level provided for {student.student_name}")
     
     # Get course vertical name for Glific
     course_vertical_name = ""
@@ -449,45 +457,57 @@ def process_glific_contact(student, glific_group, course_level=None):
             add_contact_to_group(existing_contact['id'], glific_group.get("group_id"))
         
         # Update fields to ensure they're current
-        if student.batch or school_name or course_level_name or course_vertical_name or student.grade:
-            from tap_lms.glific_integration import update_contact_fields
-            fields_to_update = {
-                "buddy_name": student.student_name,
-                "batch_id": student.batch
-            }
-            if school_name:
-                fields_to_update["school"] = school_name
-            if course_level_name:
-                fields_to_update["course_level"] = course_level_name
-            if course_vertical_name:
-                fields_to_update["course"] = course_vertical_name
-            if student.grade:
-                fields_to_update["grade"] = student.grade
-            
-            update_contact_fields(existing_contact['id'], fields_to_update)
+        fields_to_update = {
+            "buddy_name": student.student_name,
+            "batch_id": student.batch
+        }
+        
+        if school_name:
+            fields_to_update["school"] = school_name
+        if course_level_name:
+            fields_to_update["course_level"] = course_level_name
+            print(f"Adding course_level: '{course_level_name}'")
+        if course_vertical_name:
+            fields_to_update["course"] = course_vertical_name
+        if student.grade:
+            fields_to_update["grade"] = student.grade
+        
+        # Update the contact fields
+        from tap_lms.glific_integration import update_contact_fields
+        update_result = update_contact_fields(existing_contact['id'], fields_to_update)
+        
+        # SHORTENED LOG - just print, don't use frappe.log_error
+        print(f"Updated {student.student_name}: {len(fields_to_update)} fields")
         
         return existing_contact
     else:
-        # Create new contact and add to group, passing the language_id and additional fields
+        # Create new contact and add to group
         contact = add_student_to_glific_for_onboarding(
             student.student_name,
             phone,
             school_name,
             batch_name,
             glific_group.get("group_id") if glific_group else None,
-            language_id, # Pass the language_id here
-            course_level_name, # Pass course level name
-            course_vertical_name, # Pass course vertical name
-            student.grade # Pass student grade
+            language_id,
+            course_level_name,
+            course_vertical_name,
+            student.grade
         )
         
         if not contact or 'id' not in contact:
             frappe.log_error(
-                f"Failed to create Glific contact for {student.student_name} ({phone})",
-                "Backend Student Onboarding"
+                f"Failed to create Glific contact for {student.student_name}",
+                "Glific Contact Error"
             )
+        else:
+            print(f"Created contact: {student.student_name}")
         
         return contact
+
+
+
+
+
 
 def determine_student_type_backend(phone_number, student_name, course_vertical):
     """
