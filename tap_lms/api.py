@@ -446,8 +446,8 @@ def create_student():
             
             # Log successful course level selection
             frappe.log_error(
-                f"Course level selected: {course_level} for student phone={phone}, name={student_name}, vertical={course_vertical[0].name}, grade={grade}",
-                "Course Level Selection Success"
+                f"Course level selected: {course_level} for student phone={phone[-4:]}, name={student_name}, vertical={vertical}, grade={grade}", 
+                "Course Level Success"
             )
             
         except Exception as course_error:
