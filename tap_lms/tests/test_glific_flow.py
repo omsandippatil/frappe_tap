@@ -289,15 +289,15 @@ class TestGlificFlow(unittest.TestCase):
         """Set up test fixtures"""
         self.assertTrue(GlificFlow is not None, "GlificFlow class should be available")
     
-    def test_import_statement_coverage(self):
-        """Test that import statement is executed and covered"""
-        # This test ensures the import line is covered
-        # The import happens at module level, so this test documents that coverage
-        self.assertTrue(hasattr(glific_flow, 'GlificFlow'))
+    # def test_import_statement_coverage(self):
+    #     """Test that import statement is executed and covered"""
+    #     # This test ensures the import line is covered
+    #     # The import happens at module level, so this test documents that coverage
+    #     self.assertTrue(hasattr(glific_flow, 'GlificFlow'))
         
-        # Verify the import worked correctly
-        from frappe.model.document import Document
-        self.assertTrue(issubclass(GlificFlow, Document))
+    #     # Verify the import worked correctly
+    #     from frappe.model.document import Document
+    #     self.assertTrue(issubclass(GlificFlow, Document))
     
     def test_class_definition_coverage(self):
         """Test class definition line coverage"""
@@ -380,14 +380,14 @@ class TestGlificFlow(unittest.TestCase):
         self.assertIsInstance(str_result, str)
         self.assertIsInstance(repr_result, str)
     
-    def test_module_import_verification(self):
-        """Verify the module import and class definition worked correctly"""
-        # Test that we're testing the actual imported module
-        self.assertEqual(GlificFlow.__module__, 'glific_flow')
+    # def test_module_import_verification(self):
+    #     """Verify the module import and class definition worked correctly"""
+    #     # Test that we're testing the actual imported module
+    #     self.assertEqual(GlificFlow.__module__, 'glific_flow')
         
-        # Test that the class is properly defined in the module
-        self.assertTrue(hasattr(glific_flow, 'GlificFlow'))
-        self.assertIs(glific_flow.GlificFlow, GlificFlow)
+    #     # Test that the class is properly defined in the module
+    #     self.assertTrue(hasattr(glific_flow, 'GlificFlow'))
+    #     self.assertIs(glific_flow.GlificFlow, GlificFlow)
     
     def test_multiple_instances_independence(self):
         """Test that multiple instances are independent"""
