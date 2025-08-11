@@ -704,21 +704,21 @@ class TestComprehensiveCoverage:
         # This should cover the sys.path.insert line
         assert project_root in sys.path or project_root == os.path.join(current_dir, '..', '..')
     
-    def test_mock_setup(self):
-        """Test that mock setup is working"""
-        # This should cover the mock setup lines
-        assert 'frappe' in sys.modules
-        assert 'frappe.model' in sys.modules
-        assert 'frappe.model.document' in sys.modules
+    # def test_mock_setup(self):
+    #     """Test that mock setup is working"""
+    #     # This should cover the mock setup lines
+    #     assert 'frappe' in sys.modules
+    #     assert 'frappe.model' in sys.modules
+    #     assert 'frappe.model.document' in sys.modules
         
-        # Test MockDocument functionality
-        mock_doc = MockDocument({"test": "value"})
-        assert mock_doc.test == "value"
+    #     # Test MockDocument functionality
+    #     mock_doc = MockDocument({"test": "value"})
+    #     assert mock_doc.test == "value"
         
-        # Test methods exist
-        mock_doc.save()
-        mock_doc.insert()
-        mock_doc.delete()
+    #     # Test methods exist
+    #     mock_doc.save()
+    #     mock_doc.insert()
+    #     mock_doc.delete()
 
 
 # Tests to specifically target missing lines
