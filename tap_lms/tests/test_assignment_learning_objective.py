@@ -157,27 +157,7 @@
 #             pytest.skip("Frappe context not available for integration test")
 
 import pytest
-import sys
-from unittest.mock import Mock
-
-# Mock frappe module if not available
-try:
-    from frappe.model.document import Document
-except ImportError:
-    # Create a mock Document class for testing
-    class Document:
-        def __init__(self, *args, **kwargs):
-            pass
-    
-    # Mock the frappe module
-    frappe_mock = Mock()
-    frappe_mock.model = Mock()
-    frappe_mock.model.document = Mock()
-    frappe_mock.model.document.Document = Document
-    sys.modules['frappe'] = frappe_mock
-    sys.modules['frappe.model'] = frappe_mock.model
-    sys.modules['frappe.model.document'] = frappe_mock.model.document
-
+from frappe.model.document import Document
 from tap_lms.tap_lms.doctype.assignment_learning_objective.assignment_learning_objective import AssignmentLearningObjective
 
 
@@ -256,49 +236,49 @@ class TestAssignmentLearningObjective:
         assert isinstance(obj1, AssignmentLearningObjective)
         assert isinstance(obj2, AssignmentLearningObjective)
     
-    # def test_doctype_attribute(self):
-    #     """Test doctype-related functionality"""
-    #     obj = AssignmentLearningObjective()
+    def test_doctype_attribute(self):
+        """Test doctype-related functionality"""
+        obj = AssignmentLearningObjective()
         
-    #     # Test setting doctype if the parent class supports it
-    #     try:
-    #         obj.doctype = "Assignment Learning Objective"
-    #         assert obj.doctype == "Assignment Learning Objective"
-    #     except (AttributeError, TypeError):
-    #         # If setting doctype fails, that's also valid behavior
-    #         pass
+        # Test setting doctype if the parent class supports it
+        try:
+            obj.doctype = "Assignment Learning Objective"
+            assert obj.doctype == "Assignment Learning Objective"
+        except (AttributeError, TypeError):
+            # If setting doctype fails, that's also valid behavior
+            pass
     
-    # @pytest.mark.parametrize("test_input", [
-    #     {},
-    #     {"name": "test1"},
-    #     {"name": "test2", "custom_field": "value"},
-    # ])
-    # def test_initialization_with_different_data(self, test_input):
-    #     """Test initialization with different data sets"""
-    #     try:
-    #         obj = AssignmentLearningObjective(test_input)
-    #         assert isinstance(obj, AssignmentLearningObjective)
-    #     except Exception as e:
-    #         # If initialization fails with certain data, 
-    #         # ensure it fails gracefully
-    #         assert isinstance(e, (TypeError, ValueError, AttributeError))
+    @pytest.mark.parametrize("test_input", [
+        {},
+        {"name": "test1"},
+        {"name": "test2", "custom_field": "value"},
+    ])
+    def test_initialization_with_different_data(self, test_input):
+        """Test initialization with different data sets"""
+        try:
+            obj = AssignmentLearningObjective(test_input)
+            assert isinstance(obj, AssignmentLearningObjective)
+        except Exception as e:
+            # If initialization fails with certain data, 
+            # ensure it fails gracefully
+            assert isinstance(e, (TypeError, ValueError, AttributeError))
 
 
 # Additional test for edge cases
 class TestAssignmentLearningObjectiveEdgeCases:
     """Edge case tests for better coverage"""
     
-    # def test_class_definition_coverage(self):
-    #     """Ensure the actual class definition line is covered"""
-    #     # Import and access the class to ensure definition is executed
-    #     from tap_lms.tap_lms.doctype.assignment_learning_objective.assignment_learning_objective import AssignmentLearningObjective as ALO
+    def test_class_definition_coverage(self):
+        """Ensure the actual class definition line is covered"""
+        # Import and access the class to ensure definition is executed
+        from tap_lms.tap_lms.doctype.assignment_learning_objective.assignment_learning_objective import AssignmentLearningObjective as ALO
         
-    #     # This should cover the class definition line
-    #     assert ALO.__bases__[0] == Document
+        # This should cover the class definition line
+        assert ALO.__bases__[0] == Document
         
-    #     # Create instance to cover the pass statement
-    #     instance = ALO()
-    #     assert instance is not None
+        # Create instance to cover the pass statement
+        instance = ALO()
+        assert instance is not None
     
     def test_import_coverage(self):
         """Test import statements coverage"""
@@ -306,12 +286,7 @@ class TestAssignmentLearningObjectiveEdgeCases:
         import tap_lms.tap_lms.doctype.assignment_learning_objective.assignment_learning_objective as module
         
         assert hasattr(module, 'AssignmentLearningObjective')
-        # Note: Document might be mocked, so we check if it exists in the module
-        try:
-            assert hasattr(module, 'Document')
-        except (AttributeError, AssertionError):
-            # If Document is not directly accessible, that's okay
-            pass
+        assert hasattr(module, 'Document')
 
 
 # Fixture for common test data (if needed)
@@ -326,15 +301,15 @@ def sample_assignment_data():
 
 
 # Integration test (if you want to test with Frappe framework)
-# class TestAssignmentLearningObjectiveIntegration:
-#     """Integration tests with Frappe framework"""
+class TestAssignmentLearningObjectiveIntegration:
+    """Integration tests with Frappe framework"""
     
-#     def test_with_frappe_context(self, sample_assignment_data):
-#         """Test within Frappe context if available"""
-#         try:
-#             obj = AssignmentLearningObjective(sample_assignment_data)
-#             # Test any Frappe-specific functionality
-#             assert hasattr(obj, '__dict__')
-#         except Exception:
-#             # Skip if Frappe context is not available
-#             pytest.skip("Frappe context not available for integration test")
+    def test_with_frappe_context(self, sample_assignment_data):
+        """Test within Frappe context if available"""
+        try:
+            obj = AssignmentLearningObjective(sample_assignment_data)
+            # Test any Frappe-specific functionality
+            assert hasattr(obj, '__dict__')
+        except Exception:
+            # Skip if Frappe context is not available
+            pytest.skip("Frappe context not available for integration test")
