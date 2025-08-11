@@ -100,76 +100,76 @@ from unittest.mock import MagicMock, patch
 class TestUnit:
     """Working pytest tests for Unit class coverage"""
     
-#     def find_unit_file(self):
-#         """Find the unit.py file in various possible locations"""
-#         current_dir = os.path.dirname(os.path.abspath(__file__))
+    def find_unit_file(self):
+        """Find the unit.py file in various possible locations"""
+        current_dir = os.path.dirname(os.path.abspath(__file__))
         
-#         # Possible paths to check
-#         possible_paths = [
-#             os.path.join(current_dir, "..", "doctype", "unit", "unit.py"),
-#             os.path.join(current_dir, "..", "..", "doctype", "unit", "unit.py"),
-#             os.path.join(current_dir, "doctype", "unit", "unit.py"),
-#             os.path.join(current_dir, "..", "tap_lms", "doctype", "unit", "unit.py"),
-#         ]
+        # Possible paths to check
+        possible_paths = [
+            os.path.join(current_dir, "..", "doctype", "unit", "unit.py"),
+            os.path.join(current_dir, "..", "..", "doctype", "unit", "unit.py"),
+            os.path.join(current_dir, "doctype", "unit", "unit.py"),
+            os.path.join(current_dir, "..", "tap_lms", "doctype", "unit", "unit.py"),
+        ]
         
-#         for path in possible_paths:
-#             normalized_path = os.path.normpath(path)
-#             if os.path.exists(normalized_path):
-#                 return normalized_path
+        for path in possible_paths:
+            normalized_path = os.path.normpath(path)
+            if os.path.exists(normalized_path):
+                return normalized_path
         
-#         # If not found, create a minimal unit.py for testing
-#         test_unit_content = '''# Copyright (c) 2023, Tech4dev and contributors
-# # For license information, please see license.txt
+        # If not found, create a minimal unit.py for testing
+        test_unit_content = '''# Copyright (c) 2023, Tech4dev and contributors
+# For license information, please see license.txt
 
-# # import frappe
-# from frappe.model.document import Document
+# import frappe
+from frappe.model.document import Document
 
-# class Unit(Document):
-# 	pass
-# '''
+class Unit(Document):
+	pass
+'''
         
-#         # Create a temporary unit.py file in the test directory
-#         temp_unit_path = os.path.join(current_dir, "temp_unit.py")
-#         with open(temp_unit_path, 'w') as f:
-#             f.write(test_unit_content)
+        # Create a temporary unit.py file in the test directory
+        temp_unit_path = os.path.join(current_dir, "temp_unit.py")
+        with open(temp_unit_path, 'w') as f:
+            f.write(test_unit_content)
         
-#         return temp_unit_path
+        return temp_unit_path
     
-    # @pytest.fixture(autouse=True)
-    # def setup_environment(self):
-    #     """Set up test environment with mocks"""
-    #     # Create comprehensive mocks for frappe
-    #     mock_document = type('Document', (), {
-    #         '__init__': lambda self: None,
-    #         '__module__': 'frappe.model.document'
-    #     })
+    @pytest.fixture(autouse=True)
+    def setup_environment(self):
+        """Set up test environment with mocks"""
+        # Create comprehensive mocks for frappe
+        mock_document = type('Document', (), {
+            '__init__': lambda self: None,
+            '__module__': 'frappe.model.document'
+        })
         
-    #     # Mock the entire frappe module tree
-    #     mock_frappe = MagicMock()
-    #     mock_frappe.model = MagicMock()
-    #     mock_frappe.model.document = MagicMock()
-    #     mock_frappe.model.document.Document = mock_document
+        # Mock the entire frappe module tree
+        mock_frappe = MagicMock()
+        mock_frappe.model = MagicMock()
+        mock_frappe.model.document = MagicMock()
+        mock_frappe.model.document.Document = mock_document
         
-    #     # Install mocks in sys.modules
-    #     sys.modules['frappe'] = mock_frappe
-    #     sys.modules['frappe.model'] = mock_frappe.model
-    #     sys.modules['frappe.model.document'] = mock_frappe.model.document
+        # Install mocks in sys.modules
+        sys.modules['frappe'] = mock_frappe
+        sys.modules['frappe.model'] = mock_frappe.model
+        sys.modules['frappe.model.document'] = mock_frappe.model.document
         
-    #     yield
+        yield
         
-    #     # Cleanup
-    #     modules_to_clean = [
-    #         'frappe', 'frappe.model', 'frappe.model.document',
-    #         'unit', 'temp_unit'
-    #     ]
-    #     for module in modules_to_clean:
-    #         if module in sys.modules:
-    #             del sys.modules[module]
+        # Cleanup
+        modules_to_clean = [
+            'frappe', 'frappe.model', 'frappe.model.document',
+            'unit', 'temp_unit'
+        ]
+        for module in modules_to_clean:
+            if module in sys.modules:
+                del sys.modules[module]
         
-    #     # Remove temporary file if created
-    #     temp_file = os.path.join(os.path.dirname(__file__), "temp_unit.py")
-    #     if os.path.exists(temp_file):
-    #         os.remove(temp_file)
+        # Remove temporary file if created
+        temp_file = os.path.join(os.path.dirname(__file__), "temp_unit.py")
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
     
     def test_unit_file_access(self):
         """Test that we can access the unit file"""
