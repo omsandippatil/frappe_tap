@@ -114,6 +114,7 @@ class TestAssignment:
     #             assert getattr(Assignment, attr) is not None
 
 
+
 # Integration tests (if you have database access)
 class TestAssignmentIntegration:
     """Integration tests for Assignment (requires database)"""
