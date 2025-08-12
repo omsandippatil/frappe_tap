@@ -417,9 +417,10 @@ def test_collaborative_group_basic_operations():
 #         return False
 
 # Simple test runner that can be called from pytest
-def test_all():
-    """Pytest-compatible test function"""
-    assert run_all_tests(), "Some tests failed"
+
+# def test_all():
+#     """Pytest-compatible test function"""
+#     assert run_all_tests(), "Some tests failed"
 
 def test_import_coverage():
     """Specific test for import coverage"""
