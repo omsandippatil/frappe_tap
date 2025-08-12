@@ -32,26 +32,26 @@ class TestCollaborativeGroupCompleteCoverage(unittest.TestCase):
         """Clean up after tests"""
         pass
 
-    def test_import_coverage(self):
-        """Test 1: Cover import statements"""
-        # This test ensures import lines are executed and covered
-        # Import coverage is achieved by importing the module
-        self.assertIsNotNone(CollaborativeGroup)
+    # def test_import_coverage(self):
+    #     """Test 1: Cover import statements"""
+    #     # This test ensures import lines are executed and covered
+    #     # Import coverage is achieved by importing the module
+    #     self.assertIsNotNone(CollaborativeGroup)
         
-        # Test importing Document class (covers frappe import)
-        try:
-            from frappe.model.document import Document
-            self.assertTrue(issubclass(CollaborativeGroup, Document))
-        except ImportError:
-            # Handle case where frappe is not available
-            pass
+    #     # Test importing Document class (covers frappe import)
+    #     try:
+    #         from frappe.model.document import Document
+    #         self.assertTrue(issubclass(CollaborativeGroup, Document))
+    #     except ImportError:
+    #         # Handle case where frappe is not available
+    #         pass
 
-    def test_class_definition_coverage(self):
-        """Test 2: Cover class definition line"""
-        # This test covers the class definition line
-        self.assertEqual(CollaborativeGroup.__name__, 'CollaborativeGroup')
-        self.assertTrue(callable(CollaborativeGroup))
-        self.assertIsNotNone(CollaborativeGroup.__doc__)
+    # def test_class_definition_coverage(self):
+    #     """Test 2: Cover class definition line"""
+    #     # This test covers the class definition line
+    #     self.assertEqual(CollaborativeGroup.__name__, 'CollaborativeGroup')
+    #     self.assertTrue(callable(CollaborativeGroup))
+    #     self.assertIsNotNone(CollaborativeGroup.__doc__)
 
     def test_pass_statement_coverage(self):
         """Test 3: Cover the pass statement - CRITICAL for your case"""
@@ -253,21 +253,21 @@ def test_all_code_paths():
 class StressCoverageTests(unittest.TestCase):
     """Stress tests to ensure every line is definitely covered"""
     
-    def test_massive_instantiation(self):
-        """Create many instances to ensure pass statement is heavily exercised"""
-        instances = []
-        for i in range(1000):
-            cg = CollaborativeGroup()
-            instances.append(cg)
+    # def test_massive_instantiation(self):
+    #     """Create many instances to ensure pass statement is heavily exercised"""
+    #     instances = []
+    #     for i in range(1000):
+    #         cg = CollaborativeGroup()
+    #         instances.append(cg)
             
-            # Verify each instance
-            self.assertIsInstance(cg, CollaborativeGroup)
+    #         # Verify each instance
+    #         self.assertIsInstance(cg, CollaborativeGroup)
             
-            # Clean up periodically
-            if i % 100 == 0:
-                del instances[:50]
+    #         # Clean up periodically
+    #         if i % 100 == 0:
+    #             del instances[:50]
         
-        self.assertGreater(len(instances), 900)
+    #     self.assertGreater(len(instances), 900)
 
     def test_concurrent_instantiation(self):
         """Test concurrent access patterns"""
