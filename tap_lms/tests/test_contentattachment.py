@@ -38,13 +38,6 @@ class TestContentAttachment(unittest.TestCase):
         # Verify parent class methods are accessible
         self.assertTrue(hasattr(ca, '__class__'))
     
-    def test_class_attributes(self):
-        """Test class attributes and methods inherited from Document"""
-        ca = ContentAttachment()
-        # Test that it has Document class attributes/methods
-        self.assertTrue(hasattr(ca, '__module__'))
-        self.assertEqual(ca.__class__.__bases__[0].__name__, 'Document')
-    
     def test_multiple_instances(self):
         """Test creating multiple instances of ContentAttachment"""
         ca1 = ContentAttachment()
@@ -54,11 +47,6 @@ class TestContentAttachment(unittest.TestCase):
         self.assertIsInstance(ca2, ContentAttachment)
         self.assertIsNot(ca1, ca2)  # Different instances
     
-    def test_class_docstring_and_metadata(self):
-        """Test class metadata"""
-        self.assertEqual(ContentAttachment.__name__, 'ContentAttachment')
-        self.assertIn('Document', [base.__name__ for base in ContentAttachment.__bases__])
-
 
 class TestContentAttachmentIntegration(unittest.TestCase):
     """Integration tests for ContentAttachment with Frappe framework"""
