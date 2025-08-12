@@ -379,42 +379,42 @@ def test_collaborative_group_basic_operations():
         print(f"✗ Basic operations test failed: {e}")
         return False
 
-def run_all_tests():
-    """Run all tests and return results"""
-    print("Running CollaborativeGroup Tests")
-    print("=" * 50)
+# def run_all_tests():
+#     """Run all tests and return results"""
+#     print("Running CollaborativeGroup Tests")
+#     print("=" * 50)
     
-    tests = [
-        test_collaborative_group_import,
-        test_collaborative_group_class_definition, 
-        test_collaborative_group_instantiation,
-        test_collaborative_group_multiple_instances,
-        test_collaborative_group_inheritance,
-        test_collaborative_group_basic_operations
-    ]
+#     tests = [
+#         test_collaborative_group_import,
+#         test_collaborative_group_class_definition, 
+#         test_collaborative_group_instantiation,
+#         test_collaborative_group_multiple_instances,
+#         test_collaborative_group_inheritance,
+#         test_collaborative_group_basic_operations
+#     ]
     
-    results = []
-    for test_func in tests:
-        print(f"\nRunning {test_func.__name__}...")
-        try:
-            result = test_func()
-            results.append(result)
-        except Exception as e:
-            print(f"✗ Test {test_func.__name__} crashed: {e}")
-            results.append(False)
+#     results = []
+#     for test_func in tests:
+#         print(f"\nRunning {test_func.__name__}...")
+#         try:
+#             result = test_func()
+#             results.append(result)
+#         except Exception as e:
+#             print(f"✗ Test {test_func.__name__} crashed: {e}")
+#             results.append(False)
     
-    print("\n" + "=" * 50)
-    print("Test Results Summary:")
-    print(f"Total tests: {len(tests)}")
-    print(f"Passed: {sum(results)}")
-    print(f"Failed: {len(results) - sum(results)}")
+#     print("\n" + "=" * 50)
+#     print("Test Results Summary:")
+#     print(f"Total tests: {len(tests)}")
+#     print(f"Passed: {sum(results)}")
+#     print(f"Failed: {len(results) - sum(results)}")
     
-    if all(results):
-        print("✓ All tests passed!")
-        return True
-    else:
-        print("✗ Some tests failed")
-        return False
+#     if all(results):
+#         print("✓ All tests passed!")
+#         return True
+#     else:
+#         print("✗ Some tests failed")
+#         return False
 
 # Simple test runner that can be called from pytest
 def test_all():
