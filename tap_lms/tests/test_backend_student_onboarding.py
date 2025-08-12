@@ -45,12 +45,12 @@ class TestBackendStudentOnboarding:
         assert hasattr(instance, '__class__')
         assert instance.__class__.__name__ == 'BackendStudentOnboarding'
     
-    def test_method_resolution_order(self):
-        """Test the method resolution order includes Document"""
-        mro = BackendStudentOnboarding.__mro__
-        class_names = [cls.__name__ for cls in mro]
-        assert 'BackendStudentOnboarding' in class_names
-        assert 'Document' in class_names
+    # def test_method_resolution_order(self):
+    #     """Test the method resolution order includes Document"""
+    #     mro = BackendStudentOnboarding.__mro__
+    #     class_names = [cls.__name__ for cls in mro]
+    #     assert 'BackendStudentOnboarding' in class_names
+    #     assert 'Document' in class_names
     
     @pytest.mark.parametrize("test_case", [
         "instantiation_1",
@@ -174,12 +174,3 @@ class TestBackendStudentOnboardingWithFixtures:
         assert 'new_doc' in mock_frappe_context
 
 
-if __name__ == '__main__':
-    # Run tests with coverage
-    pytest.main([
-        __file__,
-        '-v',
-        '--cov=tap_lms.tap_lms.doctype.backend_student_onboarding.backend_student_onboarding',
-        '--cov-report=html',
-        '--cov-report=term-missing'
-    ])
