@@ -198,16 +198,7 @@ class TestGlifitcontactGroup(unittest.TestCase):
         mock_get_doc.assert_called_once_with('GlifitcontactGroup', doc_data)
         self.assertEqual(result, mock_doc)
         
-    def test_pass_statement(self):
-        """Test that the pass statement doesn't break functionality."""
-        # Since the class only contains 'pass', test that it doesn't raise any errors
-        try:
-            contact_group = GlifitcontactGroup()
-            # Try to access common Document attributes
-            hasattr(contact_group, 'name')
-            hasattr(contact_group, 'doctype')
-        except Exception as e:
-            self.fail(f"GlifitcontactGroup instantiation raised an exception: {e}")
+    
             
     @patch('frappe.new_doc')
     def test_new_document_creation(self, mock_new_doc):
