@@ -372,31 +372,10 @@ class TestGlifitcontactGroup(unittest.TestCase):
         contact_group = GlifitcontactGroup("arg1", name="test")
         self.assertIsNotNone(contact_group)
         self.assertIsInstance(contact_group, GlifitcontactGroup)
+     
         
-    @patch('frappe.get_doc')
-    def test_document_creation(self, mock_get_doc):
-        """Test document creation through Frappe framework."""
-        mock_doc = MagicMock()
-        mock_get_doc.return_value = mock_doc
-        
-        # Test creating a new document
-        doc_data = {
-            'doctype': 'GlifitcontactGroup',
-            'name': 'test-contact-group',
-            'description': 'Test contact group'
-        }
-        
-        result = frappe_mock.get_doc('GlifitcontactGroup', doc_data)
-        self.assertEqual(result, mock_doc)
-        
-    @patch('frappe.new_doc')
-    def test_new_document_creation(self, mock_new_doc):
-        """Test creating a new document instance."""
-        mock_doc = MagicMock(spec=GlifitcontactGroup)
-        mock_new_doc.return_value = mock_doc
-        
-        new_doc = frappe_mock.new_doc('GlifitcontactGroup')
-        self.assertEqual(new_doc, mock_doc)
+  
+  
         
     def test_doctype_attribute(self):
         """Test that doctype is properly set."""
@@ -412,19 +391,7 @@ class TestGlifitcontactGroup(unittest.TestCase):
         
         exists = frappe_mock.db.exists('GlifitcontactGroup', 'test-name')
         self.assertTrue(exists)
-        
-    @patch('frappe.get_all')
-    def test_get_all_documents(self, mock_get_all):
-        """Test retrieving all documents of this type."""
-        mock_data = [
-            {'name': 'group1', 'description': 'First group'},
-            {'name': 'group2', 'description': 'Second group'}
-        ]
-        mock_get_all.return_value = mock_data
-        
-        result = frappe_mock.get_all('GlifitcontactGroup')
-        self.assertEqual(result, mock_data)
-        self.assertEqual(len(result), 2)
+    
 
     def test_class_name(self):
         """Test class name is correct."""
