@@ -1,42 +1,27 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 import os
 
-# Add the path to your module if needed
-# sys.path.insert(0, '/path/to/your/tap_lms/tap_lms/doctype/courseproject/')
+# Add the doctype path to sys.path so we can import from doctype/courseproject
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'doctype', 'courseproject'))
 
-class TestCourseProject(unittest.TestCase):
-    """Test cases for CourseProject class to achieve 100% code coverage"""
-    
-  
+class TestCourseProjectCoverage(unittest.TestCase):
+    """Minimal test to achieve 100% coverage for courseproject.py"""
     
     @patch('frappe.model.document.Document')
-    def test_class_instantiation(self, mock_document):
-        """Test instantiating the CourseProject class"""
+    def test_full_module_coverage(self, mock_document):
+        """Single test that covers all 3 statements in courseproject.py"""
+        
+        # This import will execute:
+        # 1. Line 5: from frappe.model.document import Document
+        # 2. Line 7: class CourseProject(Document):
+        # 3. Line 8: pass
         from courseproject import CourseProject
         
-        # Create an instance to ensure the pass statement is covered
+        # Verify the class was created successfully
+        self.assertEqual(CourseProject.__name__, 'CourseProject')
+        
+        # Create an instance to ensure everything works
         instance = CourseProject()
         self.assertIsInstance(instance, CourseProject)
-  
-    
-        
-        import courseproject
-        
-        # Verify the module was imported successfully
-        self.assertTrue(hasattr(courseproject, 'CourseProject'))
-        self.assertTrue(hasattr(courseproject, 'Document'))
-
-
-class TestCourseProjectIntegration(unittest.TestCase):
-    """Integration tests for CourseProject (if you want to test with real Frappe)"""
-    
-    def setUp(self):
-        """Set up test environment"""
-        # Mock frappe if not available in test environment
-        if 'frappe' not in sys.modules:
-            sys.modules['frappe'] = MagicMock()
-            sys.modules['frappe.model'] = MagicMock()
-            sys.modules['frappe.model.document'] = MagicMock()
-    
