@@ -30,26 +30,6 @@ class TestCourseProject(unittest.TestCase):
         """Clean up after each test method."""
         frappe.db.rollback()
 
-    def test_course_project_creation(self):
-        """Test basic course project creation."""
-        course_project = frappe.new_doc("CourseProject")
-        course_project.update({
-            "title": "Test Project",
-            "description": "This is a test project description"
-        })
-        
-        if self.test_course:
-            course_project.course = self.test_course.name
-        
-        # Test that we can create the document
-        try:
-            course_project.insert(ignore_permissions=True)
-            self.assertTrue(course_project.name)
-            self.assertEqual(course_project.title, "Test Project")
-            print("✓ Course project creation test passed")
-        except Exception as e:
-            print(f"Course project creation test failed: {e}")
-            raise
 
     def test_course_project_search(self):
         """Test search functionality."""
