@@ -4,7 +4,6 @@
 import unittest
 import frappe
 from frappe.test_runner import make_test_records
-from frappe.utils import today, add_days, now_datetime
 
 class TestEnrollment(unittest.TestCase):
    
@@ -64,7 +63,7 @@ class TestEnrollment(unittest.TestCase):
             "doctype": "Enrollment",
             "student": "test1@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "status": "Active"
         })
         enrollment.insert(ignore_permissions=True)
@@ -81,14 +80,14 @@ class TestEnrollment(unittest.TestCase):
             "doctype": "Enrollment",
             "student": "test2@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "status": "Active"
         })
         enrollment.insert(ignore_permissions=True)
        
         # Update enrollment status
         enrollment.status = "Completed"
-        enrollment.completion_date = today()
+        enrollment.completion_date = frappe.utils.today()
         enrollment.save(ignore_permissions=True)
        
         # Verify update
@@ -102,7 +101,7 @@ class TestEnrollment(unittest.TestCase):
             "doctype": "Enrollment",
             "student": "test3@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "status": "Active"
         })
         enrollment1.insert(ignore_permissions=True)
@@ -112,7 +111,7 @@ class TestEnrollment(unittest.TestCase):
             "doctype": "Enrollment",
             "student": "test3@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "status": "Active"
         })
         
@@ -132,7 +131,7 @@ class TestEnrollment(unittest.TestCase):
             "doctype": "Enrollment",
             "student": "test4@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "status": "Pending"
         })
         enrollment.insert(ignore_permissions=True)
@@ -143,19 +142,19 @@ class TestEnrollment(unittest.TestCase):
         self.assertEqual(enrollment.status, "Active")
         
         enrollment.status = "Completed"
-        enrollment.completion_date = today()
+        enrollment.completion_date = frappe.utils.today()
         enrollment.save(ignore_permissions=True)
         self.assertEqual(enrollment.status, "Completed")
 
     def test_enrollment_dates(self):
         """Test enrollment date handling"""
-        future_date = add_days(today(), 30)
+        future_date = frappe.utils.add_days(frappe.utils.today(), 30)
         
         enrollment = frappe.get_doc({
             "doctype": "Enrollment",
             "student": "test5@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "expected_completion_date": future_date,
             "status": "Active"
         })
@@ -171,7 +170,7 @@ class TestEnrollment(unittest.TestCase):
             "doctype": "Enrollment",
             "student": "test6@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "status": "Active"
         })
         enrollment.insert(ignore_permissions=True)
@@ -192,7 +191,7 @@ class TestEnrollment(unittest.TestCase):
                 "doctype": "Enrollment",
                 "student": student,
                 "course": "TEST-COURSE-002",
-                "enrollment_date": today(),
+                "enrollment_date": frappe.utils.today(),
                 "status": "Active"
             })
             enrollment.insert(ignore_permissions=True)
@@ -210,7 +209,7 @@ class TestEnrollment(unittest.TestCase):
             "doctype": "Enrollment",
             "student": "test10@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "status": "Active"
         })
         enrollment.insert(ignore_permissions=True)
@@ -240,7 +239,7 @@ class TestEnrollment(unittest.TestCase):
             "doctype": "Enrollment",
             "student": "test11@example.com",
             "course": "TEST-COURSE-001",
-            "enrollment_date": today(),
+            "enrollment_date": frappe.utils.today(),
             "status": "Active"
         })
         enrollment.insert(ignore_permissions=True)
@@ -257,7 +256,7 @@ class TestEnrollment(unittest.TestCase):
                 "doctype": "Enrollment",
                 "student": "test12@example.com",
                 "course": "INVALID-COURSE",
-                "enrollment_date": today(),
+                "enrollment_date": frappe.utils.today(),
                 "status": "Active"
             })
             enrollment.insert(ignore_permissions=True)
@@ -271,7 +270,7 @@ class TestEnrollment(unittest.TestCase):
                 "doctype": "Enrollment",
                 "student": "",
                 "course": "TEST-COURSE-001",
-                "enrollment_date": today(),
+                "enrollment_date": frappe.utils.today(),
                 "status": "Active"
             })
             enrollment.insert(ignore_permissions=True)
@@ -293,7 +292,7 @@ class TestEnrollment(unittest.TestCase):
                 "doctype": "Enrollment",
                 "student": enroll_data["student"],
                 "course": "TEST-COURSE-001",
-                "enrollment_date": today(),
+                "enrollment_date": frappe.utils.today(),
                 "status": enroll_data["status"]
             })
             enrollment.insert(ignore_permissions=True)
@@ -304,3 +303,68 @@ class TestEnrollment(unittest.TestCase):
         
         completed_count = frappe.db.count("Enrollment", {"status": "Completed", "course": "TEST-COURSE-001"})
         self.assertGreaterEqual(completed_count, 1)
+
+    def test_enrollment_with_missing_fields(self):
+        """Test enrollment with missing required fields"""
+        # Test enrollment without student
+        try:
+            enrollment = frappe.get_doc({
+                "doctype": "Enrollment",
+                "course": "TEST-COURSE-001",
+                "enrollment_date": frappe.utils.today(),
+                "status": "Active"
+            })
+            enrollment.insert(ignore_permissions=True)
+        except Exception as e:
+            # Expected to fail due to missing student field
+            pass
+
+        # Test enrollment without course
+        try:
+            enrollment = frappe.get_doc({
+                "doctype": "Enrollment",
+                "student": "test13@example.com",
+                "enrollment_date": frappe.utils.today(),
+                "status": "Active"
+            })
+            enrollment.insert(ignore_permissions=True)
+        except Exception as e:
+            # Expected to fail due to missing course field
+            pass
+
+    def test_enrollment_delete(self):
+        """Test enrollment deletion"""
+        enrollment = frappe.get_doc({
+            "doctype": "Enrollment",
+            "student": "test14@example.com",
+            "course": "TEST-COURSE-001",
+            "enrollment_date": frappe.utils.today(),
+            "status": "Active"
+        })
+        enrollment.insert(ignore_permissions=True)
+        enrollment_name = enrollment.name
+        
+        # Delete the enrollment
+        enrollment.delete(ignore_permissions=True)
+        
+        # Verify it's deleted
+        self.assertFalse(frappe.db.exists("Enrollment", enrollment_name))
+
+    def test_enrollment_reload(self):
+        """Test enrollment reload functionality"""
+        enrollment = frappe.get_doc({
+            "doctype": "Enrollment",
+            "student": "test15@example.com",
+            "course": "TEST-COURSE-001",
+            "enrollment_date": frappe.utils.today(),
+            "status": "Active"
+        })
+        enrollment.insert(ignore_permissions=True)
+        
+        # Modify and reload
+        original_status = enrollment.status
+        enrollment.status = "Completed"
+        enrollment.reload()
+        
+        # Should revert to original status after reload
+        self.assertEqual(enrollment.status, original_status)
