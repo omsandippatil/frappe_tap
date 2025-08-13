@@ -43,9 +43,39 @@ def test_feedback_request_multiple_instances():
     """Test multiple FeedbackRequest instances"""
     from tap_lms.tap_lms.doctype.feedback_request.feedback_request import FeedbackRequest
     
-    request1 = FeedbackRequest()
-    request2 = FeedbackRequest()
+    feedback_request1 = FeedbackRequest()
+    feedback_request2 = FeedbackRequest()
     
-    assert request1 is not None
-    assert request2 is not None
-    assert request1 is not request2
+    assert feedback_request1 is not None
+    assert feedback_request2 is not None
+    assert feedback_request1 is not feedback_request2
+
+
+def test_feedback_request_class_attributes():
+    """Test FeedbackRequest class attributes and methods"""
+    from tap_lms.tap_lms.doctype.feedback_request.feedback_request import FeedbackRequest
+    
+    # Test class name
+    assert hasattr(FeedbackRequest, '__name__')
+    assert FeedbackRequest.__name__ == 'FeedbackRequest'
+    
+    # Test instantiation
+    feedback_request = FeedbackRequest()
+    assert feedback_request.__class__.__name__ == 'FeedbackRequest'
+
+
+def test_feedback_request_with_args():
+    """Test FeedbackRequest instantiation with arguments"""
+    from tap_lms.tap_lms.doctype.feedback_request.feedback_request import FeedbackRequest
+    
+    # Test with positional arguments
+    feedback_request1 = FeedbackRequest("test_arg")
+    assert feedback_request1 is not None
+    
+    # Test with keyword arguments
+    feedback_request2 = FeedbackRequest(name="test_feedback")
+    assert feedback_request2 is not None
+    
+    # Test with both
+    feedback_request3 = FeedbackRequest("test_arg", name="test_feedback")
+    assert feedback_request3 is not None
