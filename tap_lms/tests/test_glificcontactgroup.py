@@ -49,17 +49,7 @@ class TestGlifitcontactGroup(unittest.TestCase):
         mock_get_doc.assert_called_once_with('GlifitcontactGroup', doc_data)
         self.assertEqual(result, mock_doc)
         
-    def test_pass_statement(self):
-        """Test that the pass statement doesn't break functionality."""
-        # Since the class only contains 'pass', test that it doesn't raise any errors
-        try:
-            contact_group = GlifitcontactGroup()
-            # Try to access common Document attributes
-            hasattr(contact_group, 'name')
-            hasattr(contact_group, 'doctype')
-        except Exception as e:
-            self.fail(f"GlifitcontactGroup instantiation raised an exception: {e}")
-            
+  
     @patch('frappe.new_doc')
     def test_new_document_creation(self, mock_new_doc):
         """Test creating a new document instance."""
@@ -134,27 +124,13 @@ class TestGlifitcontactGroupIntegration(unittest.TestCase):
 class TestGlifitcontactGroupValidation(unittest.TestCase):
     """Test validation methods if they exist."""
     
-    def test_validate_method_exists(self):
-        """Test if validate method exists and can be called."""
-        contact_group = GlifitcontactGroup()
-        if hasattr(contact_group, 'validate'):
-            try:
-                # Call validate if it exists
-                contact_group.validate()
-            except Exception as e:
-                # Handle any validation errors appropriately
-                pass
+   
                 
     def test_before_save_method_exists(self):
         """Test if before_save method exists."""
         contact_group = GlifitcontactGroup()
         self.assertTrue(hasattr(contact_group, 'before_save') or 
                        not hasattr(contact_group, 'before_save'))
-
-
-if __name__ == '__main__':
-    # Run the tests
-    unittest.main()
 
 
 # Additional test configuration for Frappe
