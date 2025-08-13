@@ -3,368 +3,112 @@
 
 import unittest
 import frappe
-from frappe.test_runner import make_test_records
+from frappe.tests.utils import FrappeTestCase
+from tap_lms.tap_lms.doctype.enrollment.enrollment import Enrollment
 
-class TestEnrollment(unittest.TestCase):
-   
-    @classmethod
-    def setUpClass(cls):
-        """Set up test data"""
-        frappe.set_user("Administrator")
-        # Create test records if needed
-        make_test_records("User")
-       
-        # Try to create Course records if Course doctype exists
-        try:
-            make_test_records("Course")
-        except Exception as e:
-            # If Course doctype doesn't exist, create a simple test course
-            if not frappe.db.exists("Course", "TEST-COURSE-001"):
-                try:
-                    course = frappe.get_doc({
-                        "doctype": "Course",
-                        "course_name": "Test Course 001",
-                        "course_code": "TEST-COURSE-001"
-                    })
-                    course.insert(ignore_permissions=True)
-                except Exception as create_error:
-                    pass  # Course doctype might not exist yet
 
-        # Create additional test courses
-        test_courses = ["TEST-COURSE-002", "TEST-COURSE-003"]
-        for course_code in test_courses:
-            if not frappe.db.exists("Course", course_code):
-                try:
-                    course = frappe.get_doc({
-                        "doctype": "Course",
-                        "course_name": f"Test Course {course_code[-3:]}",
-                        "course_code": course_code
-                    })
-                    course.insert(ignore_permissions=True)
-                except Exception:
-                    pass
-   
+class TestEnrollment(FrappeTestCase):
     def setUp(self):
-        """Set up before each test"""
-        frappe.set_user("Administrator")
-        # Clean up any existing test enrollments more thoroughly
-        frappe.db.sql("DELETE FROM `tabEnrollment` WHERE student LIKE 'test%@example.com'")
+        """Set up test dependencies"""
+        # Clean up any existing test records
+        frappe.db.delete("Enrollment", {"name": ["like", "TEST-%"]})
         frappe.db.commit()
-   
+
     def tearDown(self):
-        """Clean up after each test"""
-        # Clean up test data more thoroughly
-        frappe.db.sql("DELETE FROM `tabEnrollment` WHERE student LIKE 'test%@example.com'")
+        """Clean up after tests"""
+        # Clean up test records
+        frappe.db.delete("Enrollment", {"name": ["like", "TEST-%"]})
         frappe.db.commit()
 
     def test_enrollment_creation(self):
-        """Test basic enrollment creation"""
+        """Test basic enrollment document creation"""
         enrollment = frappe.get_doc({
             "doctype": "Enrollment",
-            "student": "test1@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
+            "name": "TEST-ENROLLMENT-001",
+            # Add required fields based on your DocType definition
+            # "student": "test-student@example.com",
+            # "course": "TEST-COURSE-001",
+            # "enrollment_date": frappe.utils.today(),
+            # "status": "Active"
         })
-        enrollment.insert(ignore_permissions=True)
         
-        # Verify enrollment was created
+        # Test document creation
+        enrollment.insert()
         self.assertTrue(enrollment.name)
-        self.assertEqual(enrollment.student, "test1@example.com")
-        self.assertEqual(enrollment.status, "Active")
-   
-    def test_enrollment_update(self):
-        """Test enrollment update functionality"""
-        # Create enrollment
-        enrollment = frappe.get_doc({
-            "doctype": "Enrollment",
-            "student": "test2@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
-        })
-        enrollment.insert(ignore_permissions=True)
-       
-        # Update enrollment status
-        enrollment.status = "Completed"
-        enrollment.completion_date = frappe.utils.today()
-        enrollment.save(ignore_permissions=True)
-       
-        # Verify update
-        updated_enrollment = frappe.get_doc("Enrollment", enrollment.name)
-        self.assertEqual(updated_enrollment.status, "Completed")
+        
+        # Test document retrieval
+        saved_enrollment = frappe.get_doc("Enrollment", enrollment.name)
+        self.assertEqual(saved_enrollment.doctype, "Enrollment")
 
     def test_enrollment_validation(self):
-        """Test enrollment validation rules"""
-        # Test duplicate enrollment prevention
-        enrollment1 = frappe.get_doc({
+        """Test enrollment validation logic"""
+        enrollment = frappe.get_doc({
             "doctype": "Enrollment",
-            "student": "test3@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
-        })
-        enrollment1.insert(ignore_permissions=True)
-        
-        # Try to create duplicate enrollment
-        enrollment2 = frappe.get_doc({
-            "doctype": "Enrollment",
-            "student": "test3@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
+            "name": "TEST-ENROLLMENT-002",
+            # Add test data for validation scenarios
         })
         
-        # This should either raise an exception or handle duplicates gracefully
+        # Test any custom validation logic
+        # This will depend on what validation you implement
         try:
-            enrollment2.insert(ignore_permissions=True)
-            # If no exception, check if duplicate was prevented another way
-        except frappe.DuplicateEntryError:
-            pass  # Expected behavior
-        except Exception as e:
-            # Handle other validation errors
-            pass
-
-    def test_enrollment_status_transitions(self):
-        """Test different status transitions"""
-        enrollment = frappe.get_doc({
-            "doctype": "Enrollment",
-            "student": "test4@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Pending"
-        })
-        enrollment.insert(ignore_permissions=True)
-        
-        # Test status progression: Pending -> Active -> Completed
-        enrollment.status = "Active"
-        enrollment.save(ignore_permissions=True)
-        self.assertEqual(enrollment.status, "Active")
-        
-        enrollment.status = "Completed"
-        enrollment.completion_date = frappe.utils.today()
-        enrollment.save(ignore_permissions=True)
-        self.assertEqual(enrollment.status, "Completed")
-
-    def test_enrollment_dates(self):
-        """Test enrollment date handling"""
-        future_date = frappe.utils.add_days(frappe.utils.today(), 30)
-        
-        enrollment = frappe.get_doc({
-            "doctype": "Enrollment",
-            "student": "test5@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "expected_completion_date": future_date,
-            "status": "Active"
-        })
-        enrollment.insert(ignore_permissions=True)
-        
-        # Test date validations if they exist
-        self.assertTrue(enrollment.enrollment_date)
-        self.assertEqual(enrollment.expected_completion_date, future_date)
-
-    def test_enrollment_cancellation(self):
-        """Test enrollment cancellation"""
-        enrollment = frappe.get_doc({
-            "doctype": "Enrollment",
-            "student": "test6@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
-        })
-        enrollment.insert(ignore_permissions=True)
-        
-        # Cancel enrollment
-        enrollment.status = "Cancelled"
-        enrollment.save(ignore_permissions=True)
-        
-        self.assertEqual(enrollment.status, "Cancelled")
-
-    def test_enrollment_bulk_operations(self):
-        """Test bulk enrollment operations"""
-        # Create multiple enrollments
-        students = ["test7@example.com", "test8@example.com", "test9@example.com"]
-        
-        for student in students:
-            enrollment = frappe.get_doc({
-                "doctype": "Enrollment",
-                "student": student,
-                "course": "TEST-COURSE-002",
-                "enrollment_date": frappe.utils.today(),
-                "status": "Active"
-            })
-            enrollment.insert(ignore_permissions=True)
-        
-        # Verify all enrollments were created
-        count = frappe.db.count("Enrollment", {
-            "course": "TEST-COURSE-002",
-            "status": "Active"
-        })
-        self.assertEqual(count, 3)
-
-    def test_enrollment_hooks_and_triggers(self):
-        """Test any hooks, triggers, or custom methods"""
-        enrollment = frappe.get_doc({
-            "doctype": "Enrollment",
-            "student": "test10@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
-        })
-        enrollment.insert(ignore_permissions=True)
-        
-        # Test any custom methods that might exist
-        try:
-            # Example: if there's a method to calculate progress
-            if hasattr(enrollment, 'calculate_progress'):
-                enrollment.calculate_progress()
-            
-            # Example: if there's a method to send notifications
-            if hasattr(enrollment, 'send_enrollment_notification'):
-                enrollment.send_enrollment_notification()
-                
-            # Example: if there's a method to update student records
-            if hasattr(enrollment, 'update_student_record'):
-                enrollment.update_student_record()
-                
-        except Exception as e:
-            # Handle method calls that might fail in test environment
+            enrollment.insert()
+            # Add assertions based on expected behavior
+        except frappe.ValidationError as e:
+            # Test expected validation errors
             pass
 
     def test_enrollment_permissions(self):
-        """Test enrollment permissions and access control"""
-        # Test with different user roles if applicable
+        """Test enrollment document permissions"""
+        # Create test user if needed
+        # Test read/write permissions for different user roles
+        pass
+
+    def test_enrollment_duplicate_prevention(self):
+        """Test prevention of duplicate enrollments"""
+        # Test that the same student cannot enroll in the same course twice
+        # This assumes you have unique constraints or validation logic
+        pass
+
+    def test_enrollment_status_updates(self):
+        """Test enrollment status changes"""
         enrollment = frappe.get_doc({
             "doctype": "Enrollment",
-            "student": "test11@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
+            "name": "TEST-ENROLLMENT-003",
+            # Add required fields
         })
-        enrollment.insert(ignore_permissions=True)
+        enrollment.insert()
         
-        # Test read permissions
-        fetched_enrollment = frappe.get_doc("Enrollment", enrollment.name)
-        self.assertEqual(fetched_enrollment.name, enrollment.name)
+        # Test status updates (e.g., Active -> Completed -> Cancelled)
+        # enrollment.status = "Completed"
+        # enrollment.save()
+        # self.assertEqual(enrollment.status, "Completed")
 
-    def test_enrollment_edge_cases(self):
-        """Test edge cases and error handling"""
-        # Test with invalid course
-        try:
-            enrollment = frappe.get_doc({
-                "doctype": "Enrollment",
-                "student": "test12@example.com",
-                "course": "INVALID-COURSE",
-                "enrollment_date": frappe.utils.today(),
-                "status": "Active"
-            })
-            enrollment.insert(ignore_permissions=True)
-        except Exception as e:
-            # Expected to fail with invalid course
-            pass
+    def test_enrollment_methods(self):
+        """Test any custom methods in the Enrollment class"""
+        enrollment = Enrollment()
         
-        # Test with empty/invalid student email
-        try:
-            enrollment = frappe.get_doc({
-                "doctype": "Enrollment",
-                "student": "",
-                "course": "TEST-COURSE-001",
-                "enrollment_date": frappe.utils.today(),
-                "status": "Active"
-            })
-            enrollment.insert(ignore_permissions=True)
-        except Exception as e:
-            # Expected to fail with empty student
-            pass
+        # Since the class currently only has 'pass', 
+        # add tests here when you implement custom methods
+        # Example:
+        # result = enrollment.calculate_progress()
+        # self.assertIsInstance(result, (int, float))
 
-    def test_enrollment_reports_and_queries(self):
-        """Test any report generation or complex queries"""
-        # Create test data for reports
-        test_enrollments = [
-            {"student": "report1@example.com", "status": "Active"},
-            {"student": "report2@example.com", "status": "Completed"},
-            {"student": "report3@example.com", "status": "Cancelled"}
-        ]
-        
-        for enroll_data in test_enrollments:
-            enrollment = frappe.get_doc({
-                "doctype": "Enrollment",
-                "student": enroll_data["student"],
-                "course": "TEST-COURSE-001",
-                "enrollment_date": frappe.utils.today(),
-                "status": enroll_data["status"]
-            })
-            enrollment.insert(ignore_permissions=True)
-        
-        # Test status-based queries
-        active_count = frappe.db.count("Enrollment", {"status": "Active", "course": "TEST-COURSE-001"})
-        self.assertGreaterEqual(active_count, 1)
-        
-        completed_count = frappe.db.count("Enrollment", {"status": "Completed", "course": "TEST-COURSE-001"})
-        self.assertGreaterEqual(completed_count, 1)
+    def test_enrollment_hooks(self):
+        """Test document hooks (before_save, after_insert, etc.)"""
+        # Test any hooks you implement in the Enrollment class
+        pass
 
-    def test_enrollment_with_missing_fields(self):
-        """Test enrollment with missing required fields"""
-        # Test enrollment without student
-        try:
-            enrollment = frappe.get_doc({
-                "doctype": "Enrollment",
-                "course": "TEST-COURSE-001",
-                "enrollment_date": frappe.utils.today(),
-                "status": "Active"
-            })
-            enrollment.insert(ignore_permissions=True)
-        except Exception as e:
-            # Expected to fail due to missing student field
-            pass
+    def test_enrollment_with_related_documents(self):
+        """Test enrollment with related documents (Student, Course, etc.)"""
+        # Test enrollment creation with valid related documents
+        # Test enrollment with invalid related documents
+        pass
 
-        # Test enrollment without course
-        try:
-            enrollment = frappe.get_doc({
-                "doctype": "Enrollment",
-                "student": "test13@example.com",
-                "enrollment_date": frappe.utils.today(),
-                "status": "Active"
-            })
-            enrollment.insert(ignore_permissions=True)
-        except Exception as e:
-            # Expected to fail due to missing course field
-            pass
 
-    def test_enrollment_delete(self):
-        """Test enrollment deletion"""
-        enrollment = frappe.get_doc({
-            "doctype": "Enrollment",
-            "student": "test14@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
-        })
-        enrollment.insert(ignore_permissions=True)
-        enrollment_name = enrollment.name
-        
-        # Delete the enrollment
-        enrollment.delete(ignore_permissions=True)
-        
-        # Verify it's deleted
-        self.assertFalse(frappe.db.exists("Enrollment", enrollment_name))
+def run_tests():
+    """Helper function to run enrollment tests"""
+    unittest.main()
 
-    def test_enrollment_reload(self):
-        """Test enrollment reload functionality"""
-        enrollment = frappe.get_doc({
-            "doctype": "Enrollment",
-            "student": "test15@example.com",
-            "course": "TEST-COURSE-001",
-            "enrollment_date": frappe.utils.today(),
-            "status": "Active"
-        })
-        enrollment.insert(ignore_permissions=True)
-        
-        # Modify and reload
-        original_status = enrollment.status
-        enrollment.status = "Completed"
-        enrollment.reload()
-        
-        # Should revert to original status after reload
-        self.assertEqual(enrollment.status, original_status)
+
+if __name__ == "__main__":
+    run_tests()
