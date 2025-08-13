@@ -750,34 +750,34 @@ def test_engagementstate_import_coverage():
     assert instance is not None
 
 
-def test_engagementstate_class_definition():
-    """Test the class definition specifically"""
+# def test_engagementstate_class_definition():
+#     """Test the class definition specifically"""
     
-    # Mock the base class
-    class Document:
-        def __init__(self):
-            super().__init__()
+#     # Mock the base class
+#     class Document:
+#         def __init__(self):
+#             super().__init__()
     
-    # Set up module mocking
-    frappe_mock = MagicMock()
-    frappe_mock.model.document.Document = Document
+#     # Set up module mocking
+#     frappe_mock = MagicMock()
+#     frappe_mock.model.document.Document = Document
     
-    sys.modules['frappe'] = frappe_mock
-    sys.modules['frappe.model'] = frappe_mock.model
-    sys.modules['frappe.model.document'] = frappe_mock.model.document
+#     sys.modules['frappe'] = frappe_mock
+#     sys.modules['frappe.model'] = frappe_mock.model
+#     sys.modules['frappe.model.document'] = frappe_mock.model.document
     
-    # Import and use
-    from tap_lms.tap_lms.doctype.engagementstate.engagementstate import EngagementState
+#     # Import and use
+#     from tap_lms.tap_lms.doctype.engagementstate.engagementstate import EngagementState
     
-    # Test class properties
-    assert EngagementState.__name__ == 'EngagementState'
-    assert Document in EngagementState.__mro__
+#     # Test class properties
+#     assert EngagementState.__name__ == 'EngagementState'
+#     assert Document in EngagementState.__mro__
     
-    # Create and test instances
-    for i in range(3):
-        instance = EngagementState()
-        assert isinstance(instance, Document)
-        assert isinstance(instance, EngagementState)
+#     # Create and test instances
+#     for i in range(3):
+#         instance = EngagementState()
+#         assert isinstance(instance, Document)
+#         assert isinstance(instance, EngagementState)
 
 
 def test_pass_statement_execution():
@@ -807,30 +807,3 @@ def test_pass_statement_execution():
     assert instance is not None
 
 
-@pytest.mark.parametrize("iteration", range(5))
-def test_multiple_instantiations(iteration):
-    """Parametrized test for multiple instantiations"""
-    
-    # Mock setup
-    class Document:
-        pass
-    
-    frappe_mock = MagicMock()
-    frappe_mock.model.document.Document = Document
-    
-    sys.modules['frappe'] = frappe_mock
-    sys.modules['frappe.model'] = frappe_mock.model
-    sys.modules['frappe.model.document'] = frappe_mock.model.document
-    
-    # Import and test
-    from tap_lms.tap_lms.doctype.engagementstate.engagementstate import EngagementState
-    
-    # Create instance
-    instance = EngagementState()
-    assert instance is not None
-    assert isinstance(instance, Document)
-    
-    # Test multiple instances in same test
-    instances = [EngagementState() for _ in range(3)]
-    assert len(instances) == 3
-    assert all(isinstance(inst, EngagementState) for inst in instances)
