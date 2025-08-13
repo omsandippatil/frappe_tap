@@ -249,22 +249,7 @@ class TestEnrollment(unittest.TestCase):
             # If frappe is not available, just pass the test
             self.assertTrue(True)
 
-    def test_setup_class_exception_coverage(self):
-        """Test to cover the exception block in setUpClass"""
-        # Mock frappe.init to raise an exception
-        with patch('frappe.init', side_effect=Exception("Test exception")):
-            with patch('frappe.connect'):
-                # This will trigger the exception path in setUpClass
-                try:
-                    frappe.init(site="test_site")
-                    frappe.connect()
-                except Exception:
-                    # This covers the exception handling code
-                    pass
-                
-                # Test passes - we've covered the exception path
-                self.assertTrue(True)
-
+  
     def test_frappe_initialization_exception_path(self):
         """Test the exact exception handling logic from setUpClass"""
         # Test the same logic as in setUpClass to ensure exception path is covered
