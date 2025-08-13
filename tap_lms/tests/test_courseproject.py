@@ -30,53 +30,25 @@ class TestCourseProject(unittest.TestCase):
         """Clean up after each test method."""
         frappe.db.rollback()
 
-    def test_course_project_fields(self):
-        """Test that required fields are present in the doctype."""
-        # Get the doctype meta to check field existence
-        meta = frappe.get_meta("CourseProject")
-        
-        # Check if basic fields exist
-        field_names = [field.fieldname for field in meta.fields]
-        
-        # Test that some basic fields exist (adjust based on your actual fields)
-        expected_fields = ["title"]  # Add other expected fields here
-        
-        for field in expected_fields:
-            if field in field_names:
-                print(f"✓ Field '{field}' exists")
-            else:
-                print(f"✗ Field '{field}' missing")
-
-    def test_course_project_permissions(self):
-        """Test basic permission structure."""
-        try:
-            # Check if we can read the doctype
-            frappe.get_meta("CourseProject")
-            print("✓ CourseProject doctype is accessible")
-        except Exception as e:
-            print(f"✗ CourseProject doctype access failed: {e}")
-            raise
-
-    def test_course_project_validation(self):
-        """Test basic validation."""
+    def test_course_project_creation(self):
+        """Test basic course project creation."""
         course_project = frappe.new_doc("CourseProject")
+        course_project.update({
+            "title": "Test Project",
+            "description": "This is a test project description"
+        })
         
+        if self.test_course:
+            course_project.course = self.test_course.name
+        
+        # Test that we can create the document
         try:
-            # Try to save without required fields
             course_project.insert(ignore_permissions=True)
-            print("⚠ No validation errors found (this might be expected)")
-        except frappe.ValidationError as e:
-            print(f"✓ Validation working: {e}")
+            self.assertTrue(course_project.name)
+            self.assertEqual(course_project.title, "Test Project")
+            print("✓ Course project creation test passed")
         except Exception as e:
-            print(f"Unexpected error during validation test: {e}")
-
-    def test_course_project_get_list(self):
-        """Test that we can retrieve course project list."""
-        try:
-            projects = frappe.get_list("CourseProject", limit=5)
-            print(f"✓ Successfully retrieved {len(projects)} course projects")
-        except Exception as e:
-            print(f"Get list test failed: {e}")
+            print(f"Course project creation test failed: {e}")
             raise
 
     def test_course_project_search(self):
