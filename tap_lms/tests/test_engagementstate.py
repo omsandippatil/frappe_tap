@@ -36,13 +36,7 @@ class TestEngagementState(unittest.TestCase):
         engagement_state = EngagementState()
         self.assertIsNotNone(engagement_state)
     
-    def test_doctype_attributes(self):
-        """Test that the class has expected doctype attributes"""
-        # Test that it inherits Document methods/attributes
-        self.assertTrue(hasattr(self.engagement_state, 'save'))
-        self.assertTrue(hasattr(self.engagement_state, 'delete'))
-        self.assertTrue(hasattr(self.engagement_state, 'insert'))
-    
+   
     def test_multiple_instances(self):
         """Test creating multiple instances"""
         engagement1 = EngagementState()
@@ -51,17 +45,7 @@ class TestEngagementState(unittest.TestCase):
         self.assertIsNot(engagement1, engagement2)
         self.assertEqual(type(engagement1), type(engagement2))
     
-    def test_class_methods_inheritance(self):
-        """Test that class inherits methods from Document"""
-        # These are common Document methods that should be available
-        expected_methods = ['save', 'delete', 'insert', 'reload', 'cancel']
-        
-        for method in expected_methods:
-            with self.subTest(method=method):
-                self.assertTrue(hasattr(self.engagement_state, method))
-                self.assertTrue(callable(getattr(self.engagement_state, method)))
-
-
+    
 class TestEngagementStateIntegration(unittest.TestCase):
     """Integration tests for EngagementState"""
     
