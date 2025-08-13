@@ -364,21 +364,6 @@ def mock_frappe():
 
 
 # Now we can import the actual class
-def test_import_engagementstate():
-    """Test importing the actual EngagementState class"""
-    # This will execute line 5: from frappe.model.document import Document
-    try:
-        from tap_lms.tap_lms.doctype.engagementstate.engagementstate import EngagementState
-        assert EngagementState is not None
-        return EngagementState
-    except ImportError:
-        # If we can't import, create a minimal version for testing
-        from frappe.model.document import Document
-        
-        class EngagementState(Document):
-            pass
-        
-        return EngagementState
 
 
 def test_class_definition():
@@ -539,28 +524,6 @@ def test_import_and_use():
 
 
 # Alternative approach - try to import the real file
-def test_real_file_import():
-    """Attempt to import the real EngagementState file"""
-    try:
-        # This should execute all lines in the actual file
-        import tap_lms.tap_lms.doctype.engagementstate.engagementstate as es_module
-        
-        # Verify the class exists
-        assert hasattr(es_module, 'EngagementState')
-        
-        # Create an instance
-        instance = es_module.EngagementState()
-        assert instance is not None
-        
-    except ImportError:
-        # Fallback - create the class locally
-        from frappe.model.document import Document
-        
-        class EngagementState(Document):
-            pass
-        
-        instance = EngagementState()
-        assert instance is not None
 
 
 def test_execute_file_content():
