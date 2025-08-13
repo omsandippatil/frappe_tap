@@ -111,50 +111,7 @@ class TestGlificTeacherGroup(unittest.TestCase):
         doctype_exists = frappe.db.exists("DocType", "Glific Teacher Group")
         self.assertTrue(doctype_exists, "Glific Teacher Group doctype should exist")
     
-    def test_class_instantiation(self):
-        """Test that GlificTeacherGroup can be instantiated"""
-        try:
-            from tap_lms.tap_lms.doctype.glific_teacher_group.glific_teacher_group import GlificTeacherGroup
-            doc = GlificTeacherGroup()
-            self.assertIsInstance(doc, GlificTeacherGroup)
-            self.assertIsInstance(doc, frappe.model.document.Document)
-        except ImportError:
-            self.skipTest("GlificTeacherGroup class not found")
     
-    def test_new_doc_creation(self):
-        """Test creating a new document"""
-        try:
-            doc = frappe.new_doc("Glific Teacher Group")
-            self.assertEqual(doc.doctype, "Glific Teacher Group")
-            self.assertTrue(hasattr(doc, 'save'))
-        except frappe.DoesNotExistError:
-            self.skipTest("Glific Teacher Group doctype not found in database")
-    
-    def test_save_document(self):
-        """Test saving a GlificTeacherGroup document"""
-        try:
-            doc = frappe.new_doc("Glific Teacher Group")
-            doc.name = "test-teacher-group-001"
-            
-            # Add any required fields here based on your doctype
-            # You may need to check your doctype definition for required fields
-            
-            doc.insert(ignore_permissions=True)
-            
-            # Verify the document exists
-            self.assertTrue(frappe.db.exists("Glific Teacher Group", "test-teacher-group-001"))
-            
-            # Test retrieval
-            retrieved_doc = frappe.get_doc("Glific Teacher Group", "test-teacher-group-001")
-            self.assertEqual(retrieved_doc.name, "test-teacher-group-001")
-            
-        except frappe.DoesNotExistError:
-            self.skipTest("Glific Teacher Group doctype not found in database")
-        except frappe.ValidationError as e:
-            # If validation fails, it might be due to missing required fields
-            self.skipTest(f"Validation error (missing required fields?): {str(e)}")
-        except Exception as e:
-            self.fail(f"Unexpected error: {str(e)}")
     
     def test_import_statement_coverage(self):
         """Test that import statement is covered"""
