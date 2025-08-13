@@ -259,11 +259,6 @@ class TestGlifitcontactGroupIntegration(unittest.TestCase):
         # These tests assume you have a test Frappe environment
         pass
         
-    def test_integration_setup_coverage(self):
-        """Test to cover the setUp method."""
-        # This test will execute the setUp method and cover the pass statement
-        self.assertIsNotNone(self.setUp())
-        
     def test_save_document(self):
         """Test saving a GlifitcontactGroup document."""
         # This would be an actual integration test with Frappe
@@ -305,11 +300,7 @@ class TestGlifitcontactGroupWithFixtures(unittest.TestCase):
         # Initialize Frappe test environment if available
         pass
         
-    def test_setup_class_coverage(self):
-        """Test to cover the setUpClass method."""
-        # This ensures the setUpClass method gets executed
-        self.assertIsNotNone(self.setUpClass())
-        
+   
     def test_with_frappe_context(self):
         """Test within proper Frappe context."""
         # This would require proper Frappe test setup
