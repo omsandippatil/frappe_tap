@@ -339,20 +339,39 @@ class TestEdgeCases:
 
     @patch('tap_lms.background_jobs.optin_contact')
     @patch('tap_lms.background_jobs.start_contact_flow')
-    def test_flow_start_failure(self, mock_start_flow, mock_optin):
+    @patch('tap_lms.background_jobs.create_or_get_teacher_group_for_batch')
+    @patch('tap_lms.background_jobs.add_contact_to_group')
+    def test_flow_start_failure(self, mock_add_contact, mock_create_group, mock_start_flow, mock_optin):
         """Test when flow start fails - covers the else block for flow start failure"""
+        # Setup all mocks to pass through to the flow execution
         mock_optin.return_value = True
-        self.mock_frappe.db.get_value.side_effect = ["glific_123", "flow_456"]
+        mock_create_group.return_value = {"group_id": "group_789", "label": "Test Group"}
+        mock_add_contact.return_value = True
         mock_start_flow.return_value = False  # This triggers the else block
+        
+        # Mock the database calls in order: glific_id, then flow_id
+        self.mock_frappe.db.get_value.side_effect = ["glific_123", "flow_456"]
         
         from tap_lms.background_jobs import process_glific_actions
         
+        # Execute with valid batch data to ensure we reach the flow part
         process_glific_actions(
             "teacher_1", "1234567890", "John", "school_1", 
             "Test School", "en", "model_1", "Batch A", "batch_1"
         )
         
-        # Verify flow start was attempted with correct parameters
+        # Verify all steps were executed
+        mock_optin.assert_called_once_with("1234567890", "John")
+        
+        # Verify glific_id was retrieved
+        self.mock_frappe.db.get_value.assert_any_call("Teacher", "teacher_1", "glific_id")
+        
+        # Verify group operations were attempted
+        mock_create_group.assert_called_once_with("Batch A", "batch_1")
+        mock_add_contact.assert_called_once_with("glific_123", "group_789")
+        
+        # Verify flow was retrieved and started
+        self.mock_frappe.db.get_value.assert_any_call("Glific Flow", {"label": "Teacher Web Onboarding Flow"}, "flow_id")
         mock_start_flow.assert_called_once_with(
             "flow_456", 
             "glific_123", 
