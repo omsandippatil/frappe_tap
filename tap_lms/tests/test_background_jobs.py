@@ -321,3 +321,4 @@ class TestEdgeCases:
     #     # Verify error was logged for flow start failure (line 62)
     #     error_calls = self.mock_frappe.logger().error.call_args_list
     #     assert any("Failed to start onboarding flow" in str(call) for call in error_calls)
+    
