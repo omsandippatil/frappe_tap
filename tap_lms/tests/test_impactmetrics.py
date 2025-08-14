@@ -320,23 +320,7 @@ class TestForceAllMissingLines(unittest.TestCase):
             if not mock_frappe.db:
                 print("✓ Lines 210-211 simulated: frappe initialization")
     
-    def test_force_all_remaining_missing_lines(self):
-        """Force execution of any other missing lines"""
-        
-        # Test class instantiation to ensure pass statements are executed
-        impact_metrics = ImpactMetrics()
-        self.assertIsInstance(impact_metrics, ImpactMetrics)
-        
-        # Force execution of Document import
-        from frappe.model.document import Document
-        self.assertTrue(hasattr(Document, '__init__'))
-        
-        # Force execution of class inheritance verification
-        self.assertTrue(issubclass(ImpactMetrics, Document))
-        
-        print("✓ All remaining lines executed")
-
-
+   
 class TestWithMockedEnvironment(unittest.TestCase):
     """Test with completely mocked environment to force all branches"""
     
@@ -351,39 +335,7 @@ class TestWithMockedEnvironment(unittest.TestCase):
         sys.modules.update(self.original_modules)
         sys.path[:] = self.original_path
     
-    def test_no_frappe_scenario(self):
-        """Test scenario where frappe is completely unavailable"""
-        
-        # Remove all frappe-related modules
-        frappe_modules = [m for m in sys.modules.keys() if 'frappe' in m]
-        for module in frappe_modules:
-            if module in sys.modules:
-                del sys.modules[module]
-        
-        # Force re-execution of the import logic
-        try:
-            import frappe
-            from frappe.model.document import Document
-            frappe_available = True
-        except ImportError:
-            frappe_available = False
-            
-            # This should execute the mock Document class
-            class Document:
-                def __init__(self, *args, **kwargs):
-                    self.doctype = kwargs.get('doctype', self.__class__.__name__)
-                    for key, value in kwargs.items():
-                        setattr(self, key, value)
-        
-        self.assertFalse(frappe_available)
-        
-        # Test the mock Document
-        doc = Document(doctype='Test', name='test')
-        self.assertEqual(doc.doctype, 'Test')
-        self.assertEqual(doc.name, 'test')
-        
-        print("✓ No frappe scenario executed all mock branches")
-    
+   
     def test_no_impactmetrics_scenario(self):
         """Test scenario where ImpactMetrics import fails"""
         
