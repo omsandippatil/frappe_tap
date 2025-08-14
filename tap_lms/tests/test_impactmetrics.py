@@ -215,24 +215,7 @@ class AdditionalCoverageTests(unittest.TestCase):
         self.assertIsInstance(instance, Document)
         print("✓ Lines 35-36 covered: Mock ImpactMetrics class")
     
-    def test_missing_line_49_52_frappe_init_exception(self):
-        """Cover lines 49-52: frappe initialization exception handling"""
-        # Simulate frappe initialization with exception
-        frappe_available = True  # Simulate FRAPPE_AVAILABLE = True
-        
-        if frappe_available:
-            try:
-                # Simulate frappe.db check and initialization
-                frappe_db = None  # Simulate frappe.db is None
-                if not frappe_db:
-                    # These lines simulate frappe.init() and frappe.connect()
-                    pass  # frappe.init()
-                    pass  # frappe.connect()
-                    print("✓ Lines 49-50 covered: frappe.init() and frappe.connect()")
-            except Exception:
-                pass  # This covers line 52
-                print("✓ Line 52 covered: exception handler")
-   
+    
     def test_conditional_branches(self):
         """Test all conditional branches to ensure complete coverage"""
         
@@ -257,79 +240,3 @@ class AdditionalCoverageTests(unittest.TestCase):
                 print("✓ frappe.db is None branch covered")
             else:
                 print("✓ frappe.db exists branch covered")
-    
-    def test_execute_all_imports(self):
-        """Execute all import statements to ensure they're covered"""
-        
-        # Core imports
-        import unittest
-        import sys  
-        import os
-        
-        # Frappe imports (with error handling)
-        try:
-            import frappe
-            from frappe.model.document import Document
-            print("✓ All frappe imports covered")
-        except ImportError:
-            print("✓ Import error branch covered")
-        
-        # Target module import (with error handling)
-        try:
-            from tap_lms.tap_lms.doctype.impactmetrics.impactmetrics import ImpactMetrics
-            print("✓ ImpactMetrics import covered")
-        except ImportError as e:
-            print(f"✓ ImpactMetrics import error covered: {e}")
-        
-        self.assertTrue(True)  # Test passes if we get here
-
-
-# Standalone function to ensure every line is hit
-def execute_every_line():
-    """
-    Function that explicitly executes code to hit every line
-    Call this to guarantee line coverage
-    """
-    
-    print("Executing every line of code...")
-    
-    # Lines 7-9: Basic imports
-    import unittest
-    import sys
-    import os
-    
-    # Lines 12-14: App path logic
-    current_file = os.path.abspath(__file__)
-    app_path = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
-    if app_path not in sys.path:
-        sys.path.insert(0, app_path)  # LINE 14
-    
-    # Lines 16-22: Frappe import with fallback
-    try:
-        import frappe
-        from frappe.model.document import Document
-        FRAPPE_AVAILABLE = True  # LINE 19
-    except ImportError:
-        FRAPPE_AVAILABLE = False  # LINE 21
-        # Lines 22-27: Mock Document class
-        class Document:
-            def __init__(self, *args, **kwargs):
-                self.doctype = kwargs.get('doctype', self.__class__.__name__)
-                for key, value in kwargs.items():
-                    setattr(self, key, value)
-    
-    # Lines 30-36: ImpactMetrics import with fallback  
-    try:
-        from tap_lms.tap_lms.doctype.impactmetrics.impactmetrics import ImpactMetrics
-    except ImportError as e:
-        print(f"Warning: Could not import ImpactMetrics: {e}")  # LINE 33
-        # Lines 35-36: Mock ImpactMetrics class
-        class ImpactMetrics(Document):
-            pass
-    
-    # Test instance creation to ensure class definition is executed
-    instance = ImpactMetrics()
-    
-    print("✅ Every line has been executed!")
-    return True
-
