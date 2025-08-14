@@ -82,11 +82,6 @@ class TestLearningState:
         learning_state = LearningState()
         assert learning_state is not None
     
-    def test_class_module_import(self):
-        """Test that the module can be imported correctly"""
-        # This ensures the import statements are covered
-        from tap_lms.tap_lms.doctype.learningstate.learningstate import LearningState as LS
-        assert LS == LearningState
     
     def test_document_import(self):
         """Test that Document is imported correctly"""
@@ -139,16 +134,7 @@ class TestLearningStateEdgeCases:
         mock_parent_init.assert_called_once_with(complex_data)
         assert isinstance(learning_state, LearningState)
     
-    def test_import_statement_coverage(self):
-        """Test that all import statements are covered"""
-        # This test ensures all import statements are executed and covered
-        from tap_lms.tap_lms.doctype.learningstate.learningstate import LearningState as TestImport
-        assert TestImport == LearningState
-        
-        # Test importing Document to ensure full import coverage
-        from frappe.model.document import Document as DocImport
-        assert DocImport is not None
-
+   
 
 # Test fixtures for reusable test data
 @pytest.fixture
@@ -323,17 +309,6 @@ class TestErrorHandling:
             instance = LearningState(data)
             assert isinstance(instance, LearningState)
             mock_parent_init.reset_mock()
-
-
-# Module-level tests
-def test_module_attributes():
-    """Test module-level attributes and properties"""
-    import tap_lms.tap_lms.doctype.learningstate.learningstate as module
-    
-    assert hasattr(module, 'LearningState')
-    assert hasattr(module, 'Document')
-    assert module.LearningState == LearningState
-    assert module.Document == Document
 
 
 # State-specific tests
