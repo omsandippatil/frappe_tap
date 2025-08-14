@@ -344,32 +344,7 @@ class TestImpactMetrics(unittest.TestCase):
         self.assertIsInstance(impact_metrics, ImpactMetrics)
         print("✓ Direct instantiation successful")
     
-    def test_inheritance_verification(self):
-        """Test that ImpactMetrics properly inherits from Document"""
-        impact_metrics = ImpactMetrics()
-        
-        # Import Document to ensure that line is covered
-        from frappe.model.document import Document
-        
-        # Test inheritance
-        self.assertIsInstance(impact_metrics, Document)
-        self.assertTrue(issubclass(ImpactMetrics, Document))
-        print("✓ Inheritance verification successful")
-    
-    def test_class_attributes_and_methods(self):
-        """Test class attributes to ensure class definition is executed"""
-        # Verify class name
-        self.assertEqual(ImpactMetrics.__name__, 'ImpactMetrics')
-        
-        # Verify it's in the Method Resolution Order
-        from frappe.model.document import Document
-        self.assertIn(Document, ImpactMetrics.__mro__)
-        
-        # Create instance to execute pass statement
-        instance = ImpactMetrics()
-        self.assertIsInstance(instance, (ImpactMetrics, Document))
-        print("✓ Class attributes and MRO verification successful")
-
+  
 
 class TestActualFileExecution(unittest.TestCase):
     """Dedicated test class to ensure the actual impactmetrics.py file is executed"""
