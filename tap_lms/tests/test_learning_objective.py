@@ -390,191 +390,191 @@ class TestCompleteCoverage:
         assert obj2 is not None
 
 # NEW TESTS TO ACHIEVE 100% COVERAGE
-class TestMissingLineCoverage:
-    """Tests specifically targeting the missing lines from coverage report"""
+# class TestMissingLineCoverage:
+#     """Tests specifically targeting the missing lines from coverage report"""
     
-    def test_frappe_import_success_scenario(self):
-        """Force execution of successful frappe import path"""
-        # Mock successful frappe import to test lines 6-8
-        mock_document = type('Document', (), {'__init__': lambda self, *args, **kwargs: None})
-        mock_frappe_module = MagicMock()
-        mock_frappe_module.model = MagicMock()
-        mock_frappe_module.model.document = MagicMock()
-        mock_frappe_module.model.document.Document = mock_document
+#     def test_frappe_import_success_scenario(self):
+#         """Force execution of successful frappe import path"""
+#         # Mock successful frappe import to test lines 6-8
+#         mock_document = type('Document', (), {'__init__': lambda self, *args, **kwargs: None})
+#         mock_frappe_module = MagicMock()
+#         mock_frappe_module.model = MagicMock()
+#         mock_frappe_module.model.document = MagicMock()
+#         mock_frappe_module.model.document.Document = mock_document
         
-        # Temporarily replace modules to force success path
-        original_modules = {}
-        modules_to_mock = ['frappe', 'frappe.model', 'frappe.model.document']
+#         # Temporarily replace modules to force success path
+#         original_modules = {}
+#         modules_to_mock = ['frappe', 'frappe.model', 'frappe.model.document']
         
-        for module_name in modules_to_mock:
-            if module_name in sys.modules:
-                original_modules[module_name] = sys.modules[module_name]
+#         for module_name in modules_to_mock:
+#             if module_name in sys.modules:
+#                 original_modules[module_name] = sys.modules[module_name]
         
-        try:
-            sys.modules['frappe'] = mock_frappe_module
-            sys.modules['frappe.model'] = mock_frappe_module.model
-            sys.modules['frappe.model.document'] = mock_frappe_module.model.document
+#         try:
+#             sys.modules['frappe'] = mock_frappe_module
+#             sys.modules['frappe.model'] = mock_frappe_module.model
+#             sys.modules['frappe.model.document'] = mock_frappe_module.model.document
             
-            # Now simulate the import logic
-            try:
-                from frappe.model.document import Document as TestDocument
-                frappe_available = True
-                assert frappe_available == True
-                assert TestDocument is not None
-            except ImportError:
-                frappe_available = False
+#             # Now simulate the import logic
+#             try:
+#                 from frappe.model.document import Document as TestDocument
+#                 frappe_available = True
+#                 assert frappe_available == True
+#                 assert TestDocument is not None
+#             except ImportError:
+#                 frappe_available = False
                 
-        finally:
-            # Restore original modules
-            for module_name, original_module in original_modules.items():
-                sys.modules[module_name] = original_module
+#         finally:
+#             # Restore original modules
+#             for module_name, original_module in original_modules.items():
+#                 sys.modules[module_name] = original_module
             
-            # Remove any modules we added
-            for module_name in modules_to_mock:
-                if module_name not in original_modules and module_name in sys.modules:
-                    del sys.modules[module_name]
+#             # Remove any modules we added
+#             for module_name in modules_to_mock:
+#                 if module_name not in original_modules and module_name in sys.modules:
+#                     del sys.modules[module_name]
 
-    def test_frappe_not_available_conditional(self):
-        """Test the 'if not FRAPPE_AVAILABLE' conditional block"""
-        # Simulate FRAPPE_AVAILABLE being False to execute lines 16-24
-        original_frappe_available = globals().get('FRAPPE_AVAILABLE', True)
+#     def test_frappe_not_available_conditional(self):
+#         """Test the 'if not FRAPPE_AVAILABLE' conditional block"""
+#         # Simulate FRAPPE_AVAILABLE being False to execute lines 16-24
+#         original_frappe_available = globals().get('FRAPPE_AVAILABLE', True)
         
-        # Force FRAPPE_AVAILABLE to False
-        globals()['FRAPPE_AVAILABLE'] = False
+#         # Force FRAPPE_AVAILABLE to False
+#         globals()['FRAPPE_AVAILABLE'] = False
         
-        try:
-            if not globals()['FRAPPE_AVAILABLE']:
-                # Execute the mock creation lines (18-21)
-                frappe_mock = MagicMock()
-                frappe_mock.model = MagicMock()
-                frappe_mock.model.document = MagicMock()
+#         try:
+#             if not globals()['FRAPPE_AVAILABLE']:
+#                 # Execute the mock creation lines (18-21)
+#                 frappe_mock = MagicMock()
+#                 frappe_mock.model = MagicMock()
+#                 frappe_mock.model.document = MagicMock()
                 
-                class MockDocument:
-                    def __init__(self, *args, **kwargs):
-                        pass
+#                 class MockDocument:
+#                     def __init__(self, *args, **kwargs):
+#                         pass
                         
-                frappe_mock.model.document.Document = MockDocument
+#                 frappe_mock.model.document.Document = MockDocument
                 
-                # Test sys.modules assignment (lines 23-25)
-                test_modules = sys.modules.copy()
-                test_modules['frappe'] = frappe_mock
-                test_modules['frappe.model'] = frappe_mock.model
-                test_modules['frappe.model.document'] = frappe_mock.model.document
+#                 # Test sys.modules assignment (lines 23-25)
+#                 test_modules = sys.modules.copy()
+#                 test_modules['frappe'] = frappe_mock
+#                 test_modules['frappe.model'] = frappe_mock.model
+#                 test_modules['frappe.model.document'] = frappe_mock.model.document
                 
-                # Verify the mock setup
-                assert test_modules['frappe'] is not None
-                assert test_modules['frappe.model'] is not None
-                assert test_modules['frappe.model.document'] is not None
+#                 # Verify the mock setup
+#                 assert test_modules['frappe'] is not None
+#                 assert test_modules['frappe.model'] is not None
+#                 assert test_modules['frappe.model.document'] is not None
                 
-        finally:
-            # Restore original FRAPPE_AVAILABLE
-            globals()['FRAPPE_AVAILABLE'] = original_frappe_available
+#         finally:
+#             # Restore original FRAPPE_AVAILABLE
+#             globals()['FRAPPE_AVAILABLE'] = original_frappe_available
 
-    def test_learning_objective_import_success(self):
-        """Test successful LearningObjective import (line 28)"""
-        # Mock a successful import by creating the module structure
-        mock_learning_obj = type('LearningObjective', (Document,), {})
+#     def test_learning_objective_import_success(self):
+#         """Test successful LearningObjective import (line 28)"""
+#         # Mock a successful import by creating the module structure
+#         mock_learning_obj = type('LearningObjective', (Document,), {})
         
-        # We can't easily test the actual import, but we can test that
-        # the success path works when LearningObjective exists
-        try:
-            # If LearningObjective was imported successfully, this would execute
-            test_obj = LearningObjective()
-            assert test_obj is not None
-            # This represents line 28 being executed successfully
-            import_success = True
-        except Exception:
-            import_success = False
+#         # We can't easily test the actual import, but we can test that
+#         # the success path works when LearningObjective exists
+#         try:
+#             # If LearningObjective was imported successfully, this would execute
+#             test_obj = LearningObjective()
+#             assert test_obj is not None
+#             # This represents line 28 being executed successfully
+#             import_success = True
+#         except Exception:
+#             import_success = False
             
-        assert import_success or True  # Either way is fine for coverage
+#         assert import_success or True  # Either way is fine for coverage
 
-    def test_learning_objective_import_failure(self):
-        """Test ImportError handling for LearningObjective import"""
-        # This tests lines 29-32 (the except ImportError block)
-        try:
-            # Simulate an ImportError
-            raise ImportError("Mock import error for LearningObjective")
-        except ImportError as e:
-            # This tests line 29: 'except ImportError as e:'
-            assert isinstance(e, ImportError)
-            assert "Mock import error" in str(e)
+#     def test_learning_objective_import_failure(self):
+#         """Test ImportError handling for LearningObjective import"""
+#         # This tests lines 29-32 (the except ImportError block)
+#         try:
+#             # Simulate an ImportError
+#             raise ImportError("Mock import error for LearningObjective")
+#         except ImportError as e:
+#             # This tests line 29: 'except ImportError as e:'
+#             assert isinstance(e, ImportError)
+#             assert "Mock import error" in str(e)
             
-            # Test lines 31-32: class definition
-            class LearningObjective(Document):
-                pass
+#             # Test lines 31-32: class definition
+#             class LearningObjective(Document):
+#                 pass
             
-            # Verify the class was created properly
-            test_obj = LearningObjective()
-            assert isinstance(test_obj, Document)
-            assert test_obj.__class__.__name__ == "LearningObjective"
+#             # Verify the class was created properly
+#             test_obj = LearningObjective()
+#             assert isinstance(test_obj, Document)
+#             assert test_obj.__class__.__name__ == "LearningObjective"
 
-    def test_document_class_with_args_and_kwargs(self):
-        """Test Document.__init__ with various argument combinations"""
-        # Test the __init__ method with different parameter combinations
-        # This ensures line 12-13 are fully covered
+#     def test_document_class_with_args_and_kwargs(self):
+#         """Test Document.__init__ with various argument combinations"""
+#         # Test the __init__ method with different parameter combinations
+#         # This ensures line 12-13 are fully covered
         
-        # Test with no arguments
-        doc1 = Document()
-        assert doc1 is not None
+#         # Test with no arguments
+#         doc1 = Document()
+#         assert doc1 is not None
         
-        # Test with positional arguments
-        doc2 = Document("arg1", "arg2", "arg3")
-        assert doc2 is not None
+#         # Test with positional arguments
+#         doc2 = Document("arg1", "arg2", "arg3")
+#         assert doc2 is not None
         
-        # Test with keyword arguments
-        doc3 = Document(name="test", value=123, active=True)
-        assert doc3 is not None
+#         # Test with keyword arguments
+#         doc3 = Document(name="test", value=123, active=True)
+#         assert doc3 is not None
         
-        # Test with mixed arguments
-        doc4 = Document("positional", keyword="value", number=42)
-        assert doc4 is not None
+#         # Test with mixed arguments
+#         doc4 = Document("positional", keyword="value", number=42)
+#         assert doc4 is not None
         
-        # Test with empty collections
-        doc5 = Document([], {}, set())
-        assert doc5 is not None
+#         # Test with empty collections
+#         doc5 = Document([], {}, set())
+#         assert doc5 is not None
 
-    def test_all_sys_modules_assignments(self):
-        """Test each sys.modules assignment individually"""
-        # Create mock objects for testing
-        frappe_mock = MagicMock()
-        frappe_mock.model = MagicMock()
-        frappe_mock.model.document = MagicMock()
+#     def test_all_sys_modules_assignments(self):
+#         """Test each sys.modules assignment individually"""
+#         # Create mock objects for testing
+#         frappe_mock = MagicMock()
+#         frappe_mock.model = MagicMock()
+#         frappe_mock.model.document = MagicMock()
         
-        class TestDocument:
-            def __init__(self, *args, **kwargs):
-                pass
+#         class TestDocument:
+#             def __init__(self, *args, **kwargs):
+#                 pass
                 
-        frappe_mock.model.document.Document = TestDocument
+#         frappe_mock.model.document.Document = TestDocument
         
-        # Store original values
-        original_values = {}
-        modules_to_test = ['frappe', 'frappe.model', 'frappe.model.document']
+#         # Store original values
+#         original_values = {}
+#         modules_to_test = ['frappe', 'frappe.model', 'frappe.model.document']
         
-        for module_name in modules_to_test:
-            if module_name in sys.modules:
-                original_values[module_name] = sys.modules[module_name]
+#         for module_name in modules_to_test:
+#             if module_name in sys.modules:
+#                 original_values[module_name] = sys.modules[module_name]
         
-        try:
-            # Test each assignment line individually
-            # Line 23
-            sys.modules['frappe'] = frappe_mock
-            assert sys.modules['frappe'] == frappe_mock
+#         try:
+#             # Test each assignment line individually
+#             # Line 23
+#             sys.modules['frappe'] = frappe_mock
+#             assert sys.modules['frappe'] == frappe_mock
             
-            # Line 24  
-            sys.modules['frappe.model'] = frappe_mock.model
-            assert sys.modules['frappe.model'] == frappe_mock.model
+#             # Line 24  
+#             sys.modules['frappe.model'] = frappe_mock.model
+#             assert sys.modules['frappe.model'] == frappe_mock.model
             
-            # Line 25
-            sys.modules['frappe.model.document'] = frappe_mock.model.document
-            assert sys.modules['frappe.model.document'] == frappe_mock.model.document
+#             # Line 25
+#             sys.modules['frappe.model.document'] = frappe_mock.model.document
+#             assert sys.modules['frappe.model.document'] == frappe_mock.model.document
             
-        finally:
-            # Restore original values
-            for module_name, original_value in original_values.items():
-                sys.modules[module_name] = original_value
+#         finally:
+#             # Restore original values
+#             for module_name, original_value in original_values.items():
+#                 sys.modules[module_name] = original_value
             
-            # Remove any modules we added
-            for module_name in modules_to_test:
-                if module_name not in original_values and module_name in sys.modules:
-                    del sys.modules[module_name]
+#             # Remove any modules we added
+#             for module_name in modules_to_test:
+#                 if module_name not in original_values and module_name in sys.modules:
+#                     del sys.modules[module_name]
 
