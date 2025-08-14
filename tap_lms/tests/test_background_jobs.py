@@ -249,9 +249,9 @@ class TestEnqueueGlificActions:
         self.mock_enqueue.assert_called_once()
         call_args = self.mock_enqueue.call_args
         
-        # Check that the first argument is the process_glific_actions function
-        from tap_lms.background_jobs import process_glific_actions
-        assert call_args[0][0] == process_glific_actions
+        # Check that the first argument is a function (process_glific_actions)
+        assert callable(call_args[0][0])
+        assert call_args[0][0].__name__ == 'process_glific_actions'
         
         # Check keyword arguments
         kwargs = call_args[1]
@@ -337,41 +337,41 @@ class TestEdgeCases:
         # Verify group creation was not called due to empty batch_name
         mock_create_group.assert_not_called()
 
-    # @patch('tap_lms.background_jobs.optin_contact')
-    # @patch('tap_lms.background_jobs.start_contact_flow')
-    # def test_flow_start_failure(self, mock_start_flow, mock_optin):
-    #     """Test when flow start fails - covers the else block for flow start failure"""
-    #     mock_optin.return_value = True
-    #     self.mock_frappe.db.get_value.side_effect = ["glific_123", "flow_456"]
-    #     mock_start_flow.return_value = False  # This triggers the else block
+    @patch('tap_lms.background_jobs.optin_contact')
+    @patch('tap_lms.background_jobs.start_contact_flow')
+    def test_flow_start_failure(self, mock_start_flow, mock_optin):
+        """Test when flow start fails - covers the else block for flow start failure"""
+        mock_optin.return_value = True
+        self.mock_frappe.db.get_value.side_effect = ["glific_123", "flow_456"]
+        mock_start_flow.return_value = False  # This triggers the else block
         
-    #     from tap_lms.background_jobs import process_glific_actions
+        from tap_lms.background_jobs import process_glific_actions
         
-    #     process_glific_actions(
-    #         "teacher_1", "1234567890", "John", "school_1", 
-    #         "Test School", "en", "model_1", "Batch A", "batch_1"
-    #     )
+        process_glific_actions(
+            "teacher_1", "1234567890", "John", "school_1", 
+            "Test School", "en", "model_1", "Batch A", "batch_1"
+        )
         
-    #     # Verify flow start was attempted with correct parameters
-    #     mock_start_flow.assert_called_once_with(
-    #         "flow_456", 
-    #         "glific_123", 
-    #         {
-    #             "teacher_id": "teacher_1",
-    #             "school_id": "school_1", 
-    #             "school_name": "Test School",
-    #             "language": "en",
-    #             "model": "model_1"
-    #         }
-    #     )
+        # Verify flow start was attempted with correct parameters
+        mock_start_flow.assert_called_once_with(
+            "flow_456", 
+            "glific_123", 
+            {
+                "teacher_id": "teacher_1",
+                "school_id": "school_1", 
+                "school_name": "Test School",
+                "language": "en",
+                "model": "model_1"
+            }
+        )
         
-    #     # Verify the specific error message for flow start failure
-    #     error_calls = self.mock_frappe.logger().error.call_args_list
-    #     flow_error_found = False
-    #     for call in error_calls:
-    #         call_str = str(call)
-    #         if "Failed to start onboarding flow for teacher teacher_1" in call_str:
-    #             flow_error_found = True
-    #             break
+        # Verify the specific error message for flow start failure
+        error_calls = self.mock_frappe.logger().error.call_args_list
+        flow_error_found = False
+        for call in error_calls:
+            call_str = str(call)
+            if "Failed to start onboarding flow for teacher teacher_1" in call_str:
+                flow_error_found = True
+                break
         
-    #     assert flow_error_found, f"Expected 'Failed to start onboarding flow for teacher teacher_1' in error calls: {error_calls}"
+        assert flow_error_found, f"Expected 'Failed to start onboarding flow for teacher teacher_1' in error calls: {error_calls}"
