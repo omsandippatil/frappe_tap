@@ -93,16 +93,6 @@ def test_glific_contact_group_document_base_class():
     assert hasattr(GlificContactGroup, '__init__')
 
 
-# def test_glific_contact_group_import_statement():
-#     """Test that the import statement is covered"""
-#     # This test ensures the import line is executed
-#     try:
-#         from tap_lms.tap_lms.doctype.glificcontactgroup.glificcontactgroup import GlificContactGroup
-#         import_successful = True
-#     except ImportError:
-#         import_successful = False
-    
-#     assert import_successful
 
 
 def test_glific_contact_group_class_definition():
