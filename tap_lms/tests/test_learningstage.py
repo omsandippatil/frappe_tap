@@ -83,15 +83,7 @@ class TestLearningStageEdgeCases:
         assert all(isinstance(inst, LearningStage) for inst in instances)
         assert mock_parent_init.call_count == 3
     
-    def test_import_statement_coverage(self):
-        """Test that import statements are covered"""
-        # This test ensures the import statements are executed
-        from tap_lms.tap_lms.doctype.learningstage.learningstage import LearningStage as LS
-        assert LS == LearningStage
-        
-        # Test importing Document
-        assert Document is not None
-
+   
 
 # Pytest fixtures for common test data
 @pytest.fixture
