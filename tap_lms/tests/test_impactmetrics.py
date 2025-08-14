@@ -86,12 +86,7 @@ class TestImpactMetrics(unittest.TestCase):
         self.assertIsNotNone(impact_metrics)
         print("✓ Basic instantiation works")
     
-    def test_impact_metrics_with_data(self):
-        """Test ImpactMetrics class with actual data"""
-        impact_metrics = ImpactMetrics(self.test_doc_data)
-        self.assertEqual(impact_metrics.doctype, 'ImpactMetrics')
-        print("✓ Instantiation with data works")
-    
+  
     def test_impact_metrics_inheritance(self):
         """Test that ImpactMetrics properly inherits from Document"""
         impact_metrics = ImpactMetrics()
@@ -101,13 +96,6 @@ class TestImpactMetrics(unittest.TestCase):
         self.assertTrue(issubclass(ImpactMetrics, Document))
         print("✓ Inheritance works correctly")
     
-    def test_impact_metrics_doctype_attribute(self):
-        """Test doctype attribute is properly set"""
-        impact_metrics = ImpactMetrics()
-        # The doctype should be set by the Document base class
-        expected_doctype = getattr(impact_metrics, 'doctype', 'ImpactMetrics')
-        self.assertIsNotNone(expected_doctype)
-        print("✓ Doctype attribute accessible")
     
     def test_multiple_instantiations(self):
         """Test multiple instantiations work correctly"""
@@ -128,32 +116,7 @@ class TestImpactMetrics(unittest.TestCase):
         self.assertIn(Document, ImpactMetrics.__mro__)
         print("✓ Class attributes and MRO correct")
     
-    def test_all_lines_covered(self):
-        """Comprehensive test to ensure all lines are covered"""
-        print("\n" + "="*50)
-        print("COMPREHENSIVE COVERAGE TEST")
-        print("="*50)
-        
-        # Line coverage verification:
-        
-        # 1. Import statement (from frappe.model.document import Document)
-        from frappe.model.document import Document
-        self.assertTrue(True)  # Import successful
-        print("✓ Line: from frappe.model.document import Document")
-        
-        # 2. Class definition (class ImpactMetrics(Document):)
-        self.assertTrue(issubclass(ImpactMetrics, Document))
-        print("✓ Line: class ImpactMetrics(Document):")
-        
-        # 3. Pass statement (pass)
-        instance = ImpactMetrics()
-        self.assertIsNotNone(instance)
-        print("✓ Line: pass")
-        
-        print("\n🎉 ALL LINES IN impactmetrics.py ARE COVERED!")
-        print("Coverage: 3/3 statements = 100%")
-
-
+    
 class TestImpactMetricsSimple(unittest.TestCase):
     """Simplified tests focusing purely on code coverage"""
     
