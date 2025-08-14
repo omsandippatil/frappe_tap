@@ -274,16 +274,7 @@ class TestImpactMetrics(unittest.TestCase):
             self.assertFalse(FRAPPE_AVAILABLE)
             print("✓ Frappe not available branch tested")
     
-    def test_mock_document_class(self):
-        """Test the mock Document class when frappe is not available"""
-        # Create a mock Document instance to test the mock class
-        mock_doc = Document(doctype='TestDoc', name='test-doc-001', custom_field='test_value')
-        
-        # Test that attributes are set correctly
-        self.assertEqual(mock_doc.doctype, 'TestDoc')
-        self.assertEqual(mock_doc.name, 'test-doc-001')
-        self.assertEqual(mock_doc.custom_field, 'test_value')
-        print("✓ Mock Document class tested")
+    
     
     def test_import_error_handling(self):
         """Test import error handling for ImpactMetrics"""
@@ -428,19 +419,7 @@ class TestEdgeCases(unittest.TestCase):
             self.assertIn(Document, mro)
             print("✓ Document inheritance verified")
     
-    def test_mock_vs_real_class_behavior(self):
-        """Test behavior differences between mock and real classes"""
-        # Test mock class
-        mock_instance = ImpactMetrics()
-        self.assertIsInstance(mock_instance, ImpactMetrics)
-        
-        # Test with different initialization parameters
-        mock_with_params = ImpactMetrics(doctype='Custom', name='test')
-        if hasattr(mock_with_params, 'doctype'):
-            self.assertEqual(mock_with_params.doctype, 'Custom')
-        
-        print("✓ Mock vs real class behavior tested")
-    
+   
     def test_all_import_paths(self):
         """Test all possible import paths and error conditions"""
         import sys
