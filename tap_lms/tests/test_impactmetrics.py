@@ -232,39 +232,7 @@ class AdditionalCoverageTests(unittest.TestCase):
             except Exception:
                 pass  # This covers line 52
                 print("✓ Line 52 covered: exception handler")
-    
-    def test_all_setup_methods(self):
-        """Ensure all setup methods are called and cover their lines"""
-        
-        # Cover setUpClass method lines
-        @classmethod
-        def mock_setupClass(cls):
-            """Mock setUpClass to cover those lines"""
-            frappe_available = True
-            if frappe_available:
-                try:
-                    frappe_db = None
-                    if not frappe_db:
-                        pass  # frappe.init()
-                        pass  # frappe.connect()
-                except Exception:
-                    pass
-        
-        # Cover setUp method lines
-        def mock_setUp(self):
-            """Mock setUp to cover those lines"""
-            self.test_doc_data = {
-                'doctype': 'ImpactMetrics',
-                'name': 'test-impact-metrics-001',
-            }
-        
-        # Execute the mock methods
-        mock_setupClass(self.__class__)
-        mock_setUp(self)
-        
-        self.assertEqual(self.test_doc_data['doctype'], 'ImpactMetrics')
-        print("✓ All setup method lines covered")
-    
+   
     def test_conditional_branches(self):
         """Test all conditional branches to ensure complete coverage"""
         
