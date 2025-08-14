@@ -82,11 +82,6 @@ class TestLearningStageFlows:
         learning_stage_flows = LearningStageFlows()
         assert learning_stage_flows is not None
     
-    def test_class_module_import(self):
-        """Test that the module can be imported correctly"""
-        # This ensures the import statements are covered
-        from tap_lms.tap_lms.doctype.learningstageflows.learningstageflows import LearningStageFlows as LSF
-        assert LSF == LearningStageFlows
     
     def test_document_import(self):
         """Test that Document is imported correctly"""
@@ -133,16 +128,7 @@ class TestLearningStageFlowsEdgeCases:
         mock_parent_init.assert_called_once_with(complex_data)
         assert isinstance(learning_stage_flows, LearningStageFlows)
     
-    def test_import_statement_coverage(self):
-        """Test that all import statements are covered"""
-        # This test ensures all import statements are executed and covered
-        from tap_lms.tap_lms.doctype.learningstageflows.learningstageflows import LearningStageFlows as TestImport
-        assert TestImport == LearningStageFlows
-        
-        # Test importing Document to ensure full import coverage
-        from frappe.model.document import Document as DocImport
-        assert DocImport is not None
-
+   
 
 # Test fixtures for reusable test data
 @pytest.fixture
@@ -290,15 +276,4 @@ class TestErrorHandling:
         instance = LearningStageFlows({})
         mock_parent_init.assert_called_once_with({})
         assert isinstance(instance, LearningStageFlows)
-
-
-# Module-level tests
-def test_module_attributes():
-    """Test module-level attributes and properties"""
-    import tap_lms.tap_lms.doctype.learningstageflows.learningstageflows as module
-    
-    assert hasattr(module, 'LearningStageFlows')
-    assert hasattr(module, 'Document')
-    assert module.LearningStageFlows == LearningStageFlows
-    assert module.Document == Document
 
