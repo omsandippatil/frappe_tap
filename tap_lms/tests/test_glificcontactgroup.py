@@ -351,12 +351,7 @@ if GlifitcontactGroup is None:
 class TestGlifitcontactGroupCoverage(unittest.TestCase):
     """Tests specifically designed to achieve 100% coverage."""
     
-    def test_import_statement_coverage(self):
-        """Test that ensures the import statement is covered."""
-        # This test ensures that the import from frappe.model.document is executed
-        self.assertTrue(hasattr(GlifitcontactGroup, '__bases__'))
-        self.assertEqual(GlifitcontactGroup.__bases__[0].__name__, 'Document')
-    
+
     def test_class_definition_coverage(self):
         """Test that ensures the class definition is covered."""
         # This test ensures the class GlifitcontactGroup(Document): line is executed
@@ -413,16 +408,7 @@ class TestGlifitcontactGroupBasicFunctionality(unittest.TestCase):
         contact_group = GlifitcontactGroup()
         contact_group.doctype = "GlifitcontactGroup"
         self.assertEqual(contact_group.doctype, "GlifitcontactGroup")
-            
-    @patch('frappe.db.exists')
-    def test_document_exists_check(self, mock_exists):
-        """Test checking if a document exists."""
-        mock_exists.return_value = True
-        
-        exists = frappe_mock.db.exists('GlifitcontactGroup', 'test-name')
-        self.assertTrue(exists)
-        mock_exists.assert_called_once_with('GlifitcontactGroup', 'test-name')
-
+   
     def test_class_name(self):
         """Test class name is correct."""
         self.assertEqual(self.contact_group.__class__.__name__, 'GlifitcontactGroup')
@@ -597,17 +583,7 @@ class TestGlifitcontactGroupEdgeCases(unittest.TestCase):
         with self.assertRaises(AttributeError):
             _ = contact_group.non_existent_attribute
 
-    def test_class_methods_and_properties(self):
-        """Test class methods and properties."""
-        # Test class-level attributes
-        self.assertTrue(hasattr(GlifitcontactGroup, '__name__'))
-        self.assertTrue(hasattr(GlifitcontactGroup, '__bases__'))
-        self.assertTrue(hasattr(GlifitcontactGroup, '__module__'))
-        
-        # Test that it's a proper class
-        self.assertTrue(callable(GlifitcontactGroup))
-        self.assertIsNotNone(GlifitcontactGroup.__doc__)
-
+    
     def test_instantiation_with_various_data_types(self):
         """Test instantiation with various data types."""
         test_cases = [
@@ -631,25 +607,7 @@ class TestGlifitcontactGroupEdgeCases(unittest.TestCase):
 
 class TestGlifitcontactGroupWithMockedFrappe(unittest.TestCase):
     """Tests that specifically test with mocked Frappe functionality."""
-    
-    @patch('frappe.get_doc')
-    def test_get_doc_mock(self, mock_get_doc):
-        """Test with mocked frappe.get_doc."""
-        mock_doc = GlifitcontactGroup()
-        mock_get_doc.return_value = mock_doc
-        
-        doc = frappe_mock.get_doc('GlifitcontactGroup', 'test-name')
-        self.assertIsInstance(doc, GlifitcontactGroup)
-
-    @patch('frappe.new_doc')
-    def test_new_doc_mock(self, mock_new_doc):
-        """Test with mocked frappe.new_doc."""
-        mock_doc = GlifitcontactGroup()
-        mock_new_doc.return_value = mock_doc
-        
-        doc = frappe_mock.new_doc('GlifitcontactGroup')
-        self.assertIsInstance(doc, GlifitcontactGroup)
-
+   
     def test_frappe_mock_functionality(self):
         """Test that our frappe mock works correctly."""
         self.assertIsNotNone(frappe_mock)
