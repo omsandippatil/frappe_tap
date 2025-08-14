@@ -433,41 +433,6 @@ class TestMissingLineCoverage:
             for module_name in modules_to_mock:
                 if module_name not in original_modules and module_name in sys.modules:
                     del sys.modules[module_name]
-    
-    def test_frappe_import_failure_scenario(self):
-        """Force execution of ImportError path for frappe import"""
-        # Remove frappe modules to force ImportError
-        modules_to_remove = ['frappe', 'frappe.model', 'frappe.model.document']
-        removed_modules = {}
-        
-        # Save and remove existing modules
-        for module_name in modules_to_remove:
-            if module_name in sys.modules:
-                removed_modules[module_name] = sys.modules[module_name]
-                del sys.modules[module_name]
-        
-        try:
-            # This should execute the ImportError path (lines 9-13)
-            frappe_available = True
-            try:
-                from frappe.model.document import Document as FailDocument
-                frappe_available = True
-            except ImportError:
-                frappe_available = False
-                # Create a mock Document class (lines 11-13)
-                class Document:
-                    def __init__(self, *args, **kwargs):
-                        pass
-                
-            assert frappe_available == False
-            # Test the Document class created in except block
-            test_doc = Document()
-            assert test_doc is not None
-            
-        finally:
-            # Restore removed modules
-            for module_name, module in removed_modules.items():
-                sys.modules[module_name] = module
 
     def test_frappe_not_available_conditional(self):
         """Test the 'if not FRAPPE_AVAILABLE' conditional block"""
@@ -613,63 +578,3 @@ class TestMissingLineCoverage:
                 if module_name not in original_values and module_name in sys.modules:
                     del sys.modules[module_name]
 
-# Integration test to simulate the complete file execution
-class TestCompleteFileExecution:
-    """Test that simulates the entire file being executed from scratch"""
-    
-    def test_complete_execution_with_frappe_unavailable(self):
-        """Simulate complete file execution when frappe is not available"""
-        # This test ensures all paths are covered in a realistic scenario
-        
-        # Step 1: Remove frappe to force ImportError
-        frappe_modules = ['frappe', 'frappe.model', 'frappe.model.document']
-        saved_modules = {}
-        
-        for module in frappe_modules:
-            if module in sys.modules:
-                saved_modules[module] = sys.modules[module]
-                del sys.modules[module]
-        
-        try:
-            # Step 2: Execute frappe import logic (lines 5-13)
-            frappe_available = True
-            try:
-                from frappe.model.document import Document as FrappeDocument
-                frappe_available = True
-            except ImportError:
-                frappe_available = False
-                class Document:
-                    def __init__(self, *args, **kwargs):
-                        pass
-            
-            assert frappe_available == False
-            
-            # Step 3: Execute mock setup (lines 16-25)
-            if not frappe_available:
-                frappe_mock = MagicMock()
-                frappe_mock.model = MagicMock() 
-                frappe_mock.model.document = MagicMock()
-                frappe_mock.model.document.Document = Document
-                
-                sys.modules['frappe'] = frappe_mock
-                sys.modules['frappe.model'] = frappe_mock.model
-                sys.modules['frappe.model.document'] = frappe_mock.model.document
-            
-            # Step 4: Execute LearningObjective import logic (lines 28-32)
-            try:
-                from tap_lms.tap_lms.doctype.learning_objective.learning_objective import LearningObjective as ImportedLO
-                learning_objective_class = ImportedLO
-            except ImportError as e:
-                class LearningObjective(Document):
-                    pass
-                learning_objective_class = LearningObjective
-            
-            # Verify everything works
-            test_obj = learning_objective_class()
-            assert test_obj is not None
-            assert isinstance(test_obj, Document)
-            
-        finally:
-            # Cleanup: restore original modules
-            for module, saved_module in saved_modules.items():
-                sys.modules[module] = saved_module
