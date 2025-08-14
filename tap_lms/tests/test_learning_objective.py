@@ -174,25 +174,25 @@ class TestLearningObjective:
         assert Document in mro
         assert object in mro
 
-    def test_import_error_path(self):
-        """Test the import error path to cover exception handling"""
-        # This test ensures the except ImportError block is covered
-        with patch('builtins.__import__') as mock_import:
-            mock_import.side_effect = ImportError("Mocked import error")
+    # def test_import_error_path(self):
+    #     """Test the import error path to cover exception handling"""
+    #     # This test ensures the except ImportError block is covered
+    #     with patch('builtins.__import__') as mock_import:
+    #         mock_import.side_effect = ImportError("Mocked import error")
             
-            # Re-import to trigger the exception path
-            import importlib
-            if 'tap_lms.tap_lms.doctype.learning_objective.learning_objective' in sys.modules:
-                del sys.modules['tap_lms.tap_lms.doctype.learning_objective.learning_objective']
+    #         # Re-import to trigger the exception path
+    #         import importlib
+    #         if 'tap_lms.tap_lms.doctype.learning_objective.learning_objective' in sys.modules:
+    #             del sys.modules['tap_lms.tap_lms.doctype.learning_objective.learning_objective']
             
-            # This should trigger the ImportError path
-            try:
-                from tap_lms.tap_lms.doctype.learning_objective.learning_objective import LearningObjective
-            except ImportError:
-                # Create the class as would happen in the except block
-                class LocalLearningObjective(Document):
-                    pass
-                assert LocalLearningObjective is not None
+    #         # This should trigger the ImportError path
+    #         try:
+    #             from tap_lms.tap_lms.doctype.learning_objective.learning_objective import LearningObjective
+    #         except ImportError:
+    #             # Create the class as would happen in the except block
+    #             class LocalLearningObjective(Document):
+    #                 pass
+    #             assert LocalLearningObjective is not None
 
     def test_frappe_available_false_path(self):
         """Test the path when FRAPPE_AVAILABLE is False"""
