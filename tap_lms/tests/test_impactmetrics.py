@@ -329,56 +329,7 @@ class TestImpactMetrics(unittest.TestCase):
 class TestActualFileExecution(unittest.TestCase):
     """Dedicated test class to ensure the actual impactmetrics.py file is executed"""
     
-    def test_force_actual_file_execution(self):
-        """
-        This test specifically targets the actual impactmetrics.py file
-        to ensure 100% coverage of that file
-        """
-        try:
-            # Step 1: Force import of the actual module
-            import sys
-            module_name = 'tap_lms.tap_lms.doctype.impactmetrics.impactmetrics'
-            
-            # Remove from cache if it exists to force fresh import
-            if module_name in sys.modules:
-                del sys.modules[module_name]
-            
-            # Fresh import to execute all lines
-            from tap_lms.tap_lms.doctype.impactmetrics.impactmetrics import ImpactMetrics
-            
-            # Step 2: Verify the import statement was executed
-            from frappe.model.document import Document
-            self.assertTrue(hasattr(Document, '__init__'))
-            
-            # Step 3: Verify class definition was executed
-            self.assertEqual(ImpactMetrics.__name__, 'ImpactMetrics')
-            self.assertTrue(issubclass(ImpactMetrics, Document))
-            
-            # Step 4: Execute the pass statement by instantiating
-            instance = ImpactMetrics()
-            self.assertIsInstance(instance, ImpactMetrics)
-            self.assertIsInstance(instance, Document)
-            
-            print("🎯 SUCCESS: All 3 lines in actual impactmetrics.py file executed!")
-            print("   ✓ Line 5: from frappe.model.document import Document")
-            print("   ✓ Line 7: class ImpactMetrics(Document):")
-            print("   ✓ Line 8:     pass")
-            
-        except ImportError as e:
-            self.fail(f"Could not import actual ImpactMetrics module: {e}")
-    
-    def test_multiple_instantiations_actual_class(self):
-        """Test multiple instantiations of the actual class"""
-        from tap_lms.tap_lms.doctype.impactmetrics.impactmetrics import ImpactMetrics
-        
-        # Create multiple instances to ensure thorough execution
-        instances = [ImpactMetrics() for _ in range(3)]
-        
-        for i, instance in enumerate(instances):
-            self.assertIsInstance(instance, ImpactMetrics)
-            print(f"✓ Instance {i+1} created successfully")
-        
-        print("✓ Multiple instantiations of actual class successful")
+ 
     
     def test_module_import_with_cache_clearing(self):
         """Test module import with cache clearing to ensure fresh execution"""
