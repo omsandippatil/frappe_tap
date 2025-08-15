@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from frappe.model.document import Document
 
 # Import your class - adjust the import path as needed
-from tap_lms.tap_lms.doctype.notecontent.notecontent import Notecontent
+from tap_lms.tap_lms.tap_lms.doctype.notecontent.notecontent import Notecontent
 
 
 class TestNotecontent:
