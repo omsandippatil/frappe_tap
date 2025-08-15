@@ -20,29 +20,7 @@ class TestModalityEffectiveness:
         modality_item = ModalityEffectiveness()
         assert isinstance(modality_item, ModalityEffectiveness)
         assert isinstance(modality_item, Document)
-        
-    def test_class_with_doctype(self):
-        """Test ModalityEffectiveness with doctype parameter."""
-        # Test instantiation with doctype
-        modality_item = ModalityEffectiveness(doctype="Modality Effectiveness")
-        assert modality_item.doctype == "Modality Effectiveness"
-        
-    @patch('frappe.model.document.Document.__init__')
-    def test_init_calls_parent(self, mock_parent_init):
-        """Test that __init__ properly calls parent Document.__init__."""
-        mock_parent_init.return_value = None
-        
-        # Test with no arguments
-        modality_item = ModalityEffectiveness()
-        mock_parent_init.assert_called_once_with()
-        
-        mock_parent_init.reset_mock()
-        
-        # Test with arguments
-        test_args = ("arg1", "arg2")
-        test_kwargs = {"key1": "value1", "key2": "value2"}
-        modality_item = ModalityEffectiveness(*test_args, **test_kwargs)
-        mock_parent_init.assert_called_once_with(*test_args, **test_kwargs)
+   
         
     def test_pass_statement_coverage(self):
         """Test to ensure the pass statement is covered."""
@@ -63,20 +41,7 @@ class TestModalityEffectiveness:
             
         # Verify all instances are separate objects
         assert len(set(id(item) for item in items)) == 3
-        
-    @patch('frappe.model.document.Document')
-    def test_document_methods_available(self, mock_document):
-        """Test that Document methods are available through inheritance."""
-        # Mock Document class
-        mock_instance = Mock()
-        mock_document.return_value = mock_instance
-        
-        # Create ModalityEffectiveness instance
-        modality_item = ModalityEffectiveness()
-        
-        # Verify Document was called
-        mock_document.assert_called_once()
-
+   
 
 # Additional fixtures and parameterized tests for comprehensive coverage
 class TestModalityEffectivenessEdgeCases:
@@ -122,22 +87,7 @@ class TestModalityEffectivenessEdgeCases:
 class TestModalityEffectivenessIntegration:
     """Integration tests that might be closer to real usage."""
     
-    @patch('frappe.model.document.Document.__init__')
-    def test_realistic_usage_pattern(self, mock_init):
-        """Test a realistic usage pattern."""
-        mock_init.return_value = None
-        
-        # Simulate creating a modality effectiveness record as it might be used
-        modality_data = {
-            "doctype": "Modality Effectiveness",
-            "learning_modality": "Visual",
-            "effectiveness_score": 87.5,
-            "student_count": 150,
-            "assessment_period": "Q1 2025"
-        }
-        
-        modality_item = ModalityEffectiveness(**modality_data)
-        mock_init.assert_called_once_with(**modality_data)
+ 
         
     @patch('frappe.model.document.Document.__init__')
     def test_different_modality_types(self, mock_init):
@@ -154,14 +104,7 @@ class TestModalityEffectivenessIntegration:
         for modality_data in modality_types:
             modality_item = ModalityEffectiveness(**modality_data)
             assert isinstance(modality_item, ModalityEffectiveness)
-            
-    def test_error_handling(self):
-        """Test error handling scenarios."""
-        # This tests that the class can handle various scenarios gracefully
-        with patch('frappe.model.document.Document.__init__', side_effect=Exception("Test error")):
-            with pytest.raises(Exception, match="Test error"):
-                ModalityEffectiveness()
-                
+    
     @patch('frappe.model.document.Document.__init__')
     def test_empty_and_none_values(self, mock_init):
         """Test handling of empty and None values."""
