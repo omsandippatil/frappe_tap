@@ -38,6 +38,8 @@ def test_generate_unique_batch_keyword_coverage():
         # Mock school and batch documents
         mock_school_doc = Mock()
         mock_school_doc.name1 = "Test School Name"
+        mock_school_doc.school = "school_id"
+        mock_school_doc.batch = "batch_id"
         mock_batch_doc = Mock()
         mock_batch_doc.name1 = "Test Batch Name"
         
@@ -50,7 +52,12 @@ def test_generate_unique_batch_keyword_coverage():
         # Mock that keyword doesn't exist (first attempt succeeds)
         mock_frappe.db.exists.return_value = False
         
-        result = generate_unique_batch_keyword("school_id", "batch_id")
+        # Create a mock document with school and batch attributes
+        mock_doc = Mock()
+        mock_doc.school = "school_id"
+        mock_doc.batch = "batch_id"
+        
+        result = generate_unique_batch_keyword(mock_doc)
         
         # Verify function calls
         assert mock_frappe.get_doc.call_count == 2
@@ -61,8 +68,8 @@ def test_generate_unique_batch_keyword_coverage():
         mock_random.randint.assert_called_with(10, 99)
         mock_random.choices.assert_called_with(mock_string.ascii_uppercase, k=2)
         
-        # Verify the keyword format
-        expected_keyword = "TEST SCHOOL NAME{TEST BATCH NAME}{42}{AB}"
+        # Verify the keyword format (first 2 chars of each name, uppercased)
+        expected_keyword = "TE{TE}{42}{AB}"
         assert result == expected_keyword
         
         # Verify uniqueness check
@@ -105,15 +112,20 @@ def test_generate_unique_batch_keyword_collision_handling():
         
         from tap_lms.batch_onboarding_utils import generate_unique_batch_keyword
         
-        result = generate_unique_batch_keyword("collision_school", "collision_batch")
+        # Create mock document
+        mock_doc = Mock()
+        mock_doc.school = "collision_school"
+        mock_doc.batch = "collision_batch"
+        
+        result = generate_unique_batch_keyword(mock_doc)
         
         # Verify multiple attempts were made
         assert mock_random.randint.call_count == 3
         assert mock_random.choices.call_count == 3
         assert mock_frappe.db.exists.call_count == 3
         
-        # Verify final result uses the third attempt
-        expected_final_keyword = "COLLISION SCHOOL{COLLISION BATCH}{33}{BC}"
+        # Verify final result uses the third attempt (CO from both names)
+        expected_final_keyword = "CO{CO}{33}{BC}"
         assert result == expected_final_keyword
 
 
@@ -151,7 +163,12 @@ def test_generate_unique_batch_keyword_string_processing():
         
         from tap_lms.batch_onboarding_utils import generate_unique_batch_keyword
         
-        result = generate_unique_batch_keyword("long_school", "long_batch")
+        # Create mock document
+        mock_doc = Mock()
+        mock_doc.school = "long_school"
+        mock_doc.batch = "long_batch"
+        
+        result = generate_unique_batch_keyword(mock_doc)
         
         # Verify string processing: first 2 characters, uppercased
         # "Very Long School Name That Needs Slicing"[:2].upper() = "VE"
@@ -193,7 +210,12 @@ def test_generate_unique_batch_keyword_edge_cases():
         
         from tap_lms.batch_onboarding_utils import generate_unique_batch_keyword
         
-        result = generate_unique_batch_keyword("short_school", "short_batch")
+        # Create mock document
+        mock_doc = Mock()
+        mock_doc.school = "short_school"
+        mock_doc.batch = "short_batch"
+        
+        result = generate_unique_batch_keyword(mock_doc)
         
         # Should handle short names gracefully
         expected_keyword = "A{B}{77}{RS}"
@@ -233,7 +255,12 @@ def test_generate_unique_batch_keyword_empty_names():
         
         from tap_lms.batch_onboarding_utils import generate_unique_batch_keyword
         
-        result = generate_unique_batch_keyword("empty_school", "empty_batch")
+        # Create mock document
+        mock_doc = Mock()
+        mock_doc.school = "empty_school"
+        mock_doc.batch = "empty_batch"
+        
+        result = generate_unique_batch_keyword(mock_doc)
         
         # Should handle empty names gracefully
         expected_keyword = "{}{88}{TU}"
@@ -278,7 +305,12 @@ def test_generate_unique_batch_keyword_multiple_collisions():
         
         from tap_lms.batch_onboarding_utils import generate_unique_batch_keyword
         
-        result = generate_unique_batch_keyword("multi_school", "multi_batch")
+        # Create mock document
+        mock_doc = Mock()
+        mock_doc.school = "multi_school"
+        mock_doc.batch = "multi_batch"
+        
+        result = generate_unique_batch_keyword(mock_doc)
         
         # Verify all attempts were made
         assert mock_random.randint.call_count == 6
@@ -308,10 +340,10 @@ def test_generate_unique_batch_keyword_function_signature():
         # Test function signature
         import inspect
         sig = inspect.signature(generate_unique_batch_keyword)
-        assert len(sig.parameters) == 2  # school, batch
+        assert len(sig.parameters) == 1  # doc parameter only
         
         param_names = list(sig.parameters.keys())
-        assert param_names == ['school', 'batch']
+        assert param_names == ['doc']
 
 
 def test_import_coverage():
@@ -366,7 +398,12 @@ def test_complete_workflow_integration():
         
         from tap_lms.batch_onboarding_utils import generate_unique_batch_keyword
         
-        result = generate_unique_batch_keyword("integration_school", "integration_batch")
+        # Create test document
+        mock_doc = Mock()
+        mock_doc.school = "integration_school"
+        mock_doc.batch = "integration_batch"
+        
+        result = generate_unique_batch_keyword(mock_doc)
         
         # Verify all components worked together
         assert mock_frappe.get_doc.call_count == 2
@@ -419,7 +456,12 @@ def test_all_lines_executed():
         # Line 17: While loop condition (will be False, so loop body not executed)
         # Line 22: Return statement
         
-        result = generate_unique_batch_keyword("complete_school", "complete_batch")
+        # Create mock document
+        mock_doc = Mock()
+        mock_doc.school = "complete_school"
+        mock_doc.batch = "complete_batch"
+        
+        result = generate_unique_batch_keyword(mock_doc)
         
         # Verify the result follows expected pattern
         expected = "CO{CO}{99}{ZZ}"
@@ -433,7 +475,12 @@ def test_all_lines_executed():
         # Reset get_doc for second call
         mock_frappe.get_doc.side_effect = [mock_school, mock_batch]
         
-        result2 = generate_unique_batch_keyword("loop_school", "loop_batch")
+        # Create new mock document for loop test
+        mock_doc2 = Mock()
+        mock_doc2.school = "loop_school"
+        mock_doc2.batch = "loop_batch"
+        
+        result2 = generate_unique_batch_keyword(mock_doc2)
         
         # This should have executed the while loop body (lines 18-21)
         expected2 = "CO{CO}{22}{CD}"
