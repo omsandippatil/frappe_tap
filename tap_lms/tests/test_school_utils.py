@@ -128,24 +128,6 @@ class TestGenerateUniqueKeyword(unittest.TestCase):
             expected = "SC12AC66ABC"  # SC from School + 12 from 123 + AC from Academy
             self.assertEqual(result, expected)
     
-    # def test_very_long_school_name(self):
-    #     """Test with a very long school name"""
-    #     long_name = "International Advanced Technology and Science Academy of Excellence"
-    #     with patch('tap_lms.school_utils.random.randint', return_value=77), \
-    #          patch('tap_lms.school_utils.random.choices', return_value=['Z', 'Y', 'X']):
-    #         result = generate_unique_keyword(long_name)
-    #         # Test how the function handles many words
-    #         expected = "INADTESCACOFEX77ZYX"  # First 2 letters of each word
-    #         self.assertEqual(result, expected)
-    
-    # def test_unicode_characters(self):
-    #     """Test with unicode/non-ASCII characters"""
-    #     with patch('tap_lms.school_utils.random.randint', return_value=88), \
-    #          patch('tap_lms.school_utils.random.choices', return_value=['U', 'V', 'W']):
-    #         result = generate_unique_keyword("École Supérieure")
-    #         # Test how unicode is handled
-    #         expected = "ECSU88UVW"  # EC from École + SU from Supérieure
-    #         self.assertEqual(result, expected)
     
     def test_single_letter_extraction(self):
         """Test edge case where words have only one letter"""
@@ -154,6 +136,3 @@ class TestGenerateUniqueKeyword(unittest.TestCase):
             result = generate_unique_keyword("A B C D E")
             expected = "ABCDE12PQR"  # Single letters from each word
             self.assertEqual(result, expected)
-
-# if __name__ == '__main__':
-#     unittest.main()
