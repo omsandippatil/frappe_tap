@@ -266,3 +266,5 @@ class PlagiarismResult(Document):
         self.assertIsNotNone(instance)
         
         print("✅ Simulated full coverage of plagiarism_result.py")
+
+
