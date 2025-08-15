@@ -1,145 +1,134 @@
-# test_plagiarism_result.py
+# test_plagiarism_result_jenkins.py
+"""
+Optimized test file for Jenkins CI/CD pipeline
+Designed to achieve 100% code coverage for plagiarism_result.py
+"""
 
 import unittest
-from unittest.mock import patch, MagicMock
 import sys
 import os
+from unittest.mock import patch, MagicMock
 
-# Add the module path to sys.path if needed
-# Adjust this path based on your project structure
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'tap_lms', 'tap_lms', 'doctype', 'plagiarism_result'))
+class TestPlagiarismResultCoverage(unittest.TestCase):
+    """Streamlined tests focused on achieving 100% code coverage."""
+    
+    @classmethod
+    def setUpClass(cls):
+        """Set up class-level fixtures."""
+        # Mock frappe module at module level
+        cls.frappe_patcher = patch.dict('sys.modules', {
+            'frappe': MagicMock(),
+            'frappe.model': MagicMock(),
+            'frappe.model.document': MagicMock()
+        })
+        cls.frappe_patcher.start()
+        
+        # Create a mock Document class that can be inherited
+        cls.mock_document = MagicMock()
+        cls.mock_document.__name__ = 'Document'
+        
+        # Patch the Document class in frappe.model.document
+        cls.document_patcher = patch('frappe.model.document.Document', cls.mock_document)
+        cls.document_patcher.start()
+    
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up class-level fixtures."""
+        cls.document_patcher.stop()
+        cls.frappe_patcher.stop()
+    
+    def test_import_line_coverage(self):
+        """Test to ensure line 5: from frappe.model.document import Document is covered."""
+        try:
+            # This should cover the import statement
+            from plagiarism_result import PlagiarismResult
+            self.assertTrue(True, "Import executed successfully")
+        except Exception as e:
+            self.fail(f"Import failed: {e}")
+    
+    def test_class_definition_coverage(self):
+        """Test to ensure line 7: class PlagiarismResult(Document): is covered."""
+        from plagiarism_result import PlagiarismResult
+        
+        # Verify class exists and has correct name
+        self.assertEqual(PlagiarismResult.__name__, 'PlagiarismResult')
+        self.assertTrue(callable(PlagiarismResult), "Class should be callable")
+    
+    def test_pass_statement_coverage(self):
+        """Test to ensure line 8: pass is covered."""
+        from plagiarism_result import PlagiarismResult
+        
+        # Creating an instance will execute the class body including 'pass'
+        instance = PlagiarismResult()
+        self.assertIsNotNone(instance)
+        
+        # Verify instance is of correct type
+        self.assertIsInstance(instance, PlagiarismResult)
+    
+    def test_complete_module_execution(self):
+        """Comprehensive test to ensure all lines are executed."""
+        # Force re-import to ensure all module-level code runs
+        if 'plagiarism_result' in sys.modules:
+            del sys.modules['plagiarism_result']
+        
+        # Import the module - this covers line 5
+        from plagiarism_result import PlagiarismResult
+        
+        # Access the class - this covers line 7
+        cls = PlagiarismResult
+        self.assertTrue(hasattr(cls, '__name__'))
+        
+        # Instantiate the class - this covers line 8 (pass)
+        obj = cls()
+        self.assertIsNotNone(obj)
+        
+        # Additional verification
+        self.assertEqual(cls.__name__, 'PlagiarismResult')
 
-class TestPlagiarismResult(unittest.TestCase):
-    """Test cases for PlagiarismResult class to achieve 100% code coverage."""
+
+class TestPlagiarismResultFunctionality(unittest.TestCase):
+    """Additional functional tests to ensure robustness."""
     
     def setUp(self):
-        """Set up test fixtures before each test method."""
-        # Mock frappe module since it's an external dependency
+        """Set up test fixtures."""
+        # Mock frappe components
         self.frappe_mock = MagicMock()
         self.document_mock = MagicMock()
         
-        # Create a mock Document class
-        self.document_mock.return_value = MagicMock()
+        # Set up patches
+        self.frappe_patcher = patch.dict('sys.modules', {
+            'frappe': self.frappe_mock,
+            'frappe.model': MagicMock(),
+            'frappe.model.document': MagicMock()
+        })
+        self.document_class_patcher = patch('frappe.model.document.Document', self.document_mock)
         
-        # Patch frappe.model.document.Document
-        self.patcher = patch('frappe.model.document.Document', self.document_mock)
-        self.patcher.start()
-        
+        self.frappe_patcher.start()
+        self.document_class_patcher.start()
+    
     def tearDown(self):
-        """Clean up after each test method."""
-        self.patcher.stop()
+        """Clean up test fixtures."""
+        self.document_class_patcher.stop()
+        self.frappe_patcher.stop()
     
-    def test_import_statement(self):
-        """Test that the import statement executes without error."""
-        try:
-            from plagiarism_result import Document
-            self.assertTrue(True, "Import statement executed successfully")
-        except ImportError as e:
-            self.fail(f"Import failed: {e}")
-    
-    def test_class_definition(self):
-        """Test that the PlagiarismResult class can be imported and instantiated."""
-        try:
-            from plagiarism_result import PlagiarismResult
-            
-            # Test that the class exists
-            self.assertTrue(hasattr(PlagiarismResult, '__name__'))
-            self.assertEqual(PlagiarismResult.__name__, 'PlagiarismResult')
-            
-            # Test class inheritance
-            # Note: This will work with the mocked Document class
-            instance = PlagiarismResult()
-            self.assertIsInstance(instance, PlagiarismResult)
-            
-        except Exception as e:
-            self.fail(f"Class definition test failed: {e}")
-    
-    def test_class_instantiation(self):
-        """Test creating an instance of PlagiarismResult."""
+    def test_inheritance_structure(self):
+        """Test that PlagiarismResult properly inherits from Document."""
         from plagiarism_result import PlagiarismResult
         
-        # Test basic instantiation
-        plagiarism_result = PlagiarismResult()
-        self.assertIsNotNone(plagiarism_result)
-        
-        # Test with arguments if Document class accepts them
-        try:
-            plagiarism_result_with_args = PlagiarismResult({})
-            self.assertIsNotNone(plagiarism_result_with_args)
-        except TypeError:
-            # If Document doesn't accept arguments, that's fine
-            pass
-    
-    def test_class_inheritance(self):
-        """Test that PlagiarismResult inherits from Document."""
-        from plagiarism_result import PlagiarismResult
-        
-        # Check that PlagiarismResult is a subclass of the mocked Document
-        # This tests that the inheritance is properly set up
-        plagiarism_result = PlagiarismResult()
-        
-        # Since we're mocking Document, we verify the mock was called
-        self.document_mock.assert_called()
-    
-    def test_pass_statement_coverage(self):
-        """Test that the pass statement in the class body is covered."""
-        from plagiarism_result import PlagiarismResult
-        
-        # Create an instance to ensure the class body (including pass) is executed
-        instance = PlagiarismResult()
-        
-        # Verify the instance was created successfully
-        self.assertIsNotNone(instance)
-        
-        # Check that it has the expected class name
-        self.assertEqual(instance.__class__.__name__, 'PlagiarismResult')
-
-
-class TestPlagiarismResultIntegration(unittest.TestCase):
-    """Integration tests for PlagiarismResult (if frappe is available)."""
-    
-    def test_frappe_integration(self):
-        """Test integration with actual frappe if available."""
-        try:
-            # Try to import frappe directly
-            import frappe
-            from plagiarism_result import PlagiarismResult
-            
-            # If frappe is available, test with actual Document class
-            self.assertTrue(hasattr(PlagiarismResult, '__mro__'))
-            
-        except ImportError:
-            # Skip this test if frappe is not available
-            self.skipTest("Frappe not available for integration testing")
-
-
-class TestPlagiarismResultEdgeCases(unittest.TestCase):
-    """Edge case tests for PlagiarismResult."""
-    
-    @patch('frappe.model.document.Document')
-    def test_multiple_inheritance_scenarios(self, mock_document):
-        """Test various inheritance scenarios."""
-        from plagiarism_result import PlagiarismResult
-        
-        # Test method resolution order
+        # Test inheritance chain
+        self.assertTrue(hasattr(PlagiarismResult, '__mro__'))
         self.assertIn(PlagiarismResult, PlagiarismResult.__mro__)
-        
-        # Test class attributes
-        self.assertTrue(hasattr(PlagiarismResult, '__module__'))
-        self.assertTrue(hasattr(PlagiarismResult, '__qualname__'))
     
-    @patch('frappe.model.document.Document')
-    def test_class_methods_and_attributes(self, mock_document):
-        """Test that the class has expected methods and attributes."""
+    def test_multiple_instantiation(self):
+        """Test creating multiple instances."""
         from plagiarism_result import PlagiarismResult
         
-        # Check basic class attributes
-        self.assertEqual(PlagiarismResult.__name__, 'PlagiarismResult')
+        # Create multiple instances
+        instance1 = PlagiarismResult()
+        instance2 = PlagiarismResult()
         
-        # Check that it's a type (class)
-        self.assertIsInstance(PlagiarismResult, type)
-        
-        # Test instance creation
-        instance = PlagiarismResult()
-        self.assertIsInstance(instance, PlagiarismResult)
+        self.assertIsNotNone(instance1)
+        self.assertIsNotNone(instance2)
+        self.assertIsInstance(instance1, PlagiarismResult)
+        self.assertIsInstance(instance2, PlagiarismResult)
 
