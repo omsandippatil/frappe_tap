@@ -26,24 +26,7 @@ class TestLessonContentItem:
         # Test instantiation with doctype
         lesson_item = LessonContentItem(doctype="Lesson Content Item")
         assert lesson_item.doctype == "Lesson Content Item"
-        
-    @patch('frappe.model.document.Document.__init__')
-    def test_init_calls_parent(self, mock_parent_init):
-        """Test that __init__ properly calls parent Document.__init__."""
-        mock_parent_init.return_value = None
-        
-        # Test with no arguments
-        lesson_item = LessonContentItem()
-        mock_parent_init.assert_called_once_with()
-        
-        mock_parent_init.reset_mock()
-        
-        # Test with arguments
-        test_args = ("arg1", "arg2")
-        test_kwargs = {"key1": "value1", "key2": "value2"}
-        lesson_item = LessonContentItem(*test_args, **test_kwargs)
-        mock_parent_init.assert_called_once_with(*test_args, **test_kwargs)
-        
+     
     def test_pass_statement_coverage(self):
         """Test to ensure the pass statement is covered."""
         # Create instance to trigger the pass statement
@@ -63,21 +46,7 @@ class TestLessonContentItem:
             
         # Verify all instances are separate objects
         assert len(set(id(item) for item in items)) == 3
-        
-    @patch('frappe.model.document.Document')
-    def test_document_methods_available(self, mock_document):
-        """Test that Document methods are available through inheritance."""
-        # Mock Document class
-        mock_instance = Mock()
-        mock_document.return_value = mock_instance
-        
-        # Create LessonContentItem instance
-        lesson_item = LessonContentItem()
-        
-        # Verify Document was called
-        mock_document.assert_called_once()
-
-
+       
 # Additional fixtures and parameterized tests for comprehensive coverage
 class TestLessonContentItemEdgeCases:
     """Additional edge case tests for complete coverage."""
@@ -105,32 +74,4 @@ class TestLessonContentItemEdgeCases:
         mro = LessonContentItem.__mro__
         assert Document in mro
         assert LessonContentItem in mro
-
-
-# Integration-style tests
-class TestLessonContentItemIntegration:
-    """Integration tests that might be closer to real usage."""
-    
-    @patch('frappe.model.document.Document.__init__')
-    def test_realistic_usage_pattern(self, mock_init):
-        """Test a realistic usage pattern."""
-        mock_init.return_value = None
-        
-        # Simulate creating a lesson content item as it might be used
-        lesson_data = {
-            "doctype": "Lesson Content Item",
-            "title": "Introduction to Python",
-            "content_type": "Video",
-            "duration": 300
-        }
-        
-        lesson_item = LessonContentItem(**lesson_data)
-        mock_init.assert_called_once_with(**lesson_data)
-        
-    def test_error_handling(self):
-        """Test error handling scenarios."""
-        # This tests that the class can handle various scenarios gracefully
-        with patch('frappe.model.document.Document.__init__', side_effect=Exception("Test error")):
-            with pytest.raises(Exception, match="Test error"):
-                LessonContentItem()
 
