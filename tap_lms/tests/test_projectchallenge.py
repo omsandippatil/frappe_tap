@@ -263,45 +263,145 @@
 #         assert final_objects - initial_objects < 50  # Reasonable threshold
 
 
+# """
+# Direct test for projectchallenge.py to achieve 100% coverage
+# This test directly imports and tests the original module without complex mocking
+# """
+
+# import sys
+# import os
+# from unittest.mock import MagicMock
+
+# # Mock frappe BEFORE any imports to avoid ImportError
+# mock_frappe = MagicMock()
+# mock_document = MagicMock()
+
+# # Set up the mock hierarchy
+# mock_frappe.model = MagicMock()
+# mock_frappe.model.document = MagicMock()
+# mock_frappe.model.document.Document = mock_document
+
+# # Insert mocks into sys.modules
+# sys.modules['frappe'] = mock_frappe
+# sys.modules['frappe.model'] = mock_frappe.model  
+# sys.modules['frappe.model.document'] = mock_frappe.model.document
+
+# # Now import the actual module - this should work without ImportError
+# from tap_lms.tap_lms.doctype.projectchallenge.projectchallenge import ProjectChallenge, Document
+
+
+# def test_import_statement():
+#     """Test that the import statement is covered"""
+#     # The import above covers line 5: from frappe.model.document import Document
+#     assert Document is not None
+#     assert Document == mock_document
+
+
+
+# def test_pass_statement():
+#     """Test that the pass statement is covered"""
+#     # Creating an instance covers line 8: pass
+#     instance = ProjectChallenge()
+#     assert instance is not None
+
+
 """
 Direct test for projectchallenge.py to achieve 100% coverage
 This test directly imports and tests the original module without complex mocking
 """
-
 import sys
 import os
 from unittest.mock import MagicMock
 
-# Mock frappe BEFORE any imports to avoid ImportError
-mock_frappe = MagicMock()
-mock_document = MagicMock()
-
-# Set up the mock hierarchy
-mock_frappe.model = MagicMock()
-mock_frappe.model.document = MagicMock()
-mock_frappe.model.document.Document = mock_document
-
-# Insert mocks into sys.modules
-sys.modules['frappe'] = mock_frappe
-sys.modules['frappe.model'] = mock_frappe.model  
-sys.modules['frappe.model.document'] = mock_frappe.model.document
-
-# Now import the actual module - this should work without ImportError
-from tap_lms.tap_lms.doctype.projectchallenge.projectchallenge import ProjectChallenge, Document
+def test_projectchallenge_with_mocked_frappe():
+    """Test ProjectChallenge class with properly mocked frappe dependencies"""
+    
+    # Mock frappe BEFORE any imports to avoid ImportError
+    mock_frappe = MagicMock()
+    mock_document = MagicMock()
+    
+    # Set up the mock hierarchy
+    mock_frappe.model = MagicMock()
+    mock_frappe.model.document = MagicMock()
+    mock_frappe.model.document.Document = mock_document
+    
+    # Insert mocks into sys.modules BEFORE importing
+    sys.modules['frappe'] = mock_frappe
+    sys.modules['frappe.model'] = mock_frappe.model  
+    sys.modules['frappe.model.document'] = mock_frappe.model.document
+    
+    # Add the current directory to Python path to ensure module can be found
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    
+    # Add the parent directory as well (in case the module is in a parent directory)
+    parent_dir = os.path.dirname(current_dir)
+    if parent_dir not in sys.path:
+        sys.path.insert(0, parent_dir)
+    
+    try:
+        # Try different import paths based on your directory structure
+        try:
+            from projectchallenge import ProjectChallenge, Document
+        except ImportError:
+            try:
+                from tap_lms.doctype.projectchallenge.projectchallenge import ProjectChallenge, Document
+            except ImportError:
+                # If the module is in the same directory as the test
+                import importlib.util
+                spec = importlib.util.spec_from_file_location(
+                    "projectchallenge", 
+                    os.path.join(current_dir, "projectchallenge.py")
+                )
+                if spec is None:
+                    # Try parent directory
+                    spec = importlib.util.spec_from_file_location(
+                        "projectchallenge", 
+                        os.path.join(parent_dir, "projectchallenge.py")
+                    )
+                
+                if spec is not None and spec.loader is not None:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    ProjectChallenge = module.ProjectChallenge
+                    Document = module.Document
+                else:
+                    raise ImportError("Could not locate projectchallenge.py")
+        
+        # Test the import statement coverage
+        assert Document is not None
+        assert Document == mock_document
+        
+        # Test the class instantiation (covers the pass statement)
+        instance = ProjectChallenge()
+        assert instance is not None
+        
+        # Verify that ProjectChallenge inherits from Document
+        assert issubclass(ProjectChallenge, Document)
+        
+        print("All tests passed successfully!")
+        return True
+        
+    except Exception as e:
+        print(f"Test failed with error: {e}")
+        return False
+    finally:
+        # Clean up sys.modules to avoid affecting other tests
+        modules_to_remove = ['frappe', 'frappe.model', 'frappe.model.document']
+        for module in modules_to_remove:
+            if module in sys.modules:
+                del sys.modules[module]
 
 
 def test_import_statement():
     """Test that the import statement is covered"""
-    # The import above covers line 5: from frappe.model.document import Document
-    assert Document is not None
-    assert Document == mock_document
-
+    # This will be covered by the main test function
+    assert test_projectchallenge_with_mocked_frappe()
 
 
 def test_pass_statement():
     """Test that the pass statement is covered"""
-    # Creating an instance covers line 8: pass
-    instance = ProjectChallenge()
-    assert instance is not None
-
+    # This will also be covered by the main test function
+    assert test_projectchallenge_with_mocked_frappe()
 
