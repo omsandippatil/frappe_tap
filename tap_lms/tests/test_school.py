@@ -379,39 +379,39 @@ def test_school_complete_coverage():
         assert mock_school_utils.generate_unique_keyword.call_count == 3
 
 
-class TestSchoolWithRealImport:
-    """Test class that imports the real school.py file for coverage"""
+# class TestSchoolWithRealImport:
+#     """Test class that imports the real school.py file for coverage"""
     
-    def setup_method(self):
-        """Setup mocks before each test"""
-        self.mock_document = type('Document', (), {})
+#     def setup_method(self):
+#         """Setup mocks before each test"""
+#         self.mock_document = type('Document', (), {})
         
-        self.mock_frappe = MagicMock()
-        self.mock_frappe.model = MagicMock()
-        self.mock_frappe.model.document = MagicMock()
-        self.mock_frappe.model.document.Document = self.mock_document
-        self.mock_frappe.db = MagicMock()
+#         self.mock_frappe = MagicMock()
+#         self.mock_frappe.model = MagicMock()
+#         self.mock_frappe.model.document = MagicMock()
+#         self.mock_frappe.model.document.Document = self.mock_document
+#         self.mock_frappe.db = MagicMock()
         
-        self.mock_school_utils = MagicMock()
+#         self.mock_school_utils = MagicMock()
         
-        # Patch sys.modules
-        self.modules_patcher = patch.dict('sys.modules', {
-            'frappe': self.mock_frappe,
-            'frappe.model': self.mock_frappe.model,
-            'frappe.model.document': self.mock_frappe.model.document,
-            'tap_lms': MagicMock(),
-            'tap_lms.school_utils': self.mock_school_utils
-        })
-        self.modules_patcher.start()
+#         # Patch sys.modules
+#         self.modules_patcher = patch.dict('sys.modules', {
+#             'frappe': self.mock_frappe,
+#             'frappe.model': self.mock_frappe.model,
+#             'frappe.model.document': self.mock_frappe.model.document,
+#             'tap_lms': MagicMock(),
+#             'tap_lms.school_utils': self.mock_school_utils
+#         })
+#         self.modules_patcher.start()
     
-    def teardown_method(self):
-        """Cleanup after each test"""
-        self.modules_patcher.stop()
+#     def teardown_method(self):
+#         """Cleanup after each test"""
+#         self.modules_patcher.stop()
         
-        # Remove the imported school module so it can be re-imported fresh
-        module_to_remove = 'tap_lms.tap_lms.doctype.school.school'
-        if module_to_remove in sys.modules:
-            del sys.modules[module_to_remove]
+#         # Remove the imported school module so it can be re-imported fresh
+#         module_to_remove = 'tap_lms.tap_lms.doctype.school.school'
+#         if module_to_remove in sys.modules:
+#             del sys.modules[module_to_remove]
     
     # def test_import_and_class_creation(self):
     #     """Test importing the module and creating School class - covers lines 1-6"""
