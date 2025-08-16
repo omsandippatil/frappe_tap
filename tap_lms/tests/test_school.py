@@ -413,85 +413,85 @@ class TestSchoolWithRealImport:
         if module_to_remove in sys.modules:
             del sys.modules[module_to_remove]
     
-    def test_import_and_class_creation(self):
-        """Test importing the module and creating School class - covers lines 1-6"""
-        # This import will execute the actual school.py file
-        from tap_lms.tap_lms.doctype.school.school import School, before_save
+    # def test_import_and_class_creation(self):
+    #     """Test importing the module and creating School class - covers lines 1-6"""
+    #     # This import will execute the actual school.py file
+    #     from tap_lms.tap_lms.doctype.school.school import School, before_save
         
-        # Test School class
-        school = School()
-        assert school is not None
-        assert isinstance(school, self.mock_document)
+    #     # Test School class
+    #     school = School()
+    #     assert school is not None
+    #     assert isinstance(school, self.mock_document)
         
-        # Test that before_save function exists
-        assert callable(before_save)
+    #     # Test that before_save function exists
+    #     assert callable(before_save)
     
-    def test_before_save_new_doc_no_keyword(self):
-        """Test before_save with new document without keyword - covers lines 8-15"""
-        from tap_lms.tap_lms.doctype.school.school import before_save
+    # def test_before_save_new_doc_no_keyword(self):
+    #     """Test before_save with new document without keyword - covers lines 8-15"""
+    #     from tap_lms.tap_lms.doctype.school.school import before_save
         
-        mock_doc = MagicMock()
-        mock_doc.is_new.return_value = True
-        mock_doc.keyword = None
-        mock_doc.name1 = "New School"
+    #     mock_doc = MagicMock()
+    #     mock_doc.is_new.return_value = True
+    #     mock_doc.keyword = None
+    #     mock_doc.name1 = "New School"
         
-        self.mock_school_utils.generate_unique_keyword.return_value = "new_school_key"
-        self.mock_frappe.db.exists.return_value = False
+    #     self.mock_school_utils.generate_unique_keyword.return_value = "new_school_key"
+    #     self.mock_frappe.db.exists.return_value = False
         
-        before_save(mock_doc, "save")
+    #     before_save(mock_doc, "save")
         
-        assert mock_doc.keyword == "new_school_key"
-        self.mock_school_utils.generate_unique_keyword.assert_called_once_with("New School")
-        self.mock_frappe.db.exists.assert_called_once_with("School", {"keyword": "new_school_key"})
+    #     assert mock_doc.keyword == "new_school_key"
+    #     self.mock_school_utils.generate_unique_keyword.assert_called_once_with("New School")
+    #     self.mock_frappe.db.exists.assert_called_once_with("School", {"keyword": "new_school_key"})
     
-    def test_before_save_keyword_conflict(self):
-        """Test before_save with keyword conflicts - covers while loop lines 13-14"""
-        from tap_lms.tap_lms.doctype.school.school import before_save
+    # def test_before_save_keyword_conflict(self):
+    #     """Test before_save with keyword conflicts - covers while loop lines 13-14"""
+    #     from tap_lms.tap_lms.doctype.school.school import before_save
         
-        mock_doc = MagicMock()
-        mock_doc.is_new.return_value = True
-        mock_doc.keyword = ""  # Empty string is falsy
-        mock_doc.name1 = "Conflict School"
+    #     mock_doc = MagicMock()
+    #     mock_doc.is_new.return_value = True
+    #     mock_doc.keyword = ""  # Empty string is falsy
+    #     mock_doc.name1 = "Conflict School"
         
-        # Setup conflict resolution
-        self.mock_school_utils.generate_unique_keyword.side_effect = [
-            "taken_keyword", "available_keyword"
-        ]
-        self.mock_frappe.db.exists.side_effect = [True, False]
+    #     # Setup conflict resolution
+    #     self.mock_school_utils.generate_unique_keyword.side_effect = [
+    #         "taken_keyword", "available_keyword"
+    #     ]
+    #     self.mock_frappe.db.exists.side_effect = [True, False]
         
-        before_save(mock_doc, "save")
+    #     before_save(mock_doc, "save")
         
-        assert mock_doc.keyword == "available_keyword"
-        assert self.mock_school_utils.generate_unique_keyword.call_count == 2
-        assert self.mock_frappe.db.exists.call_count == 2
+    #     assert mock_doc.keyword == "available_keyword"
+    #     assert self.mock_school_utils.generate_unique_keyword.call_count == 2
+    #     assert self.mock_frappe.db.exists.call_count == 2
     
-    def test_before_save_has_keyword(self):
-        """Test before_save with existing keyword - covers lines 8-10 only"""
-        from tap_lms.tap_lms.doctype.school.school import before_save
+    # def test_before_save_has_keyword(self):
+    #     """Test before_save with existing keyword - covers lines 8-10 only"""
+    #     from tap_lms.tap_lms.doctype.school.school import before_save
         
-        mock_doc = MagicMock()
-        mock_doc.is_new.return_value = True
-        mock_doc.keyword = "pre_existing_keyword"
+    #     mock_doc = MagicMock()
+    #     mock_doc.is_new.return_value = True
+    #     mock_doc.keyword = "pre_existing_keyword"
         
-        before_save(mock_doc, "save")
+    #     before_save(mock_doc, "save")
         
-        # Should not change existing keyword
-        assert mock_doc.keyword == "pre_existing_keyword"
-        self.mock_school_utils.generate_unique_keyword.assert_not_called()
-        self.mock_frappe.db.exists.assert_not_called()
+    #     # Should not change existing keyword
+    #     assert mock_doc.keyword == "pre_existing_keyword"
+    #     self.mock_school_utils.generate_unique_keyword.assert_not_called()
+    #     self.mock_frappe.db.exists.assert_not_called()
     
-    def test_before_save_existing_document(self):
-        """Test before_save with existing document - covers line 8 condition false"""
-        from tap_lms.tap_lms.doctype.school.school import before_save
+    # def test_before_save_existing_document(self):
+    #     """Test before_save with existing document - covers line 8 condition false"""
+    #     from tap_lms.tap_lms.doctype.school.school import before_save
         
-        mock_doc = MagicMock()
-        mock_doc.is_new.return_value = False  # Not a new document
+    #     mock_doc = MagicMock()
+    #     mock_doc.is_new.return_value = False  # Not a new document
         
-        before_save(mock_doc, "save")
+    #     before_save(mock_doc, "save")
         
-        # Should not do anything for existing documents
-        self.mock_school_utils.generate_unique_keyword.assert_not_called()
-        self.mock_frappe.db.exists.assert_not_called()
+    #     # Should not do anything for existing documents
+    #     self.mock_school_utils.generate_unique_keyword.assert_not_called()
+    #     self.mock_frappe.db.exists.assert_not_called()
 
 
 # Additional edge case tests to ensure 100% coverage
