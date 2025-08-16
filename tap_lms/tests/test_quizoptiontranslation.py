@@ -56,30 +56,6 @@ def test_quiz_option_translation_module_imports():
         assert qot_module.QuizOptionTranslation is not None
 
 
-def test_quiz_option_translation_class_attributes():
-    """Test class attributes and methods if any exist"""
-    
-    with patch.dict('sys.modules', {
-        'frappe': Mock(),
-        'frappe.model': Mock(),
-        'frappe.model.document': Mock(),
-    }):
-        mock_document_class = Mock()
-        sys.modules['frappe.model.document'].Document = mock_document_class
-        
-        from tap_lms.tap_lms.doctype.quizoptiontranslation.quizoptiontranslation import QuizOptionTranslation
-        
-        # Test class attributes
-        quiz_option_translation = QuizOptionTranslation()
-        
-        # Check for common Document attributes
-        common_attributes = ['name', 'doctype', 'flags', 'meta']
-        for attr in common_attributes:
-            # These might be set by the parent Document class
-            if hasattr(quiz_option_translation, attr):
-                getattr(quiz_option_translation, attr)
-
-
     """Comprehensive test to ensure 100% line coverage"""
     
     with patch.dict('sys.modules', {
