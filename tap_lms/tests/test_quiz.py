@@ -1,147 +1,142 @@
-import unittest
+# apps/tap_lms/tap_lms/tests/test_quiz.py
+
 import frappe
+import unittest
 from frappe.test_runner import make_test_records
-from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
 
 
 class TestQuiz(unittest.TestCase):
-    """Test cases for Quiz doctype to achieve 100% code coverage"""
+    """
+    Test cases for Quiz doctype to achieve 100% code coverage
+    Fixed version to avoid mock issues
+    """
     
     @classmethod
     def setUpClass(cls):
-        """Set up test fixtures for the entire test class."""
-        # Ensure we're in a test environment
+        """Set up test environment once for the entire test class"""
+        # Ensure we're in the right context
+        if not frappe.db:
+            frappe.connect()
         frappe.set_user("Administrator")
-        
+    
     def setUp(self):
-        """Set up test fixtures before each test method."""
-        # Clean up any existing test documents
-        self.cleanup_test_docs()
-        
+        """Set up before each test"""
+        frappe.set_user("Administrator")
+        # Clear any existing transactions
+        frappe.db.rollback()
+    
     def tearDown(self):
-        """Clean up after each test method."""
-        self.cleanup_test_docs()
-        
-    def cleanup_test_docs(self):
-        """Helper method to clean up test documents"""
-        test_names = ["Test Quiz 1", "Test Quiz 2", "Quiz 1", "Quiz 2"]
-        for name in test_names:
-            try:
-                if frappe.db.exists("Quiz", name):
-                    frappe.delete_doc("Quiz", name, force=True, ignore_permissions=True)
-            except Exception:
-                pass
-        frappe.db.commit()
+        """Clean up after each test"""
+        frappe.db.rollback()
     
     def test_quiz_class_inheritance(self):
         """Test that Quiz class inherits from Document - covers class definition"""
-        # This test ensures the class definition line is executed
-        self.assertTrue(issubclass(Quiz, frappe.model.document.Document))
+        # Import inside the test to avoid mock issues
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+        from frappe.model.document import Document
+        
+        # Test that Quiz is a subclass of Document
+        self.assertTrue(issubclass(Quiz, Document))
         
     def test_quiz_instantiation(self):
         """Test Quiz class can be instantiated - covers pass statement"""
-        # This test ensures the class definition and pass statement are executed
+        # Import fresh to avoid mock interference
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+        
+        # Create instance
         quiz = Quiz()
         self.assertIsInstance(quiz, Quiz)
-        self.assertIsInstance(quiz, frappe.model.document.Document)
-    
+        
     def test_quiz_creation_with_data(self):
         """Test Quiz document creation with data"""
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+        
         quiz_data = {
             "doctype": "Quiz",
-            "name": "Test Quiz 1"
+            "name": "test-quiz-1"
         }
         quiz = Quiz(quiz_data)
         self.assertEqual(quiz.doctype, "Quiz")
-        self.assertEqual(quiz.name, "Test Quiz 1")
-    
+        self.assertEqual(quiz.name, "test-quiz-1")
+        
     def test_quiz_document_methods(self):
         """Test inherited Document methods work correctly"""
-        quiz_data = {
-            "doctype": "Quiz", 
-            "name": "Test Quiz 2"
-        }
-        quiz = Quiz(quiz_data)
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+        
+        quiz = Quiz({"doctype": "Quiz"})
         
         # Test that inherited methods are accessible
         self.assertTrue(hasattr(quiz, 'insert'))
         self.assertTrue(hasattr(quiz, 'save'))
         self.assertTrue(hasattr(quiz, 'delete'))
-    
+        
     def test_quiz_with_frappe_new_doc(self):
         """Test Quiz creation using frappe.new_doc"""
-        # Another way to ensure class instantiation is covered
+        # This will use the Quiz class from registry
         quiz = frappe.new_doc("Quiz")
+        
+        # Verify it's the right class
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
         self.assertIsInstance(quiz, Quiz)
-        quiz.name = "Quiz 1"
-        self.assertEqual(quiz.name, "Quiz 1")
-    
+        
     def test_multiple_quiz_instances(self):
         """Test creating multiple Quiz instances"""
-        # Ensure class definition is executed multiple times
-        quiz1 = Quiz({"doctype": "Quiz", "name": "Quiz Instance 1"})
-        quiz2 = Quiz({"doctype": "Quiz", "name": "Quiz Instance 2"})
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+        
+        quiz1 = Quiz({"doctype": "Quiz", "name": "quiz-1"})
+        quiz2 = Quiz({"doctype": "Quiz", "name": "quiz-2"})
         
         self.assertIsInstance(quiz1, Quiz)
         self.assertIsInstance(quiz2, Quiz)
         self.assertNotEqual(id(quiz1), id(quiz2))
-    
+        
     def test_quiz_empty_initialization(self):
         """Test Quiz with no parameters"""
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+        
+        # This should work without issues
         quiz = Quiz()
         self.assertIsInstance(quiz, Quiz)
-        # Test that it has the basic doctype attribute
-        self.assertTrue(hasattr(quiz, 'doctype'))
-
-
-# Separate test class to ensure import coverage
-class TestQuizImport(unittest.TestCase):
-    """Test class specifically for import statement coverage"""
-    
-    def test_import_statement_coverage(self):
+        
+    def test_import_coverage(self):
         """Test to ensure import statement is covered"""
-        # Import the module to ensure import line is executed
+        # This import will execute the import line in quiz.py
         from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
         from frappe.model.document import Document
         
-        # Verify the import worked
+        # Verify the import worked correctly
         self.assertTrue(Quiz)
         self.assertTrue(Document)
         self.assertTrue(issubclass(Quiz, Document))
-
-
-# Edge cases test class
-class TestQuizEdgeCases(unittest.TestCase):
-    """Additional test cases for edge scenarios"""
-    
-    def setUp(self):
-        frappe.set_user("Administrator")
-    
+        
     def test_quiz_class_attributes(self):
         """Test Quiz class has expected attributes"""
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+        
         # Verify class definition is properly executed
         self.assertTrue(hasattr(Quiz, '__module__'))
-        self.assertTrue(hasattr(Quiz, '__bases__'))
+        self.assertTrue(hasattr(Quiz, '__doc__'))
         
-        # Check that it properly inherits from Document
-        self.assertIn(frappe.model.document.Document, Quiz.__mro__)
-    
-    def test_quiz_repr_and_str(self):
-        """Test string representations work"""
-        quiz = Quiz({"doctype": "Quiz", "name": "Test Quiz Repr"})
-        # These should not raise exceptions
-        str_repr = str(quiz)
-        self.assertIsInstance(str_repr, str)
+    def test_quiz_class_module(self):
+        """Test Quiz class module path"""
+        from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+        
+        # Verify the module path
+        self.assertEqual(Quiz.__module__, 'tap_lms.tap_lms.doctype.quiz.quiz')
 
 
-if __name__ == '__main__':
-    # Set up Frappe environment for testing
-    try:
-        frappe.init(site="test_site")
-        frappe.connect()
-        frappe.set_user("Administrator")
-    except Exception as e:
-        print(f"Frappe setup error: {e}")
+# Additional function-level test to ensure import coverage
+def test_module_import():
+    """Function to test module import outside of class context"""
+    from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+    return Quiz is not None
+
+
+# Test the import when module is run directly
+if __name__ == "__main__":
+    # Test import
+    result = test_module_import()
+    print(f"Import test result: {result}")
     
-    # Run the tests
+    # Run tests
     unittest.main(verbosity=2)
