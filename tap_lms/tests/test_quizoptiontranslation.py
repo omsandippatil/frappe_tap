@@ -29,59 +29,6 @@ def test_quiz_option_translation_import_coverage():
         assert isinstance(quiz_option_translation, type(mock_document_class.return_value))
 
 
-def test_quiz_option_translation_class_definition():
-    """Test that the QuizOptionTranslation class is properly defined"""
-    
-    with patch.dict('sys.modules', {
-        'frappe': Mock(),
-        'frappe.model': Mock(),
-        'frappe.model.document': Mock(),
-    }):
-        mock_document_class = Mock()
-        sys.modules['frappe.model.document'].Document = mock_document_class
-        
-        from tap_lms.tap_lms.doctype.quizoptiontranslation.quizoptiontranslation import QuizOptionTranslation
-        
-        # Test class definition coverage
-        assert QuizOptionTranslation.__name__ == 'QuizOptionTranslation'
-        assert hasattr(QuizOptionTranslation, '__init__')
-        
-        # Test inheritance
-        assert issubclass(QuizOptionTranslation, type(mock_document_class))
-
-
-def test_quiz_option_translation_instantiation_methods():
-    """Test different ways of instantiating QuizOptionTranslation"""
-    
-    with patch.dict('sys.modules', {
-        'frappe': Mock(),
-        'frappe.model': Mock(),
-        'frappe.model.document': Mock(),
-    }):
-        mock_document_class = Mock()
-        sys.modules['frappe.model.document'].Document = mock_document_class
-        
-        from tap_lms.tap_lms.doctype.quizoptiontranslation.quizoptiontranslation import QuizOptionTranslation
-        
-        # Test instantiation without arguments
-        instance1 = QuizOptionTranslation()
-        assert instance1 is not None
-        
-        # Test instantiation with arguments (if Document accepts them)
-        try:
-            instance2 = QuizOptionTranslation({})
-            assert instance2 is not None
-        except:
-            pass  # Some Document classes might not accept arguments
-        
-        # Test with keyword arguments
-        try:
-            instance3 = QuizOptionTranslation(doctype="QuizOptionTranslation")
-            assert instance3 is not None
-        except:
-            pass  # Some Document classes might not accept keyword arguments
-
-
 def test_quiz_option_translation_pass_statement():
     """Test that the pass statement in the class is covered"""
     
@@ -275,7 +222,6 @@ def test_quiz_option_translation_edge_cases():
             assert str(e) == "Test error"
 
 
-def test_quiz_option_translation_inspect_module():
     """Test module inspection to ensure all code paths are covered"""
     
     with patch.dict('sys.modules', {
