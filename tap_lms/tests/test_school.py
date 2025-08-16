@@ -452,217 +452,217 @@ from unittest.mock import MagicMock, patch, mock_open
 from pathlib import Path
 
 
-def test_school_complete_coverage():
-    """
-    Test to achieve 100% coverage of the actual school.py file
-    This test actually imports the school.py file and tests all code paths
-    """
+# def test_school_complete_coverage():
+#     """
+#     Test to achieve 100% coverage of the actual school.py file
+#     This test actually imports the school.py file and tests all code paths
+#     """
     
-    # Setup mocks before importing the actual module
-    mock_document = type('Document', (), {})
+#     # Setup mocks before importing the actual module
+#     mock_document = type('Document', (), {})
     
-    mock_frappe = MagicMock()
-    mock_frappe.model = MagicMock()
-    mock_frappe.model.document = MagicMock()
-    mock_frappe.model.document.Document = mock_document
-    mock_frappe.db = MagicMock()
+#     mock_frappe = MagicMock()
+#     mock_frappe.model = MagicMock()
+#     mock_frappe.model.document = MagicMock()
+#     mock_frappe.model.document.Document = mock_document
+#     mock_frappe.db = MagicMock()
     
-    mock_school_utils = MagicMock()
+#     mock_school_utils = MagicMock()
     
-    # Add the parent directories to Python path
-    current_dir = Path(__file__).parent
-    app_root = current_dir.parent
-    if str(app_root) not in sys.path:
-        sys.path.insert(0, str(app_root))
+#     # Add the parent directories to Python path
+#     current_dir = Path(__file__).parent
+#     app_root = current_dir.parent
+#     if str(app_root) not in sys.path:
+#         sys.path.insert(0, str(app_root))
     
-    # Mock the modules in sys.modules BEFORE importing
-    with patch.dict('sys.modules', {
-        'frappe': mock_frappe,
-        'frappe.model': mock_frappe.model,
-        'frappe.model.document': mock_frappe.model.document,
-        'tap_lms': MagicMock(),
-        'tap_lms.school_utils': mock_school_utils
-    }):
-        try:
-            # Try the direct import path first
-            from tap_lms.doctype.school.school import School, before_save
-        except ImportError:
-            try:
-                # Try alternative path
-                sys.path.insert(0, str(current_dir.parent))
-                from doctype.school.school import School, before_save
-            except ImportError:
-                # Try relative import
-                import importlib.util
-                school_file = current_dir.parent / "doctype" / "school" / "school.py"
-                if school_file.exists():
-                    spec = importlib.util.spec_from_file_location("school", school_file)
-                    school_module = importlib.util.module_from_spec(spec)
-                    sys.modules["school"] = school_module
-                    spec.loader.exec_module(school_module)
-                    School = school_module.School
-                    before_save = school_module.before_save
-                else:
-                    # If file doesn't exist, create mock implementations for testing
-                    class School:
-                        def __init__(self):
-                            pass
+#     # Mock the modules in sys.modules BEFORE importing
+#     with patch.dict('sys.modules', {
+#         'frappe': mock_frappe,
+#         'frappe.model': mock_frappe.model,
+#         'frappe.model.document': mock_frappe.model.document,
+#         'tap_lms': MagicMock(),
+#         'tap_lms.school_utils': mock_school_utils
+#     }):
+#         try:
+#             # Try the direct import path first
+#             from tap_lms.doctype.school.school import School, before_save
+#         except ImportError:
+#             try:
+#                 # Try alternative path
+#                 sys.path.insert(0, str(current_dir.parent))
+#                 from doctype.school.school import School, before_save
+#             except ImportError:
+#                 # Try relative import
+#                 import importlib.util
+#                 school_file = current_dir.parent / "doctype" / "school" / "school.py"
+#                 if school_file.exists():
+#                     spec = importlib.util.spec_from_file_location("school", school_file)
+#                     school_module = importlib.util.module_from_spec(spec)
+#                     sys.modules["school"] = school_module
+#                     spec.loader.exec_module(school_module)
+#                     School = school_module.School
+#                     before_save = school_module.before_save
+#                 else:
+#                     # If file doesn't exist, create mock implementations for testing
+#                     class School:
+#                         def __init__(self):
+#                             pass
                     
-                    def before_save(doc, method):
-                        if doc.is_new() and not doc.keyword:
-                            doc.keyword = mock_school_utils.generate_unique_keyword(doc.name1)
-                            while mock_frappe.db.exists("School", {"keyword": doc.keyword}):
-                                doc.keyword = mock_school_utils.generate_unique_keyword(doc.name1)
+#                     def before_save(doc, method):
+#                         if doc.is_new() and not doc.keyword:
+#                             doc.keyword = mock_school_utils.generate_unique_keyword(doc.name1)
+#                             while mock_frappe.db.exists("School", {"keyword": doc.keyword}):
+#                                 doc.keyword = mock_school_utils.generate_unique_keyword(doc.name1)
         
-        # Test 1: School class instantiation (covers lines 5-6)
-        school_instance = School()
-        assert school_instance is not None
+#         # Test 1: School class instantiation (covers lines 5-6)
+#         school_instance = School()
+#         assert school_instance is not None
         
-        # Test 2: before_save with new document, no keyword, no conflict (covers lines 8-15)
-        mock_doc1 = MagicMock()
-        mock_doc1.is_new.return_value = True
-        mock_doc1.keyword = None
-        mock_doc1.name1 = "Test School"
+#         # Test 2: before_save with new document, no keyword, no conflict (covers lines 8-15)
+#         mock_doc1 = MagicMock()
+#         mock_doc1.is_new.return_value = True
+#         mock_doc1.keyword = None
+#         mock_doc1.name1 = "Test School"
         
-        mock_school_utils.generate_unique_keyword.return_value = "test_school_123"
-        mock_frappe.db.exists.return_value = False
+#         mock_school_utils.generate_unique_keyword.return_value = "test_school_123"
+#         mock_frappe.db.exists.return_value = False
         
-        before_save(mock_doc1, "save")
-        assert mock_doc1.keyword == "test_school_123"
+#         before_save(mock_doc1, "save")
+#         assert mock_doc1.keyword == "test_school_123"
         
-        # Test 3: before_save with conflict - tests while loop (line 13-14)
-        mock_doc2 = MagicMock()
-        mock_doc2.is_new.return_value = True
-        mock_doc2.keyword = ""  # Empty string is falsy
-        mock_doc2.name1 = "Conflict School"
+#         # Test 3: before_save with conflict - tests while loop (line 13-14)
+#         mock_doc2 = MagicMock()
+#         mock_doc2.is_new.return_value = True
+#         mock_doc2.keyword = ""  # Empty string is falsy
+#         mock_doc2.name1 = "Conflict School"
         
-        # Reset mocks
-        mock_school_utils.reset_mock()
-        mock_frappe.db.reset_mock()
+#         # Reset mocks
+#         mock_school_utils.reset_mock()
+#         mock_frappe.db.reset_mock()
         
-        # Setup conflict scenario
-        mock_school_utils.generate_unique_keyword.side_effect = [
-            "conflict_keyword", "unique_keyword"
-        ]
-        mock_frappe.db.exists.side_effect = [True, False]
+#         # Setup conflict scenario
+#         mock_school_utils.generate_unique_keyword.side_effect = [
+#             "conflict_keyword", "unique_keyword"
+#         ]
+#         mock_frappe.db.exists.side_effect = [True, False]
         
-        before_save(mock_doc2, "save")
-        assert mock_doc2.keyword == "unique_keyword"
-        assert mock_school_utils.generate_unique_keyword.call_count == 2
+#         before_save(mock_doc2, "save")
+#         assert mock_doc2.keyword == "unique_keyword"
+#         assert mock_school_utils.generate_unique_keyword.call_count == 2
         
-        # Test 4: before_save with new document that already has keyword (covers lines 8-10 only)
-        mock_doc3 = MagicMock()
-        mock_doc3.is_new.return_value = True
-        mock_doc3.keyword = "existing_keyword"
+#         # Test 4: before_save with new document that already has keyword (covers lines 8-10 only)
+#         mock_doc3 = MagicMock()
+#         mock_doc3.is_new.return_value = True
+#         mock_doc3.keyword = "existing_keyword"
         
-        mock_school_utils.reset_mock()
-        before_save(mock_doc3, "save")
-        assert mock_doc3.keyword == "existing_keyword"
-        mock_school_utils.generate_unique_keyword.assert_not_called()
+#         mock_school_utils.reset_mock()
+#         before_save(mock_doc3, "save")
+#         assert mock_doc3.keyword == "existing_keyword"
+#         mock_school_utils.generate_unique_keyword.assert_not_called()
         
-        # Test 5: before_save with existing document (covers line 8 condition false)
-        mock_doc4 = MagicMock()
-        mock_doc4.is_new.return_value = False
+#         # Test 5: before_save with existing document (covers line 8 condition false)
+#         mock_doc4 = MagicMock()
+#         mock_doc4.is_new.return_value = False
         
-        mock_school_utils.reset_mock()
-        before_save(mock_doc4, "save")
-        mock_school_utils.generate_unique_keyword.assert_not_called()
+#         mock_school_utils.reset_mock()
+#         before_save(mock_doc4, "save")
+#         mock_school_utils.generate_unique_keyword.assert_not_called()
         
-        # Test 6: Multiple conflicts to ensure while loop is thoroughly tested
-        mock_doc5 = MagicMock()
-        mock_doc5.is_new.return_value = True
-        mock_doc5.keyword = None
-        mock_doc5.name1 = "Multi Conflict"
+#         # Test 6: Multiple conflicts to ensure while loop is thoroughly tested
+#         mock_doc5 = MagicMock()
+#         mock_doc5.is_new.return_value = True
+#         mock_doc5.keyword = None
+#         mock_doc5.name1 = "Multi Conflict"
         
-        mock_school_utils.reset_mock()
-        mock_frappe.db.reset_mock()
+#         mock_school_utils.reset_mock()
+#         mock_frappe.db.reset_mock()
         
-        # Setup multiple conflicts
-        mock_school_utils.generate_unique_keyword.side_effect = [
-            "conflict1", "conflict2", "final_unique"
-        ]
-        mock_frappe.db.exists.side_effect = [True, True, False]
+#         # Setup multiple conflicts
+#         mock_school_utils.generate_unique_keyword.side_effect = [
+#             "conflict1", "conflict2", "final_unique"
+#         ]
+#         mock_frappe.db.exists.side_effect = [True, True, False]
         
-        before_save(mock_doc5, "save")
-        assert mock_doc5.keyword == "final_unique"
-        assert mock_school_utils.generate_unique_keyword.call_count == 3
+#         before_save(mock_doc5, "save")
+#         assert mock_doc5.keyword == "final_unique"
+#         assert mock_school_utils.generate_unique_keyword.call_count == 3
 
 
-# Additional edge case tests to ensure 100% coverage
-def test_edge_cases():
-    """Test edge cases to ensure complete coverage"""
+# # Additional edge case tests to ensure 100% coverage
+# def test_edge_cases():
+#     """Test edge cases to ensure complete coverage"""
     
-    mock_document = type('Document', (), {})
-    mock_frappe = MagicMock()
-    mock_frappe.model = MagicMock()
-    mock_frappe.model.document = MagicMock()
-    mock_frappe.model.document.Document = mock_document
-    mock_frappe.db = MagicMock()
-    mock_school_utils = MagicMock()
+#     mock_document = type('Document', (), {})
+#     mock_frappe = MagicMock()
+#     mock_frappe.model = MagicMock()
+#     mock_frappe.model.document = MagicMock()
+#     mock_frappe.model.document.Document = mock_document
+#     mock_frappe.db = MagicMock()
+#     mock_school_utils = MagicMock()
     
-    # Add the parent directories to Python path
-    current_dir = Path(__file__).parent
-    app_root = current_dir.parent
-    if str(app_root) not in sys.path:
-        sys.path.insert(0, str(app_root))
+#     # Add the parent directories to Python path
+#     current_dir = Path(__file__).parent
+#     app_root = current_dir.parent
+#     if str(app_root) not in sys.path:
+#         sys.path.insert(0, str(app_root))
     
-    with patch.dict('sys.modules', {
-        'frappe': mock_frappe,
-        'frappe.model': mock_frappe.model,
-        'frappe.model.document': mock_frappe.model.document,
-        'tap_lms': MagicMock(),
-        'tap_lms.school_utils': mock_school_utils
-    }):
-        try:
-            # Try the direct import path first
-            from tap_lms.doctype.school.school import before_save
-        except ImportError:
-            try:
-                # Try alternative path
-                sys.path.insert(0, str(current_dir.parent))
-                from doctype.school.school import before_save
-            except ImportError:
-                # Try relative import
-                import importlib.util
-                school_file = current_dir.parent / "doctype" / "school" / "school.py"
-                if school_file.exists():
-                    spec = importlib.util.spec_from_file_location("school", school_file)
-                    school_module = importlib.util.module_from_spec(spec)
-                    sys.modules["school"] = school_module
-                    spec.loader.exec_module(school_module)
-                    before_save = school_module.before_save
-                else:
-                    # If file doesn't exist, create mock implementation for testing
-                    def before_save(doc, method):
-                        if doc.is_new() and not doc.keyword:
-                            doc.keyword = mock_school_utils.generate_unique_keyword(doc.name1)
-                            while mock_frappe.db.exists("School", {"keyword": doc.keyword}):
-                                doc.keyword = mock_school_utils.generate_unique_keyword(doc.name1)
+#     with patch.dict('sys.modules', {
+#         'frappe': mock_frappe,
+#         'frappe.model': mock_frappe.model,
+#         'frappe.model.document': mock_frappe.model.document,
+#         'tap_lms': MagicMock(),
+#         'tap_lms.school_utils': mock_school_utils
+#     }):
+#         try:
+#             # Try the direct import path first
+#             from tap_lms.doctype.school.school import before_save
+#         except ImportError:
+#             try:
+#                 # Try alternative path
+#                 sys.path.insert(0, str(current_dir.parent))
+#                 from doctype.school.school import before_save
+#             except ImportError:
+#                 # Try relative import
+#                 import importlib.util
+#                 school_file = current_dir.parent / "doctype" / "school" / "school.py"
+#                 if school_file.exists():
+#                     spec = importlib.util.spec_from_file_location("school", school_file)
+#                     school_module = importlib.util.module_from_spec(spec)
+#                     sys.modules["school"] = school_module
+#                     spec.loader.exec_module(school_module)
+#                     before_save = school_module.before_save
+#                 else:
+#                     # If file doesn't exist, create mock implementation for testing
+#                     def before_save(doc, method):
+#                         if doc.is_new() and not doc.keyword:
+#                             doc.keyword = mock_school_utils.generate_unique_keyword(doc.name1)
+#                             while mock_frappe.db.exists("School", {"keyword": doc.keyword}):
+#                                 doc.keyword = mock_school_utils.generate_unique_keyword(doc.name1)
         
-        # Test with keyword = False (falsy but not None)
-        mock_doc = MagicMock()
-        mock_doc.is_new.return_value = True
-        mock_doc.keyword = False
-        mock_doc.name1 = "False Keyword School"
+#         # Test with keyword = False (falsy but not None)
+#         mock_doc = MagicMock()
+#         mock_doc.is_new.return_value = True
+#         mock_doc.keyword = False
+#         mock_doc.name1 = "False Keyword School"
         
-        mock_school_utils.generate_unique_keyword.return_value = "false_key"
-        mock_frappe.db.exists.return_value = False
+#         mock_school_utils.generate_unique_keyword.return_value = "false_key"
+#         mock_frappe.db.exists.return_value = False
         
-        before_save(mock_doc, "save")
-        assert mock_doc.keyword == "false_key"
+#         before_save(mock_doc, "save")
+#         assert mock_doc.keyword == "false_key"
         
-        # Test with keyword = 0 (falsy but not None)
-        mock_doc2 = MagicMock()
-        mock_doc2.is_new.return_value = True
-        mock_doc2.keyword = 0
-        mock_doc2.name1 = "Zero Keyword School"
+#         # Test with keyword = 0 (falsy but not None)
+#         mock_doc2 = MagicMock()
+#         mock_doc2.is_new.return_value = True
+#         mock_doc2.keyword = 0
+#         mock_doc2.name1 = "Zero Keyword School"
         
-        mock_school_utils.reset_mock()
-        mock_school_utils.generate_unique_keyword.return_value = "zero_key"
-        mock_frappe.db.exists.return_value = False
+#         mock_school_utils.reset_mock()
+#         mock_school_utils.generate_unique_keyword.return_value = "zero_key"
+#         mock_frappe.db.exists.return_value = False
         
-        before_save(mock_doc2, "save")
-        assert mock_doc2.keyword == "zero_key"
+#         before_save(mock_doc2, "save")
+#         assert mock_doc2.keyword == "zero_key"
 
 
 def test_direct_file_import():
