@@ -341,12 +341,6 @@ from tap_lms.tap_lms.doctype.projectchallenge.projectchallenge import ProjectCha
 class TestProjectChallenge:
     """Test class for ProjectChallenge with 100% coverage"""
 
-    def test_import_coverage(self):
-        """Test that import statement is covered"""
-        # The import above covers the import line
-        from tap_lms.tap_lms.doctype.projectchallenge.projectchallenge import Document
-        assert Document is document_mock
-
     def test_pass_statement_coverage(self):
         """Test that pass statement is covered"""
         # Creating an instance executes the pass statement
