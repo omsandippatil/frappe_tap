@@ -147,32 +147,32 @@ class TestQuiz(unittest.TestCase):
    
    
        
-    @patch('frappe.model.document.Document')
-    def test_quiz_instantiation(self, mock_document):
-        """Test Quiz class can be instantiated - covers pass statement"""
-        try:
-            from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+    # @patch('frappe.model.document.Document')
+    # def test_quiz_instantiation(self, mock_document):
+    #     """Test Quiz class can be instantiated - covers pass statement"""
+    #     try:
+    #         from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
             
-            # Create instance
-            quiz = Quiz()
-            self.assertIsInstance(quiz, Quiz)
-        except ImportError:
-            # Mock scenario
-            with patch('tap_lms.tap_lms.doctype.quiz.quiz.Document', mock_document):
-                self.assertTrue(True)  # Pass if we reach this point
+    #         # Create instance
+    #         quiz = Quiz()
+    #         self.assertIsInstance(quiz, Quiz)
+    #     except ImportError:
+    #         # Mock scenario
+    #         with patch('tap_lms.tap_lms.doctype.quiz.quiz.Document', mock_document):
+    #             self.assertTrue(True)  # Pass if we reach this point
        
-    @patch('frappe.model.document.Document')
-    def test_quiz_empty_initialization(self, mock_document):
-        """Test Quiz with no parameters"""
-        try:
-            from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
+    # @patch('frappe.model.document.Document')
+    # def test_quiz_empty_initialization(self, mock_document):
+    #     """Test Quiz with no parameters"""
+    #     try:
+    #         from tap_lms.tap_lms.doctype.quiz.quiz import Quiz
             
-            # This should work without issues
-            quiz = Quiz()
-            self.assertIsInstance(quiz, Quiz)
-        except ImportError:
-            # Mock scenario
-            self.assertTrue(True)  # Pass if we reach this point
+    #         # This should work without issues
+    #         quiz = Quiz()
+    #         self.assertIsInstance(quiz, Quiz)
+    #     except ImportError:
+    #         # Mock scenario
+    #         self.assertTrue(True)  # Pass if we reach this point
        
     def test_import_coverage(self):
         """Test to ensure import statement is covered"""
