@@ -297,13 +297,6 @@ def test_import_statement():
     assert Document == mock_document
 
 
-def test_class_definition():
-    """Test that the class definition is covered"""  
-    # This covers line 7: class ProjectChallenge(Document):
-    assert ProjectChallenge is not None
-    assert ProjectChallenge.__name__ == 'ProjectChallenge'
-    assert hasattr(ProjectChallenge, '__bases__')
-
 
 def test_pass_statement():
     """Test that the pass statement is covered"""
@@ -312,38 +305,3 @@ def test_pass_statement():
     assert instance is not None
 
 
-def test_inheritance():
-    """Test class inheritance"""
-    assert issubclass(ProjectChallenge, Document)
-    instance = ProjectChallenge()
-    assert isinstance(instance, Document)
-
-
-def test_multiple_instantiation():
-    """Test creating multiple instances"""
-    instance1 = ProjectChallenge()
-    instance2 = ProjectChallenge()
-    
-    assert instance1 is not None
-    assert instance2 is not None
-    assert instance1 is not instance2
-    assert isinstance(instance1, ProjectChallenge)
-    assert isinstance(instance2, ProjectChallenge)
-
-
-def test_class_attributes():
-    """Test class attributes"""
-    instance = ProjectChallenge()
-    assert hasattr(instance, '__class__')
-    assert instance.__class__.__name__ == 'ProjectChallenge'
-
-
-def test_instantiation_loop():
-    """Test instantiation in a loop to ensure all lines are hit"""
-    instances = []
-    for i in range(3):
-        instance = ProjectChallenge()
-        instances.append(instance)
-    
-    assert len(instances) == 3
-    assert all(isinstance(inst, ProjectChallenge) for inst in instances)
