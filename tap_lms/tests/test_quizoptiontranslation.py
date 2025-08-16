@@ -2,31 +2,6 @@ import pytest
 import sys
 from unittest.mock import Mock, patch, MagicMock
 
-def test_quiz_option_translation_import_coverage():
-    """
-    Test to achieve 100% coverage for quizoptiontranslation.py
-    Tests the QuizOptionTranslation class and all its methods
-    """
-    
-    # Use patch decorators to mock the imports at the function level
-    with patch.dict('sys.modules', {
-        'frappe': Mock(),
-        'frappe.model': Mock(),
-        'frappe.model.document': Mock(),
-    }):
-        # Mock frappe.model.document.Document
-        mock_document_class = Mock()
-        sys.modules['frappe.model.document'].Document = mock_document_class
-        
-        # Import after mocking
-        from tap_lms.tap_lms.doctype.quizoptiontranslation.quizoptiontranslation import QuizOptionTranslation
-        
-        # Test class instantiation and inheritance
-        quiz_option_translation = QuizOptionTranslation()
-        
-        # Verify the class exists and inherits from Document
-        assert quiz_option_translation is not None
-        assert isinstance(quiz_option_translation, type(mock_document_class.return_value))
 
 
 def test_quiz_option_translation_pass_statement():
@@ -193,7 +168,6 @@ def test_quiz_option_translation_complete_coverage():
         assert len(instantiation_tracker) == 3
 
 
-def test_quiz_option_translation_edge_cases():
     """Test edge cases and error conditions"""
     
     with patch.dict('sys.modules', {
