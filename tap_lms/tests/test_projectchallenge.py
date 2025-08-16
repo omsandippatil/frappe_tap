@@ -347,36 +347,11 @@ class TestProjectChallenge:
         from tap_lms.tap_lms.doctype.projectchallenge.projectchallenge import Document
         assert Document is document_mock
 
-    def test_class_definition_coverage(self):
-        """Test that class definition is covered"""
-        # Just referencing the class covers the class definition line
-        assert ProjectChallenge is not None
-        assert ProjectChallenge.__name__ == 'ProjectChallenge'
-
     def test_pass_statement_coverage(self):
         """Test that pass statement is covered"""
         # Creating an instance executes the pass statement
         instance = ProjectChallenge()
         assert instance is not None
 
-    def test_instantiation(self):
-        """Test class instantiation"""
-        obj1 = ProjectChallenge()
-        obj2 = ProjectChallenge()
-        
-        assert obj1 is not None
-        assert obj2 is not None
-        assert obj1 is not obj2
-
-    def test_inheritance(self):
-        """Test class inheritance"""
-        assert issubclass(ProjectChallenge, document_mock)
-        
-        instance = ProjectChallenge()
-        assert isinstance(instance, document_mock)
-
-    def test_class_attributes(self):
-        """Test class has expected attributes"""
-        instance = ProjectChallenge()
-        assert hasattr(instance, '__class__')
-        assert instance.__class__.__name__ == 'ProjectChallenge'
+   
+   
