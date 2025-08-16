@@ -392,16 +392,3 @@ def test_projectchallenge_with_mocked_frappe():
         for module in modules_to_remove:
             if module in sys.modules:
                 del sys.modules[module]
-
-
-def test_import_statement():
-    """Test that the import statement is covered"""
-    # This will be covered by the main test function
-    assert test_projectchallenge_with_mocked_frappe()
-
-
-def test_pass_statement():
-    """Test that the pass statement is covered"""
-    # This will also be covered by the main test function
-    assert test_projectchallenge_with_mocked_frappe()
-
