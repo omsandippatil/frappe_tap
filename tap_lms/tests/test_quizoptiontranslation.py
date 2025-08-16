@@ -120,7 +120,6 @@ def test_quiz_option_translation_with_frappe_context():
         assert quiz_translation_with_params.name == "TEST001"
 
 
-def test_quiz_option_translation_complete_coverage():
     """Comprehensive test to ensure 100% line coverage"""
     
     with patch.dict('sys.modules', {
