@@ -325,7 +325,7 @@ def process_batch_job(set_id):
         
         # Final commit and update batch status
         try:
-            batch = frappe.get_doc("Backend Student Onboarding", batch_id)
+            batch = frappe.get_doc("Backend Student Onboarding", set_id)
             if failure_count == 0:
                 batch.status = "Processed"
             elif success_count == 0:
@@ -335,7 +335,7 @@ def process_batch_job(set_id):
             
             # Update processed_student_count field if it exists
             processed_count = frappe.db.count("Backend Students", 
-                                             filters={"parent": batch_id, "processing_status": "Success"})
+                                             filters={"parent": set_id, "processing_status": "Success"})
             if hasattr(batch, 'processed_student_count'):
                 batch.processed_student_count = processed_count
             
@@ -353,7 +353,7 @@ def process_batch_job(set_id):
         frappe.db.rollback()
         try:
             # Update batch status to Failed
-            batch = frappe.get_doc("Backend Student Onboarding", batch_id)
+            batch = frappe.get_doc("Backend Student Onboarding", set_id)
             batch.status = "Failed"
             # Add processing_notes if the field exists
             if hasattr(batch, 'processing_notes'):
