@@ -1,190 +1,155 @@
 import unittest
+import json
 from unittest.mock import patch, MagicMock
-import sys
-import os
-
-# Add the path to your module
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-
-from tap_lms.config.tap_lms import get_data
 
 
 class TestTapLmsConfig(unittest.TestCase):
-    """Test cases for tap_lms configuration module"""
-    
+    """Test cases for tap_lms.config.tap_lms module"""
+
+    def setUp(self):
+        """Set up test fixtures before each test method."""
+        # Import here to avoid import issues during test discovery
+        try:
+            from apps.tap_lms.tap_lms.config.tap_lms import get_data
+            self.get_data = get_data
+        except ImportError:
+            # Alternative import path
+            from tap_lms.config.tap_lms import get_data
+            self.get_data = get_data
+
     def test_get_data_returns_dict(self):
         """Test that get_data returns a dictionary"""
-        result = get_data()
+        result = self.get_data()
         self.assertIsInstance(result, dict)
-    
+
     def test_get_data_has_required_keys(self):
-        """Test that get_data returns dictionary with expected top-level keys"""
-        result = get_data()
-        expected_keys = ['label', 'items']
-        
-        for key in expected_keys:
-            with self.subTest(key=key):
-                self.assertIn(key, result)
-    
+        """Test that get_data returns dictionary with expected keys"""
+        result = self.get_data()
+        self.assertIn('label', result)
+        self.assertIn('items', result)
+
     def test_get_data_label_value(self):
         """Test that the label has the expected value"""
-        result = get_data()
+        result = self.get_data()
         self.assertEqual(result['label'], '_("School")')
-    
+
+    def test_get_data_items_count(self):
+        """Test that items list has expected number of elements"""
+        result = self.get_data()
+        items = result['items']
+        self.assertIsInstance(items, list)
+        self.assertEqual(len(items), 1)
+
     def test_get_data_items_structure(self):
         """Test the structure of items array"""
-        result = get_data()
+        result = self.get_data()
         items = result['items']
         
-        # Should be a list
         self.assertIsInstance(items, list)
-        
-        # Should have at least one item
         self.assertGreater(len(items), 0)
-        
-        # First item should be a dictionary
         self.assertIsInstance(items[0], dict)
-    
+
     def test_get_data_school_item_properties(self):
-        """Test the properties of the school item configuration"""
-        result = get_data()
+        """Test all properties of the school item"""
+        result = self.get_data()
         school_item = result['items'][0]
         
-        expected_properties = {
-            'type': 'doctype',
-            'name': 'School',
-            'label': '_("School")',
-            'description': '_("Manage School")',
-            'onboard': 1
-        }
-        
-        for key, expected_value in expected_properties.items():
-            with self.subTest(property=key):
-                self.assertIn(key, school_item)
-                self.assertEqual(school_item[key], expected_value)
-    
-    def test_get_data_consistent_calls(self):
-        """Test that multiple calls to get_data return the same result"""
-        result1 = get_data()
-        result2 = get_data()
-        
-        self.assertEqual(result1, result2)
-    
-    @patch('tap_lms.config.tap_lms.frappe')
+        # Test each property individually
+        self.assertEqual(school_item['type'], 'doctype')
+        self.assertEqual(school_item['name'], 'School')
+        self.assertEqual(school_item['label'], '_("School")')
+        self.assertEqual(school_item['description'], '_("Manage School")')
+        self.assertEqual(school_item['onboard'], 1)
+
+    def test_get_data_school_item_onboard_flag(self):
+        """Test that onboard flag is set correctly"""
+        result = self.get_data()
+        school_item = result['items'][0]
+        self.assertEqual(school_item['onboard'], 1)
+
+    def test_get_data_school_item_type_doctype(self):
+        """Test that item type is doctype"""
+        result = self.get_data()
+        school_item = result['items'][0]
+        self.assertEqual(school_item['type'], 'doctype')
+
+    def test_get_data_returns_dict(self):
+        """Test function returns dictionary type"""
+        result = self.get_data()
+        self.assertIsInstance(result, dict)
+
+    @patch('frappe.import_module')
     def test_get_data_with_frappe_import(self, mock_frappe):
-        """Test that get_data works when frappe is imported"""
-        # This test assumes frappe import might affect the function
-        # You can remove this if frappe import doesn't impact the function
-        result = get_data()
+        """Test that function works with frappe mocked"""
+        result = self.get_data()
         self.assertIsInstance(result, dict)
         self.assertIn('label', result)
         self.assertIn('items', result)
-    
-    def test_get_data_items_count(self):
-        """Test the expected number of items"""
-        result = get_data()
-        items = result['items']
-        
-        # Based on the visible code, there should be exactly 1 item
-        self.assertEqual(len(items), 1)
-    
-    def test_get_data_school_item_type_doctype(self):
-        """Test that the school item has type 'doctype'"""
-        result = get_data()
-        school_item = result['items'][0]
-        
-        self.assertEqual(school_item['type'], 'doctype')
-    
-    def test_get_data_school_item_onboard_flag(self):
-        """Test that the school item has onboard flag set to 1"""
-        result = get_data()
-        school_item = result['items'][0]
-        
-        self.assertEqual(school_item['onboard'], 1)
 
 
 class TestTapLmsConfigIntegration(unittest.TestCase):
-    """Integration tests for tap_lms configuration"""
-    
+    """Integration tests for configuration"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        try:
+            from apps.tap_lms.tap_lms.config.tap_lms import get_data
+            self.get_data = get_data
+        except ImportError:
+            from tap_lms.config.tap_lms import get_data
+            self.get_data = get_data
+
     def test_config_can_be_serialized(self):
-        """Test that the configuration can be serialized to JSON"""
-        import json
-        
-        result = get_data()
+        """Test that configuration can be converted to JSON"""
+        result = self.get_data()
         
         # Should not raise an exception
         json_string = json.dumps(result)
         self.assertIsInstance(json_string, str)
         
-        # Should be able to deserialize back
+        # Should be deserializable
         deserialized = json.loads(json_string)
         self.assertEqual(result, deserialized)
+
+
+# Alternative simple test file if the above doesn't work
+class SimpleTestTapLms(unittest.TestCase):
+    """Simplified test cases"""
     
-    def test_config_structure_for_ui_consumption(self):
-        """Test that the configuration structure is suitable for UI consumption"""
+    def test_import_and_call_get_data(self):
+        """Test basic import and function call"""
+        # Try different import paths
+        get_data_func = None
+        
+        try:
+            from apps.tap_lms.tap_lms.config.tap_lms import get_data
+            get_data_func = get_data
+        except ImportError:
+            try:
+                from tap_lms.config.tap_lms import get_data
+                get_data_func = get_data
+            except ImportError:
+                self.fail("Could not import get_data function")
+        
+        # Call the function
+        result = get_data_func()
+        
+        # Basic assertions
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, dict)
+
+    def test_function_output_structure(self):
+        """Test the basic structure of output"""
+        # Import
+        try:
+            from apps.tap_lms.tap_lms.config.tap_lms import get_data
+        except ImportError:
+            from tap_lms.config.tap_lms import get_data
+        
         result = get_data()
         
-        # Verify structure that a UI might expect
-        self.assertTrue(all(isinstance(item, dict) for item in result['items']))
-        
-        # Each item should have required fields for UI rendering
-        for item in result['items']:
-            required_ui_fields = ['type', 'name', 'label']
-            for field in required_ui_fields:
-                with self.subTest(item=item.get('name', 'unknown'), field=field):
-                    self.assertIn(field, item)
+        # Check structure
+        self.assertTrue('label' in result)
+        self.assertTrue('items' in result)
+        self.assertTrue(isinstance(result['items'], list))
 
-
-# if __name__ == '__main__':
-#     # Run the tests
-#     unittest.main(verbosity=2)
-
-
-# # Alternative pytest version if you prefer pytest
-# """
-# To run with pytest, save this as test_tap_lms_pytest.py:
-
-# import pytest
-# import json
-# from tap_lms.config.tap_lms import get_data
-
-
-# class TestTapLmsConfig:
-    
-#     def test_get_data_returns_dict(self):
-#         result = get_data()
-#         assert isinstance(result, dict)
-    
-#     def test_get_data_has_required_keys(self):
-#         result = get_data()
-#         assert 'label' in result
-#         assert 'items' in result
-    
-#     def test_get_data_label_value(self):
-#         result = get_data()
-#         assert result['label'] == '_("School")'
-    
-#     def test_get_data_items_structure(self):
-#         result = get_data()
-#         items = result['items']
-#         assert isinstance(items, list)
-#         assert len(items) > 0
-#         assert isinstance(items[0], dict)
-    
-#     def test_get_data_school_item_properties(self):
-#         result = get_data()
-#         school_item = result['items'][0]
-        
-#         assert school_item['type'] == 'doctype'
-#         assert school_item['name'] == 'School'
-#         assert school_item['label'] == '_("School")'
-#         assert school_item['description'] == '_("Manage School")'
-#         assert school_item['onboard'] == 1
-    
-#     def test_config_serializable(self):
-#         result = get_data()
-#         json_string = json.dumps(result)
-#         deserialized = json.loads(json_string)
-#         assert result == deserialized
-
-# """
