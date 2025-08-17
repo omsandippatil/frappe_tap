@@ -189,51 +189,6 @@ def test_school_poc_coverage():
         sys.modules.update(original_modules)
 
 
-def test_import_only():
-    """Test just the import to cover line 5"""
-    original_modules = sys.modules.copy()
-    
-    try:
-        # Mock frappe modules
-        mock_document = Mock()
-        sys.modules['frappe'] = Mock()
-        sys.modules['frappe.model'] = Mock()
-        sys.modules['frappe.model.document'] = Mock()
-        sys.modules['frappe.model.document'].Document = mock_document
-        
-        # Import module
-        import tap_lms.tap_lms.doctype.school_poc.school_poc
-        assert tap_lms.tap_lms.doctype.school_poc.school_poc is not None
-        
-        return True
-        
-    finally:
-        sys.modules.clear()
-        sys.modules.update(original_modules)
-
-
-def test_class_only():
-    """Test just the class definition to cover line 7"""
-    original_modules = sys.modules.copy()
-    
-    try:
-        # Mock frappe modules
-        mock_document = Mock()
-        sys.modules['frappe'] = Mock()
-        sys.modules['frappe.model'] = Mock()
-        sys.modules['frappe.model.document'] = Mock()
-        sys.modules['frappe.model.document'].Document = mock_document
-        
-        # Import class
-        from tap_lms.tap_lms.doctype.school_poc.school_poc import School_POC
-        assert School_POC.__name__ == 'School_POC'
-        
-        return True
-        
-    finally:
-        sys.modules.clear()
-        sys.modules.update(original_modules)
-
 
 def test_pass_only():
     """Test just the pass statement to cover line 8"""
