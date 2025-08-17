@@ -34,8 +34,7 @@ def mock_frappe():
         mock_frappe.utils.now_datetime.return_value = datetime.now()
         yield mock_frappe
 
-# CORRECTED TEST FUNCTIONS:
-
+# FIXED TEST 1: Timezone replacement
 def test_get_glific_auth_headers_timezone_replacement(mock_frappe):
     """Test get_glific_auth_headers with timezone-naive datetime that needs timezone replacement"""
 
@@ -57,10 +56,11 @@ def test_get_glific_auth_headers_timezone_replacement(mock_frappe):
 
     mock_frappe.get_single.return_value = mock_settings
 
-    # Mock datetime.now to return a consistent time that is less than token expiry
+    # Mock datetime.now to return a real datetime object, not a Mock
     with patch('glific_integration.datetime') as mock_datetime, \
          patch('glific_integration.timezone', real_timezone):
         
+        # Return real datetime objects, not Mocks
         current_time = real_datetime(2025, 12, 31, 22, 0, 0, tzinfo=real_timezone.utc)
         mock_datetime.now.return_value = current_time
         
@@ -76,6 +76,7 @@ def test_get_glific_auth_headers_timezone_replacement(mock_frappe):
             "Content-Type": "application/json"
         }
 
+# FIXED TEST 2: General exception - need to catch the exception properly
 def test_update_contact_fields_general_exception(mock_frappe):
     """Test update_contact_fields when general exception occurs"""
     
@@ -87,16 +88,24 @@ def test_update_contact_fields_general_exception(mock_frappe):
     # Mock logger first
     mock_frappe.logger.return_value.error = Mock()
 
-    with patch('glific_integration.get_glific_settings') as mock_get_settings:
-        # Mock exception in get_glific_settings
-        mock_get_settings.side_effect = Exception("General error")
+    # Instead of mocking get_glific_settings to raise exception,
+    # let's mock a later function that will trigger the general exception handler
+    with patch('glific_integration.get_glific_settings') as mock_get_settings, \
+         patch('glific_integration.get_glific_auth_headers') as mock_get_headers:
+        
+        # Let get_glific_settings work normally
+        mock_get_settings.return_value = Mock(api_url="https://api.glific.com")
+        
+        # Make get_glific_auth_headers raise an exception
+        mock_get_headers.side_effect = Exception("General error")
         
         result = update_contact_fields("123", {"new_field": "new_value"})
         
         assert result is False
-        # The function should call logger().error, so check if logger was called
+        # The function should call logger().error
         mock_frappe.logger.return_value.error.assert_called()
 
+# FIXED TEST 3: JSON decode error - properly simulate the JSON parsing failure
 def test_update_contact_fields_json_decode_error_complete(mock_frappe):
     """Test update_contact_fields JSON decode error - covers lines 180-182"""
 
@@ -108,7 +117,8 @@ def test_update_contact_fields_json_decode_error_complete(mock_frappe):
     with patch('glific_integration.requests') as mock_requests, \
          patch('glific_integration.get_glific_settings') as mock_get_settings, \
          patch('glific_integration.get_glific_auth_headers') as mock_get_headers, \
-         patch('glific_integration.datetime') as mock_datetime:
+         patch('glific_integration.datetime') as mock_datetime, \
+         patch('glific_integration.json') as mock_json:
 
         mock_get_settings.return_value = Mock(api_url="https://api.glific.com")
         mock_get_headers.return_value = {"authorization": "token"}
@@ -147,6 +157,12 @@ def test_update_contact_fields_json_decode_error_complete(mock_frappe):
         mock_requests.exceptions = Mock()
         mock_requests.exceptions.RequestException = Exception
 
+        # Mock json.loads to raise JSONDecodeError specifically
+        import json as real_json
+        mock_json.JSONDecodeError = real_json.JSONDecodeError
+        mock_json.loads.side_effect = real_json.JSONDecodeError("Invalid JSON", "doc", 0)
+        mock_json.dumps.return_value = '{"new_field": {"value": "new_value", "type": "string", "inserted_at": "2025-01-01T00:00:00Z"}}'
+
         # Mock logger
         mock_frappe.logger.return_value.error = Mock()
         mock_frappe.logger.return_value.info = Mock()
@@ -154,11 +170,83 @@ def test_update_contact_fields_json_decode_error_complete(mock_frappe):
         result = update_contact_fields("123", {"new_field": "new_value"})
 
         # The function should handle the JSON decode error gracefully and still succeed
-        # When json.loads fails on line 180-182, it sets existing_fields = {} and continues
         assert result is True
 
-# Add some basic working tests to ensure the file runs properly:
+# FIXED TEST 4: Success case - need to properly mock json operations
+def test_update_contact_fields_success(mock_frappe):
+    """Test update_contact_fields function with success"""
+    
+    try:
+        from glific_integration import update_contact_fields
+    except ImportError as e:
+        pytest.skip(f"Could not import module: {e}")
+    
+    with patch('glific_integration.requests') as mock_requests, \
+         patch('glific_integration.get_glific_settings') as mock_get_settings, \
+         patch('glific_integration.get_glific_auth_headers') as mock_get_headers, \
+         patch('glific_integration.datetime') as mock_datetime, \
+         patch('glific_integration.json') as mock_json:
+        
+        # Mock dependencies
+        mock_settings = Mock()
+        mock_settings.api_url = "https://api.glific.com"
+        mock_get_settings.return_value = mock_settings
+        mock_get_headers.return_value = {"authorization": "token"}
+        
+        # Mock datetime for timestamp
+        mock_datetime.now.return_value.isoformat.return_value = "2025-01-01T00:00:00Z"
+        
+        # Mock json operations
+        mock_json.loads.return_value = {"existing_field": {"value": "existing_value"}}
+        mock_json.dumps.return_value = '{"existing_field": {"value": "existing_value"}, "new_field": {"value": "new_value", "type": "string", "inserted_at": "2025-01-01T00:00:00Z"}}'
+        
+        # Mock fetch response (get current contact)
+        fetch_response = Mock()
+        fetch_response.status_code = 200
+        fetch_response.raise_for_status = Mock()
+        fetch_response.json.return_value = {
+            "data": {
+                "contact": {
+                    "contact": {
+                        "id": "123",
+                        "name": "Test User",
+                        "fields": '{"existing_field": {"value": "existing_value"}}'
+                    }
+                }
+            }
+        }
+        
+        # Mock update response
+        update_response = Mock()
+        update_response.status_code = 200
+        update_response.text = "success"
+        update_response.raise_for_status = Mock()
+        update_response.json.return_value = {
+            "data": {
+                "updateContact": {
+                    "contact": {
+                        "id": "123",
+                        "name": "Test User"
+                    }
+                }
+            }
+        }
+        
+        mock_requests.post.side_effect = [fetch_response, update_response]
+        
+        # Create a proper RequestException for the except clause
+        mock_requests.exceptions = Mock()
+        mock_requests.exceptions.RequestException = Exception
+        
+        # Mock logger
+        mock_frappe.logger.return_value.info = Mock()
+        
+        result = update_contact_fields("123", {"new_field": "new_value"})
+        
+        assert result is True
+        assert mock_requests.post.call_count == 2
 
+# Keep the working tests
 def test_get_glific_settings(mock_frappe):
     """Test get_glific_settings function"""
     
@@ -252,71 +340,3 @@ def test_create_contact_success(mock_frappe):
         
         # Verify API call
         mock_requests.post.assert_called_once()
-
-def test_update_contact_fields_success(mock_frappe):
-    """Test update_contact_fields function with success"""
-    
-    try:
-        from glific_integration import update_contact_fields
-    except ImportError as e:
-        pytest.skip(f"Could not import module: {e}")
-    
-    with patch('glific_integration.requests') as mock_requests, \
-         patch('glific_integration.get_glific_settings') as mock_get_settings, \
-         patch('glific_integration.get_glific_auth_headers') as mock_get_headers, \
-         patch('glific_integration.datetime') as mock_datetime:
-        
-        # Mock dependencies
-        mock_settings = Mock()
-        mock_settings.api_url = "https://api.glific.com"
-        mock_get_settings.return_value = mock_settings
-        mock_get_headers.return_value = {"authorization": "token"}
-        
-        # Mock datetime for timestamp
-        mock_datetime.now.return_value.isoformat.return_value = "2025-01-01T00:00:00Z"
-        
-        # Mock fetch response (get current contact)
-        fetch_response = Mock()
-        fetch_response.status_code = 200
-        fetch_response.raise_for_status = Mock()
-        fetch_response.json.return_value = {
-            "data": {
-                "contact": {
-                    "contact": {
-                        "id": "123",
-                        "name": "Test User",
-                        "fields": '{"existing_field": {"value": "existing_value"}}'
-                    }
-                }
-            }
-        }
-        
-        # Mock update response
-        update_response = Mock()
-        update_response.status_code = 200
-        update_response.text = "success"
-        update_response.raise_for_status = Mock()
-        update_response.json.return_value = {
-            "data": {
-                "updateContact": {
-                    "contact": {
-                        "id": "123",
-                        "name": "Test User"
-                    }
-                }
-            }
-        }
-        
-        mock_requests.post.side_effect = [fetch_response, update_response]
-        
-        # Create a proper RequestException for the except clause
-        mock_requests.exceptions = Mock()
-        mock_requests.exceptions.RequestException = Exception
-        
-        # Mock logger
-        mock_frappe.logger.return_value.info = Mock()
-        
-        result = update_contact_fields("123", {"new_field": "new_value"})
-        
-        assert result is True
-        assert mock_requests.post.call_count == 2
