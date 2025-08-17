@@ -190,26 +190,4 @@ def test_school_poc_coverage():
 
 
 
-def test_pass_only():
-    """Test just the pass statement to cover line 8"""
-    original_modules = sys.modules.copy()
-    
-    try:
-        # Mock frappe modules
-        mock_document = Mock()
-        sys.modules['frappe'] = Mock()
-        sys.modules['frappe.model'] = Mock()
-        sys.modules['frappe.model.document'] = Mock()
-        sys.modules['frappe.model.document'].Document = mock_document
-        
-        # Import and instantiate
-        from tap_lms.tap_lms.doctype.school_poc.school_poc import School_POC
-        instance = School_POC()
-        assert instance is not None
-        
-        return True
-        
-    finally:
-        sys.modules.clear()
-        sys.modules.update(original_modules)
 
