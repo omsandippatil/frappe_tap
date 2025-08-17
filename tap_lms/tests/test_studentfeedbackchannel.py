@@ -234,17 +234,6 @@ class TestStudentFeedbackChannel:
         assert doc.__class__.__name__ == expected_doctype
         assert doc.doctype == expected_doctype
 
-    # This covers the missing @patch decorator line 27
-    @patch('builtins.len')  # Using a built-in function that exists
-    def test_patch_decorator_mock(self, mock_len):
-        """Test with patch decorator - covers missing line 27"""
-        # Set up the mock
-        mock_len.return_value = 5
-        
-        # Test that the mock works
-        assert mock_len is not None
-        result = mock_len([1, 2, 3])
-        assert result == 5
 
     def test_exception_handling_path(self):
         """Test exception handling - covers missing lines 46-47"""
@@ -450,56 +439,3 @@ def test_pytest_fail_coverage():
         # This would cover pytest.fail usage if an exception occurred
         pytest.fail(f"Unexpected error in test: {e}")
 
-
-# Test for complete line coverage
-def test_all_missing_lines():
-    """Final comprehensive test to cover all possible missing lines"""
-    # Line coverage for imports
-    from unittest.mock import Mock, patch, MagicMock
-    import pytest
-    
-    # Line coverage for class definitions
-    doc = StudentFeedbackChannel()
-    
-    # Line coverage for assertions
-    assert True
-    assert doc is not None
-    assert isinstance(doc, MockDocument)
-    
-    # Line coverage for loops
-    test_items = ['a', 'b', 'c']
-    for item in test_items:
-        assert item is not None
-    
-    # Line coverage for dictionary iteration
-    test_dict = {'key1': 'value1', 'key2': 'value2'}
-    for key, value in test_dict.items():
-        assert key is not None
-        assert value is not None
-    
-    # Line coverage for conditionals
-    if doc:
-        assert True
-    
-    # Line coverage for exception handling
-    try:
-        assert doc.__class__.__name__ == "StudentFeedbackChannel"
-    except Exception as e:
-        pytest.fail(f"Error: {e}")
-    
-    # Line coverage for setattr
-    setattr(doc, 'test_attr', 'test_value')
-    assert doc.test_attr == 'test_value'
-    
-    # Line coverage for fixtures usage in regular function
-    sample_data = {
-        'name': 'Test',
-        'value': 123
-    }
-    assert sample_data is not None
-    
-    # Line coverage for patch usage
-    with patch('builtins.str') as mock_str:
-        mock_str.return_value = "mocked"
-        result = mock_str("test")
-        assert result == "mocked"
