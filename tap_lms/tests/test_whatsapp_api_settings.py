@@ -222,45 +222,45 @@ class TestWhatsappAPISettings:
         for module_name, original_module in original_modules.items():
             sys.modules[module_name] = original_module
 
-    # def test_import_whatsapp_api_settings_module(self):
-    #     """Test importing the actual whatsapp_api_settings module"""
-    #     # Get the path to the actual module
-    #     module_path = "tap_lms/doctype/whatsapp_api_settings/whatsapp_api_settings.py"
+    def test_import_whatsapp_api_settings_module(self):
+        """Test importing the actual whatsapp_api_settings module"""
+        # Get the path to the actual module
+        module_path = "tap_lms/doctype/whatsapp_api_settings/whatsapp_api_settings.py"
         
-    #     # Check if file exists, if not try alternative paths
-    #     if not os.path.exists(module_path):
-    #         # Try some common alternative paths
-    #         alternative_paths = [
-    #             "whatsapp_api_settings.py",
-    #             "./whatsapp_api_settings.py",
-    #             "../whatsapp_api_settings.py",
-    #             "tap_lms/tap_lms/doctype/whatsapp_api_settings/whatsapp_api_settings.py"
-    #         ]
+        # Check if file exists, if not try alternative paths
+        if not os.path.exists(module_path):
+            # Try some common alternative paths
+            alternative_paths = [
+                "whatsapp_api_settings.py",
+                "./whatsapp_api_settings.py",
+                "../whatsapp_api_settings.py",
+                "tap_lms/tap_lms/doctype/whatsapp_api_settings/whatsapp_api_settings.py"
+            ]
             
-    #         for alt_path in alternative_paths:
-    #             if os.path.exists(alt_path):
-    #                 module_path = alt_path
-    #                 break
+            for alt_path in alternative_paths:
+                if os.path.exists(alt_path):
+                    module_path = alt_path
+                    break
         
-    #     # Load and execute the module
-    #     if os.path.exists(module_path):
-    #         spec = importlib.util.spec_from_file_location("whatsapp_api_settings", module_path)
-    #         module = importlib.util.module_from_spec(spec)
-    #         sys.modules["whatsapp_api_settings"] = module
-    #         spec.loader.exec_module(module)
+        # Load and execute the module
+        if os.path.exists(module_path):
+            spec = importlib.util.spec_from_file_location("whatsapp_api_settings", module_path)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["whatsapp_api_settings"] = module
+            spec.loader.exec_module(module)
             
-    #         # Test the class exists and can be instantiated
-    #         assert hasattr(module, 'WhatsappAPISettings')
-    #         whatsapp_class = module.WhatsappAPISettings
+            # Test the class exists and can be instantiated
+            assert hasattr(module, 'WhatsappAPISettings')
+            whatsapp_class = module.WhatsappAPISettings
             
-    #         # Test instantiation (this will execute the pass statement)
-    #         instance = whatsapp_class()
-    #         assert instance is not None
-    #         assert isinstance(instance, whatsapp_class)
+            # Test instantiation (this will execute the pass statement)
+            instance = whatsapp_class()
+            assert instance is not None
+            assert isinstance(instance, whatsapp_class)
             
-    #     else:
-    #         # If we can't find the file, execute the code directly
-    #         self.test_direct_code_execution()
+        else:
+            # If we can't find the file, execute the code directly
+            self.test_direct_code_execution()
 
     def test_direct_code_execution(self):
         """Directly execute the WhatsappAPISettings code to ensure coverage"""
@@ -338,58 +338,4 @@ class WhatsappAPISettings(Document):
         instance = whatsapp_class()
         assert instance is not None
 
-
-# # Additional standalone function for coverage
-# def test_standalone_coverage():
-#     """Standalone test function for additional coverage assurance"""
-#     # Mock frappe
-#     mock_document = type('Document', (), {})
-    
-#     # Temporarily add to sys.modules
-#     original_modules = {}
-#     modules_to_mock = ['frappe', 'frappe.model', 'frappe.model.document']
-    
-#     try:
-#         for module_name in modules_to_mock:
-#             if module_name in sys.modules:
-#                 original_modules[module_name] = sys.modules[module_name]
-        
-#         mock_frappe = MagicMock()
-#         mock_frappe.model.document.Document = mock_document
-        
-#         sys.modules['frappe'] = mock_frappe
-#         sys.modules['frappe.model'] = mock_frappe.model
-#         sys.modules['frappe.model.document'] = mock_frappe.model.document
-        
-#         # Execute the target code
-#         target_code = """# Copyright (c) 2024, Tech4dev and contributors
-# # For license information, please see license.txt
-
-# # import frappe
-# from frappe.model.document import Document
-
-# class WhatsappAPISettings(Document):
-# \tpass
-# """
-        
-#         # Execute with compile to ensure proper line tracking
-#         compiled_code = compile(target_code, 'whatsapp_api_settings.py', 'exec')
-#         namespace = {}
-#         exec(compiled_code, namespace)
-        
-#         # Test the result
-#         whatsapp_class = namespace['WhatsappAPISettings']
-#         instance = whatsapp_class()
-        
-#         assert whatsapp_class.__name__ == 'WhatsappAPISettings'
-#         assert instance is not None
-        
-#     finally:
-#         # Restore original modules
-#         for module_name in modules_to_mock:
-#             if module_name in sys.modules:
-#                 del sys.modules[module_name]
-        
-#         for module_name, original_module in original_modules.items():
-#             sys.modules[module_name] = original_module
 
