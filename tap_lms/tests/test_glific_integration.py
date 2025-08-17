@@ -1,52 +1,75 @@
-# Replace these 3 failing test functions in your test file:
+import pytest
+import sys
+import os
+from unittest.mock import Mock, patch
+from datetime import datetime, timezone, timedelta
+import json
+
+# Add the parent directory to Python path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+@pytest.fixture
+def mock_frappe():
+    """Mock frappe module with common methods"""
+    with patch.dict('sys.modules', {
+        'frappe': Mock(),
+        'requests': Mock(),
+        'json': Mock(),
+        'datetime': Mock(),
+        'dateutil': Mock(),
+        'dateutil.parser': Mock(),
+    }):
+        mock_frappe = sys.modules['frappe']
+        mock_frappe.get_single.return_value = Mock()
+        mock_frappe.get_doc.return_value = Mock()
+        mock_frappe.get_all.return_value = []
+        mock_frappe.new_doc.return_value = Mock()
+        mock_frappe.db = Mock()
+        mock_frappe.logger.return_value = Mock()
+        mock_frappe.throw = Mock(side_effect=Exception("Frappe throw"))
+        mock_frappe.utils = Mock()
+        mock_frappe.utils.now_datetime.return_value = datetime.now()
+        yield mock_frappe
+
+def test_get_glific_settings(mock_frappe):
+    """Test get_glific_settings function"""
+    try:
+        from glific_integration import get_glific_settings
+    except ImportError as e:
+        pytest.skip(f"Could not import module: {e}")
+    
+    mock_settings = Mock()
+    mock_frappe.get_single.return_value = mock_settings
+    
+    result = get_glific_settings()
+    
+    mock_frappe.get_single.assert_called_once_with("Glific Settings")
+    assert result == mock_settings
 
 def test_get_glific_auth_headers_timezone_replacement(mock_frappe):
     """Test get_glific_auth_headers with timezone-naive datetime that needs timezone replacement"""
-
     try:
         from glific_integration import get_glific_auth_headers
     except ImportError as e:
         pytest.skip(f"Could not import module: {e}")
 
-    from datetime import timezone, datetime
-    
-    # Mock settings with timezone-naive datetime
     mock_settings = Mock()
     mock_settings.access_token = "valid_token"
-    mock_settings.token_expiry_time = datetime(2025, 12, 31, 23, 59, 59)  # No timezone
+    mock_settings.token_expiry_time = datetime(2025, 12, 31, 23, 59, 59)
     mock_frappe.get_single.return_value = mock_settings
 
-    # Don't patch datetime - let it work normally
     result = get_glific_auth_headers()
 
-    # Should add timezone and return valid token
     assert result == {
         "authorization": "valid_token",
         "Content-Type": "application/json"
     }
 
-def test_update_contact_fields_general_exception(mock_frappe):
-    """Test update_contact_fields when general exception occurs"""
-    
-    try:
-        from glific_integration import update_contact_fields
-    except ImportError as e:
-        pytest.skip(f"Could not import module: {e}")
-
-    # Mock logger
-    mock_frappe.logger.return_value.error = Mock()
-
-    # Patch to raise exception during execution
-    with patch('glific_integration.requests.post') as mock_post:
-        mock_post.side_effect = Exception("General error")
-        
-        result = update_contact_fields("123", {"new_field": "new_value"})
-        
-        assert result is False
-
 def test_update_contact_fields_json_decode_error_complete(mock_frappe):
-    """Test update_contact_fields JSON decode error - covers lines 180-182"""
-
+    """Test update_contact_fields JSON decode error"""
     try:
         from glific_integration import update_contact_fields
     except ImportError as e:
@@ -54,14 +77,11 @@ def test_update_contact_fields_json_decode_error_complete(mock_frappe):
 
     with patch('glific_integration.requests') as mock_requests, \
          patch('glific_integration.get_glific_settings') as mock_get_settings, \
-         patch('glific_integration.get_glific_auth_headers') as mock_get_headers, \
-         patch('glific_integration.datetime') as mock_datetime:
+         patch('glific_integration.get_glific_auth_headers') as mock_get_headers:
 
         mock_get_settings.return_value = Mock(api_url="https://api.glific.com")
         mock_get_headers.return_value = {"authorization": "token"}
-        mock_datetime.now.return_value.isoformat.return_value = "2025-01-01T00:00:00Z"
 
-        # Mock fetch response with invalid JSON that will cause decode error
         fetch_response = Mock()
         fetch_response.status_code = 200
         fetch_response.raise_for_status = Mock()
@@ -71,13 +91,12 @@ def test_update_contact_fields_json_decode_error_complete(mock_frappe):
                     "contact": {
                         "id": "123",
                         "name": "Test User",
-                        "fields": "not valid json"  # This will fail json.loads()
+                        "fields": "not valid json"
                     }
                 }
             }
         }
 
-        # Mock successful update response
         update_response = Mock()
         update_response.status_code = 200
         update_response.raise_for_status = Mock()
@@ -92,11 +111,63 @@ def test_update_contact_fields_json_decode_error_complete(mock_frappe):
         mock_requests.post.side_effect = [fetch_response, update_response]
         mock_requests.exceptions.RequestException = Exception
 
-        # Mock logger
         mock_frappe.logger.return_value.error = Mock()
         mock_frappe.logger.return_value.info = Mock()
 
         result = update_contact_fields("123", {"new_field": "new_value"})
-
-        # Should succeed despite JSON error (sets existing_fields = {} and continues)
         assert result is True
+
+def test_update_contact_fields_general_exception(mock_frappe):
+    """Test update_contact_fields when general exception occurs"""
+    try:
+        from glific_integration import update_contact_fields
+    except ImportError as e:
+        pytest.skip(f"Could not import module: {e}")
+
+    mock_frappe.logger.return_value.error = Mock()
+
+    with patch('glific_integration.requests.post') as mock_post:
+        mock_post.side_effect = Exception("General error")
+        
+        result = update_contact_fields("123", {"new_field": "new_value"})
+        assert result is False
+
+def test_create_contact_success(mock_frappe):
+    """Test create_contact function with successful response"""
+    try:
+        from glific_integration import create_contact
+    except ImportError as e:
+        pytest.skip(f"Could not import module: {e}")
+    
+    with patch('glific_integration.requests') as mock_requests, \
+         patch('glific_integration.get_glific_settings') as mock_get_settings, \
+         patch('glific_integration.get_glific_auth_headers') as mock_get_headers:
+        
+        mock_settings = Mock()
+        mock_settings.api_url = "https://api.glific.com"
+        mock_get_settings.return_value = mock_settings
+        mock_get_headers.return_value = {"authorization": "token"}
+        
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = "success"
+        mock_response.json.return_value = {
+            "data": {
+                "createContact": {
+                    "contact": {
+                        "id": "123",
+                        "name": "Test User",
+                        "phone": "1234567890"
+                    }
+                }
+            }
+        }
+        mock_requests.post.return_value = mock_response
+        
+        mock_frappe.logger.return_value.info = Mock()
+        
+        result = create_contact("Test User", "1234567890", "Test School", "Test Model", "1", "batch123")
+        
+        assert result is not None
+        assert result["id"] == "123"
+        assert result["name"] == "Test User"
