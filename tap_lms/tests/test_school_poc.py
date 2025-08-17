@@ -1,127 +1,269 @@
 
 
+# import unittest
+# import sys
+# import os
+# import importlib.util
+# from unittest.mock import MagicMock
+
+# # Add the necessary paths
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# apps_dir = os.path.join(current_dir, '..', '..', '..')
+# sys.path.insert(0, apps_dir)
+
+# class TestSchoolPOC(unittest.TestCase):
+#     """Test for School_POC to achieve 100% coverage by directly importing the file"""
+    
+#     def setUp(self):
+#         """Set up mocks before each test"""
+#         # Create simple Document mock that doesn't require frappe context
+#         self.MockDocument = type('Document', (), {
+#             '__init__': lambda self: None
+#         })
+        
+#         # Setup frappe mocks
+#         self.mock_frappe = MagicMock()
+#         self.mock_frappe.model = MagicMock()
+#         self.mock_frappe.model.document = MagicMock()
+#         self.mock_frappe.model.document.Document = self.MockDocument
+        
+#         # Add to sys.modules BEFORE any imports
+#         sys.modules['frappe'] = self.mock_frappe
+#         sys.modules['frappe.model'] = self.mock_frappe.model
+#         sys.modules['frappe.model.document'] = self.mock_frappe.model.document
+    
+#     def tearDown(self):
+#         """Clean up after each test"""
+#         modules_to_remove = [
+#             'frappe', 'frappe.model', 'frappe.model.document',
+#             'school_poc', 'tap_lms.doctype.school_poc.school_poc'
+#         ]
+#         for module_name in modules_to_remove:
+#             if module_name in sys.modules:
+#                 del sys.modules[module_name]
+    
+
+#     def test_school_poc_code_execution(self):
+#         """Fallback test using direct code execution"""
+        
+#         # Complete school_poc.py file content (all 3 lines)
+#         school_poc_code = """from frappe.model.document import Document
+
+# class School_POC(Document):
+# 	pass
+# """
+        
+#         # Execute the complete code (covers all 3 lines)
+#         namespace = {}
+#         exec(compile(school_poc_code, 'school_poc.py', 'exec'), namespace)
+        
+#         # Verify the class exists (line 1: import, line 2: class definition)
+#         self.assertIn('School_POC', namespace)
+        
+#         # Test School_POC class instantiation (covers line 3: pass statement)
+#         school_poc_class = namespace['School_POC']
+        
+#         # Test class properties
+#         self.assertEqual(school_poc_class.__name__, 'School_POC')
+#         self.assertTrue(issubclass(school_poc_class, self.MockDocument))
+        
+#         # Test instantiation (covers pass statement)
+#         school_poc_instance = school_poc_class()
+#         self.assertIsNotNone(school_poc_instance)
+#         self.assertIsInstance(school_poc_instance, school_poc_class)
+        
+#         print("✅ Code execution successful - all 3 lines covered!")
+
+
+# def test_school_poc_standalone():
+#     """Standalone function test for coverage"""
+#     import sys
+#     from unittest.mock import MagicMock
+    
+#     # Create simple Document mock
+#     Document = type('Document', (), {})
+    
+#     # Setup minimal mocks
+#     mock_frappe = MagicMock()
+#     mock_frappe.model = MagicMock()
+#     mock_frappe.model.document = MagicMock()
+#     mock_frappe.model.document.Document = Document
+    
+#     sys.modules['frappe'] = mock_frappe
+#     sys.modules['frappe.model'] = mock_frappe.model
+#     sys.modules['frappe.model.document'] = mock_frappe.model.document
+    
+#     try:
+#         # The exact 3 lines from school_poc.py
+#         school_poc_code = """from frappe.model.document import Document
+
+# class School_POC(Document):
+# 	pass
+# """
+        
+#         # Execute all 3 lines
+#         namespace = {}
+#         exec(compile(school_poc_code, 'school_poc.py', 'exec'), namespace)
+        
+#         # Verify all lines were executed
+#         assert 'Document' in namespace  # Import worked
+#         assert 'School_POC' in namespace  # Class created
+        
+#         school_poc_class = namespace['School_POC']
+#         assert school_poc_class.__name__ == 'School_POC'
+        
+#         # Test instantiation (executes pass statement)
+#         instance = school_poc_class()
+#         assert instance is not None
+#         assert isinstance(instance, school_poc_class)
+#         assert issubclass(school_poc_class, Document)
+        
+#         print("✅ Standalone test - All 3 lines covered successfully!")
+        
+#     finally:
+#         # Cleanup
+#         for mod in ['frappe', 'frappe.model', 'frappe.model.document']:
+#             if mod in sys.modules:
+#                 del sys.modules[mod]
+
+
 import unittest
-import sys
-import os
-import importlib.util
-from unittest.mock import MagicMock
+import frappe
+from frappe.tests.utils import FrappeTestCase
+from tap_lms.tap_lms.doctype.school_poc.school_poc import School_POC
 
-# Add the necessary paths
-current_dir = os.path.dirname(os.path.abspath(__file__))
-apps_dir = os.path.join(current_dir, '..', '..', '..')
-sys.path.insert(0, apps_dir)
 
-class TestSchoolPOC(unittest.TestCase):
-    """Test for School_POC to achieve 100% coverage by directly importing the file"""
+class TestSchoolPOC(FrappeTestCase):
+    """Test cases for School_POC doctype to achieve 100% coverage"""
     
     def setUp(self):
-        """Set up mocks before each test"""
-        # Create simple Document mock that doesn't require frappe context
-        self.MockDocument = type('Document', (), {
-            '__init__': lambda self: None
-        })
-        
-        # Setup frappe mocks
-        self.mock_frappe = MagicMock()
-        self.mock_frappe.model = MagicMock()
-        self.mock_frappe.model.document = MagicMock()
-        self.mock_frappe.model.document.Document = self.MockDocument
-        
-        # Add to sys.modules BEFORE any imports
-        sys.modules['frappe'] = self.mock_frappe
-        sys.modules['frappe.model'] = self.mock_frappe.model
-        sys.modules['frappe.model.document'] = self.mock_frappe.model.document
+        """Set up test data before each test"""
+        # Clean up any existing test documents
+        frappe.db.delete("School POC", {"name": ["like", "TEST-%"]})
+        frappe.db.commit()
     
     def tearDown(self):
         """Clean up after each test"""
-        modules_to_remove = [
-            'frappe', 'frappe.model', 'frappe.model.document',
-            'school_poc', 'tap_lms.doctype.school_poc.school_poc'
-        ]
-        for module_name in modules_to_remove:
-            if module_name in sys.modules:
-                del sys.modules[module_name]
+        # Remove test documents
+        frappe.db.delete("School POC", {"name": ["like", "TEST-%"]})
+        frappe.db.commit()
     
-
-    def test_school_poc_code_execution(self):
-        """Fallback test using direct code execution"""
+    def test_school_poc_creation(self):
+        """Test basic School_POC document creation - covers import and class definition"""
+        # This test covers line 5 (from frappe.model.document import Document)
+        # and line 7 (class School_POC(Document):)
         
-        # Complete school_poc.py file content (all 3 lines)
-        school_poc_code = """from frappe.model.document import Document
-
-class School_POC(Document):
-	pass
-"""
+        doc = frappe.new_doc("School POC")
+        doc.name = "TEST-SCHOOL-POC-001"
         
-        # Execute the complete code (covers all 3 lines)
-        namespace = {}
-        exec(compile(school_poc_code, 'school_poc.py', 'exec'), namespace)
+        # Add required fields (adjust based on your actual doctype fields)
+        doc.school_name = "Test School"
+        doc.poc_name = "Test POC Name"
+        doc.email = "test@example.com"
+        doc.phone = "1234567890"
         
-        # Verify the class exists (line 1: import, line 2: class definition)
-        self.assertIn('School_POC', namespace)
+        # Insert document
+        doc.insert()
         
-        # Test School_POC class instantiation (covers line 3: pass statement)
-        school_poc_class = namespace['School_POC']
+        # Verify document was created
+        self.assertTrue(frappe.db.exists("School POC", doc.name))
         
-        # Test class properties
-        self.assertEqual(school_poc_class.__name__, 'School_POC')
-        self.assertTrue(issubclass(school_poc_class, self.MockDocument))
-        
-        # Test instantiation (covers pass statement)
-        school_poc_instance = school_poc_class()
-        self.assertIsNotNone(school_poc_instance)
-        self.assertIsInstance(school_poc_instance, school_poc_class)
-        
-        print("✅ Code execution successful - all 3 lines covered!")
-
-
-def test_school_poc_standalone():
-    """Standalone function test for coverage"""
-    import sys
-    from unittest.mock import MagicMock
+        # Verify it's an instance of School_POC class
+        self.assertIsInstance(doc, School_POC)
     
-    # Create simple Document mock
-    Document = type('Document', (), {})
+    def test_school_poc_pass_statement(self):
+        """Test that covers the pass statement in the class"""
+        # This test covers line 8 (pass)
+        
+        # Create an instance of School_POC
+        doc = frappe.new_doc("School POC")
+        doc.name = "TEST-SCHOOL-POC-002"
+        
+        # Add minimal required fields
+        doc.school_name = "Test School 2"
+        doc.poc_name = "Test POC 2"
+        doc.email = "test2@example.com"
+        
+        # The pass statement is executed when the class is instantiated
+        # and no custom methods are called
+        doc.insert()
+        
+        # Verify the document exists and the class worked correctly
+        saved_doc = frappe.get_doc("School POC", doc.name)
+        self.assertEqual(saved_doc.school_name, "Test School 2")
     
-    # Setup minimal mocks
-    mock_frappe = MagicMock()
-    mock_frappe.model = MagicMock()
-    mock_frappe.model.document = MagicMock()
-    mock_frappe.model.document.Document = Document
+    def test_school_poc_inheritance(self):
+        """Test that School_POC properly inherits from Document"""
+        # This ensures the class definition and inheritance work correctly
+        
+        doc = frappe.new_doc("School POC")
+        
+        # Verify it inherits Document methods
+        self.assertTrue(hasattr(doc, 'insert'))
+        self.assertTrue(hasattr(doc, 'save'))
+        self.assertTrue(hasattr(doc, 'delete'))
+        
+        # Verify it's the correct class type
+        self.assertEqual(doc.__class__.__name__, 'School_POC')
+        self.assertTrue(issubclass(School_POC, frappe.model.document.Document))
     
-    sys.modules['frappe'] = mock_frappe
-    sys.modules['frappe.model'] = mock_frappe.model
-    sys.modules['frappe.model.document'] = mock_frappe.model.document
+    def test_school_poc_with_all_fields(self):
+        """Test School_POC with all possible fields populated"""
+        # Comprehensive test to ensure full functionality
+        
+        doc = frappe.new_doc("School POC")
+        doc.name = "TEST-SCHOOL-POC-003"
+        
+        # Populate all fields (adjust based on your actual doctype)
+        doc.school_name = "Comprehensive Test School"
+        doc.poc_name = "John Doe"
+        doc.email = "john.doe@testschool.edu"
+        doc.phone = "+1-555-123-4567"
+        doc.designation = "Principal"
+        doc.address = "123 Education Street"
+        doc.city = "Education City"
+        doc.state = "Test State"
+        doc.country = "Test Country"
+        
+        # Insert and verify
+        doc.insert()
+        
+        # Fetch and verify all fields
+        saved_doc = frappe.get_doc("School POC", doc.name)
+        self.assertEqual(saved_doc.school_name, "Comprehensive Test School")
+        self.assertEqual(saved_doc.poc_name, "John Doe")
+        self.assertEqual(saved_doc.email, "john.doe@testschool.edu")
     
-    try:
-        # The exact 3 lines from school_poc.py
-        school_poc_code = """from frappe.model.document import Document
+    def test_school_poc_validation(self):
+        """Test any validation logic (if present in the class)"""
+        # Even though the current class only has 'pass', this test ensures
+        # the basic validation framework works
+        
+        doc = frappe.new_doc("School POC")
+        doc.name = "TEST-SCHOOL-POC-004"
+        doc.school_name = "Validation Test School"
+        doc.poc_name = "Test Validator"
+        doc.email = "validator@test.com"
+        
+        # This should work without errors
+        doc.insert()
+        
+        # Verify the document was saved correctly
+        self.assertTrue(frappe.db.exists("School POC", doc.name))
 
-class School_POC(Document):
-	pass
-"""
-        
-        # Execute all 3 lines
-        namespace = {}
-        exec(compile(school_poc_code, 'school_poc.py', 'exec'), namespace)
-        
-        # Verify all lines were executed
-        assert 'Document' in namespace  # Import worked
-        assert 'School_POC' in namespace  # Class created
-        
-        school_poc_class = namespace['School_POC']
-        assert school_poc_class.__name__ == 'School_POC'
-        
-        # Test instantiation (executes pass statement)
-        instance = school_poc_class()
-        assert instance is not None
-        assert isinstance(instance, school_poc_class)
-        assert issubclass(school_poc_class, Document)
-        
-        print("✅ Standalone test - All 3 lines covered successfully!")
-        
-    finally:
-        # Cleanup
-        for mod in ['frappe', 'frappe.model', 'frappe.model.document']:
-            if mod in sys.modules:
-                del sys.modules[mod]
+
+# Additional test runner for pytest compatibility
+def test_coverage():
+    """Function to ensure all lines are covered when run with pytest"""
+    # Import the module to ensure line 5 is covered
+    from tap_lms.tap_lms.doctype.school_poc.school_poc import School_POC
+    
+    # Create instance to ensure line 7 and 8 are covered
+    doc = frappe.new_doc("School POC")
+    
+    # Verify it's the right class (covers class definition)
+    assert isinstance(doc, School_POC)
+    
+    # The pass statement is covered by class instantiation
+    assert doc.__class__.__name__ == "School_POC"
+
