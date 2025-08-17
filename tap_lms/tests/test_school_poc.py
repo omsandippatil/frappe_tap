@@ -169,41 +169,6 @@ class TestSchoolPOC(unittest.TestCase):
             if module_name in sys.modules:
                 del sys.modules[module_name]
     
-    def test_school_poc_import_and_class_creation(self):
-        """Test actual import of school_poc module for coverage"""
-        
-        # Path to the actual school_poc.py file
-        school_poc_path = os.path.join(
-            current_dir, '..', '..', '..', 
-            'tap_lms', 'doctype', 'school_poc', 'school_poc.py'
-        )
-        
-        # Import the actual module using importlib
-        spec = importlib.util.spec_from_file_location("school_poc", school_poc_path)
-        school_poc_module = importlib.util.module_from_spec(spec)
-        
-        # Add to sys.modules so coverage can track it
-        sys.modules['school_poc'] = school_poc_module
-        
-        # Execute the module (this will be tracked by coverage)
-        spec.loader.exec_module(school_poc_module)
-        
-        # Verify the class exists and works
-        self.assertTrue(hasattr(school_poc_module, 'School_POC'))
-        
-        School_POC = school_poc_module.School_POC
-        
-        # Test class properties
-        self.assertEqual(School_POC.__name__, 'School_POC')
-        self.assertTrue(issubclass(School_POC, self.MockDocument))
-        
-        # Test instantiation (this executes the pass statement)
-        instance = School_POC()
-        self.assertIsNotNone(instance)
-        self.assertIsInstance(instance, School_POC)
-        
-        print("✅ Module imported and class tested successfully!")
-    
     def test_school_poc_alternative_import(self):
         """Alternative test using direct sys.path manipulation"""
         
