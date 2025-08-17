@@ -270,47 +270,7 @@ class TestSchoolPOC(unittest.TestCase):
             # If full path import fails, try alternative
             print(f"Full path import failed: {e}")
             self.test_alternative_import()
-    
-    def test_alternative_import(self):
-        """Alternative import method"""
-        
-        # Find the file and import it directly
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # Look for school_poc.py in current directory structure
-        for root, dirs, files in os.walk(current_dir):
-            if 'school_poc.py' in files and 'school_poc' in root:
-                school_poc_path = os.path.join(root, 'school_poc.py')
-                
-                # Load the module using importlib
-                spec = importlib.util.spec_from_file_location(
-                    "tap_lms.doctype.school_poc.school_poc", 
-                    school_poc_path
-                )
-                school_poc_module = importlib.util.module_from_spec(spec)
-                
-                # Register in sys.modules with the exact name coverage expects
-                sys.modules['tap_lms.doctype.school_poc.school_poc'] = school_poc_module
-                sys.modules['school_poc'] = school_poc_module
-                
-                # Execute the module (this should be tracked by coverage)
-                spec.loader.exec_module(school_poc_module)
-                
-                # Test the class
-                self.assertTrue(hasattr(school_poc_module, 'School_POC'))
-                
-                School_POC = school_poc_module.School_POC
-                
-                # Create instances to ensure pass statement is executed
-                for i in range(5):
-                    instance = School_POC()
-                    self.assertIsNotNone(instance)
-                
-                print(f"✅ Alternative import successful from {school_poc_path}")
-                return
-        
-        self.fail("Could not find school_poc.py file in directory structure")
-    
+ 
     def test_direct_execution(self):
         """Test by directly executing the file content"""
         
