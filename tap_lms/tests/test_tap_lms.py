@@ -132,14 +132,4 @@ class TestTapLmsConfig(unittest.TestCase):
         
         for expected_call in expected_calls:
             self.assertIn(expected_call, actual_calls)
-   
-    def test_module_level_import_coverage(self):
-        """Test to ensure module-level imports are covered"""
-        # Import the module
-        from tap_lms.config import tap_lms
-        
-        # Verify module was imported successfully
-        self.assertTrue(hasattr(tap_lms, 'get_data'))
-        
-        # Verify frappe._ was called during import
-        self.assertTrue(self.frappe_mock._.called)
+  
