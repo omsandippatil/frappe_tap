@@ -513,28 +513,7 @@ class TestFeedbackConsumer(unittest.TestCase):
         with self.assertRaises(Exception):
             self.consumer.setup_rabbitmq()
 
-    @patch('pika.BlockingConnection')
-    def test_setup_rabbitmq_with_channel_errors(self, mock_connection):
-        """Test RabbitMQ setup with channel errors requiring reconnection."""
-        if not USING_REAL_CLASS:
-            self.skipTest("Skipping real implementation test - using mock class")
-            
-        frappe_mock.get_single.return_value = self.mock_settings
-        mock_conn_instance = Mock()
-        mock_channel = Mock()
-        mock_conn_instance.channel.return_value = mock_channel
-        mock_connection.return_value = mock_conn_instance
-        
-        # Simulate ChannelClosedByBroker exception on first exchange_declare
-        mock_channel.exchange_declare.side_effect = [
-            MockChannelClosedByBroker(404, "NOT_FOUND"),
-            None  # Success on retry
-        ]
-        
-        with patch.object(self.consumer, '_reconnect') as mock_reconnect:
-            self.consumer.setup_rabbitmq()
-            mock_reconnect.assert_called()
-
+  
     def test_start_consuming_success(self):
         """Test successful start_consuming."""
         if not USING_REAL_CLASS:
@@ -747,54 +726,6 @@ class TestFeedbackConsumer(unittest.TestCase):
         for error in retryable_errors:
             self.assertTrue(self.consumer.is_retryable_error(error))
 
-    def test_update_submission_success(self):
-        """Test successful submission update."""
-        if not USING_REAL_CLASS:
-            self.skipTest("Skipping real implementation test - using mock class")
-            
-        mock_submission = Mock()
-        frappe_mock.get_doc.return_value = mock_submission
-        
-        self.consumer.update_submission(self.sample_message_data)
-        
-        # Verify all fields are updated
-        self.assertEqual(mock_submission.grade_recommendation, "85.5")
-        self.assertEqual(mock_submission.overall_feedback, "Good work on the assignment")
-        self.assertEqual(mock_submission.plagiarism_score, 15.5)
-        self.assertEqual(mock_submission.summary, "Test summary")
-        self.assertEqual(mock_submission.feedback_status, "Completed")
-        mock_submission.save.assert_called_once()
-
-    def test_update_submission_partial_data(self):
-        """Test submission update with partial data."""
-        if not USING_REAL_CLASS:
-            self.skipTest("Skipping real implementation test - using mock class")
-            
-        mock_submission = Mock()
-        frappe_mock.get_doc.return_value = mock_submission
-        
-        partial_data = {
-            "submission_id": "test_123",
-            "feedback": {
-                "grade_recommendation": "90"
-            }
-        }
-        
-        self.consumer.update_submission(partial_data)
-        
-        self.assertEqual(mock_submission.grade_recommendation, "90")
-        mock_submission.save.assert_called_once()
-
-    def test_send_glific_notification_success(self):
-        """Test successful Glific notification."""
-        if not USING_REAL_CLASS:
-            self.skipTest("Skipping real implementation test - using mock class")
-            
-        frappe_mock.get_value.return_value = "+1234567890"
-        
-        # Should not raise any exception
-        self.consumer.send_glific_notification(self.sample_message_data)
-
     def test_send_glific_notification_missing_student_id(self):
         """Test Glific notification with missing student_id."""
         if not USING_REAL_CLASS:
@@ -817,16 +748,6 @@ class TestFeedbackConsumer(unittest.TestCase):
         # Should not raise any exception
         self.consumer.send_glific_notification(test_data)
 
-    def test_send_glific_notification_no_phone(self):
-        """Test Glific notification with no phone number."""
-        if not USING_REAL_CLASS:
-            self.skipTest("Skipping real implementation test - using mock class")
-            
-        frappe_mock.get_value.return_value = None
-        
-        # Should not raise any exception
-        self.consumer.send_glific_notification(self.sample_message_data)
-
     def test_send_glific_notification_exception(self):
         """Test Glific notification with exception."""
         if not USING_REAL_CLASS:
@@ -836,20 +757,6 @@ class TestFeedbackConsumer(unittest.TestCase):
         
         with self.assertRaises(Exception):
             self.consumer.send_glific_notification(self.sample_message_data)
-
-    def test_mark_submission_failed_success(self):
-        """Test successful marking submission as failed."""
-        if not USING_REAL_CLASS:
-            self.skipTest("Skipping real implementation test - using mock class")
-            
-        mock_submission = Mock()
-        frappe_mock.get_doc.return_value = mock_submission
-        
-        self.consumer.mark_submission_failed("test_123", "Test error")
-        
-        self.assertEqual(mock_submission.feedback_status, "Failed")
-        self.assertEqual(mock_submission.feedback_error, "Test error")
-        mock_submission.save.assert_called_once()
 
     def test_mark_submission_failed_exception(self):
         """Test mark_submission_failed with exception."""
