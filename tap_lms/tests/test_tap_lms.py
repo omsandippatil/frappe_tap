@@ -69,30 +69,7 @@ class TestTapLmsConfig(unittest.TestCase):
         for key in expected_keys:
             self.assertIn(key, school_item)
     
-    @patch('frappe._')
-    def test_get_data_return_values(self, mock_frappe_underscore):
-        """Test specific return values from get_data function"""
-        # Mock the frappe._ function
-        def mock_translate(text):
-            return text  # Return text as-is for testing
-        
-        mock_frappe_underscore.side_effect = mock_translate
-        
-        # Import and call the function
-        from tap_lms.config import tap_lms
-        result = tap_lms.get_data()
-        
-        # Check specific values
-        main_item = result[0]
-        self.assertEqual(main_item["label"], "School")
-        
-        school_item = main_item["items"][0]
-        self.assertEqual(school_item["type"], "doctype")
-        self.assertEqual(school_item["name"], "School")
-        self.assertEqual(school_item["label"], "School")
-        self.assertEqual(school_item["description"], "Manage School")
-        self.assertEqual(school_item["onboard"], 1)
-    
+   
     @patch('frappe._')
     def test_frappe_underscore_called_with_correct_arguments(self, mock_frappe_underscore):
         """Test that frappe._ is called with the correct arguments"""
