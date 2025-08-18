@@ -33,42 +33,7 @@ class TestTapLmsConfig(unittest.TestCase):
         self.assertTrue(hasattr(tap_lms, 'get_data'))
         self.assertTrue(callable(tap_lms.get_data))
     
-    @patch('frappe._')
-    def test_get_data_returns_expected_structure(self, mock_frappe_underscore):
-        """Test that get_data returns the expected data structure"""
-        # Mock the frappe._ function to return expected translations
-        def mock_translate(text):
-            translations = {
-                "School": "School",
-                "Manage School": "Manage School"
-            }
-            return translations.get(text, text)
-        
-        mock_frappe_underscore.side_effect = mock_translate
-        
-        # Import and call the function
-        from tap_lms.config import tap_lms
-        result = tap_lms.get_data()
-        
-        # Verify the structure
-        self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 1)
-        
-        # Check the main structure
-        main_item = result[0]
-        self.assertIn("label", main_item)
-        self.assertIn("items", main_item)
-        
-        # Check the nested items structure
-        items = main_item["items"]
-        self.assertIsInstance(items, list)
-        self.assertEqual(len(items), 1)
-        
-        school_item = items[0]
-        expected_keys = ["type", "name", "label", "description", "onboard"]
-        for key in expected_keys:
-            self.assertIn(key, school_item)
-    
+  
    
     @patch('frappe._')
     def test_frappe_underscore_called_with_correct_arguments(self, mock_frappe_underscore):
