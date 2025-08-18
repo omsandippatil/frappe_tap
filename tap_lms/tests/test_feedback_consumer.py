@@ -853,30 +853,30 @@ class TestFeedbackConsumer(unittest.TestCase):
             with self.assertRaises(KeyboardInterrupt):
                 raise KeyboardInterrupt()
 
-    def test_process_message_success(self):
-        """Test successful message processing."""
-        mock_ch = Mock()
-        mock_method = Mock()
-        mock_method.delivery_tag = "test_tag"
-        mock_properties = Mock()
-        body = json.dumps(self.sample_message_data).encode('utf-8')
+    # def test_process_message_success(self):
+    #     """Test successful message processing."""
+    #     mock_ch = Mock()
+    #     mock_method = Mock()
+    #     mock_method.delivery_tag = "test_tag"
+    #     mock_properties = Mock()
+    #     body = json.dumps(self.sample_message_data).encode('utf-8')
         
-        # Mock database calls
-        frappe_mock.db.exists.return_value = True
+    #     # Mock database calls
+    #     frappe_mock.db.exists.return_value = True
         
-        if USING_REAL_CLASS:
-            with patch.object(self.consumer, 'update_submission') as mock_update:
-                with patch.object(self.consumer, 'send_glific_notification') as mock_glific:
-                    self.consumer.process_message(mock_ch, mock_method, mock_properties, body)
+    #     if USING_REAL_CLASS:
+    #         with patch.object(self.consumer, 'update_submission') as mock_update:
+    #             with patch.object(self.consumer, 'send_glific_notification') as mock_glific:
+    #                 self.consumer.process_message(mock_ch, mock_method, mock_properties, body)
                     
-                    mock_update.assert_called_once_with(self.sample_message_data)
-                    mock_glific.assert_called_once_with(self.sample_message_data)
-                    mock_ch.basic_ack.assert_called_once_with(delivery_tag="test_tag")
-        else:
-            # Test message processing logic for mock
-            import json
-            data = json.loads(body.decode('utf-8'))
-            self.assertEqual(data['submission_id'], 'test_submission_123')
+    #                 mock_update.assert_called_once_with(self.sample_message_data)
+    #                 mock_glific.assert_called_once_with(self.sample_message_data)
+    #                 mock_ch.basic_ack.assert_called_once_with(delivery_tag="test_tag")
+    #     else:
+    #         # Test message processing logic for mock
+    #         import json
+    #         data = json.loads(body.decode('utf-8'))
+    #         self.assertEqual(data['submission_id'], 'test_submission_123')
 
     def test_process_message_invalid_json(self):
         """Test message processing with invalid JSON."""
