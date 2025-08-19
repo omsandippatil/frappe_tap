@@ -264,9 +264,6 @@ class TestAPIFunctions(unittest.TestCase):
         mock_frappe.response.status_code = 200
         mock_frappe.local.form_dict = {}
         
-    def mock_form_dict(self, data):
-        """Helper to set form data"""
-        mock_frappe.local.form_dict = data
    
     def test_exception_classes(self):
         """Test all exception classes"""
@@ -358,17 +355,3 @@ class TestEdgeCasesAndBranches(unittest.TestCase):
         self.assertIsNotNone(mock_frappe)
         self.assertTrue('frappe' in sys.modules)
     
-    @patch('json.loads')
-    def test_json_error_handling(self, mock_json_loads):
-        """Test JSON error handling if present in the module"""
-        
-        # Test JSON decode errors
-        mock_json_loads.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
-        
-        try:
-            # This would test any JSON parsing in the module
-            result = list_districts()
-            self.assertIn("status", result)
-        except:
-            pass
-
