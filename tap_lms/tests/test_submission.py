@@ -360,41 +360,7 @@ class TestSubmission(unittest.TestCase):
         frappe.throw.reset_mock()
         frappe.log_error.reset_mock()
         
-    # @patch('pika.BlockingConnection')
-    # @patch('pika.ConnectionParameters')
-    # @patch('pika.PlainCredentials')
-    # def test_submit_artwork_valid_api_key(self, mock_credentials, mock_params, mock_connection):
-    #     """Test submit_artwork with valid API key - covers lines 7-30"""
-    #     # Setup mocks
-    #     frappe.db.get_value.return_value = {"user": "test_user"}
-        
-    #     mock_submission = Mock()
-    #     mock_submission.name = "SUB-001"
-    #     mock_submission.assign_id = "ASSIGN-001"
-    #     mock_submission.student_id = "STU-001"
-    #     mock_submission.img_url = "http://example.com/image.jpg"
-    #     mock_submission.status = "Pending"
-        
-    #     frappe.new_doc.return_value = mock_submission
-    #     frappe.get_doc.return_value = mock_submission
-        
-    #     # Mock RabbitMQ components
-    #     mock_channel = Mock()
-    #     mock_conn_instance = Mock()
-    #     mock_conn_instance.channel.return_value = mock_channel
-    #     mock_connection.return_value = mock_conn_instance
-        
-    #     # Test the function
-    #     result = submit_artwork("valid_key", "ASSIGN-001", "STU-001", "http://example.com/image.jpg")
-        
-    #     # Assertions
-    #     self.assertEqual(result["message"], "Submission received")
-    #     self.assertEqual(result["submission_id"], "SUB-001")
-    #     frappe.db.get_value.assert_called_once()
-    #     frappe.set_user.assert_called()
-    #     mock_submission.insert.assert_called_once()
-    #     frappe.db.commit.assert_called_once()
-
+    
     def test_submit_artwork_invalid_api_key(self):
         """Test submit_artwork with invalid API key - covers lines 8-9"""
         # Setup mocks

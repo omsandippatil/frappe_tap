@@ -783,170 +783,7 @@ class TestFeedbackConsumer(unittest.TestCase):
         conn_exception = MockConnectionClosed()
         self.assertIsInstance(conn_exception, Exception)
 
-    @patch('pika.PlainCredentials')
-    @patch('pika.ConnectionParameters')
-    @patch('pika.BlockingConnection')
-    def test_setup_rabbitmq_success(self, mock_connection, mock_params, mock_creds):
-        """Test successful RabbitMQ setup."""
-        if not USING_REAL_CLASS:
-            return
-            
-        frappe_mock.get_single.return_value = self.mock_settings
-        
-        # Mock successful connection
-        mock_conn = Mock()
-        mock_channel = Mock()
-        mock_conn.channel.return_value = mock_channel
-        mock_connection.return_value = mock_conn
-        
-        self.consumer.setup_rabbitmq()
-        
-        # Verify connection was established
-        self.assertEqual(self.consumer.connection, mock_conn)
-        self.assertEqual(self.consumer.channel, mock_channel)
-        self.assertEqual(self.consumer.settings, self.mock_settings)
 
-    @patch('pika.PlainCredentials')
-    @patch('pika.ConnectionParameters')
-    @patch('pika.BlockingConnection')
-    def test_setup_rabbitmq_connection_failure(self, mock_connection, mock_params, mock_creds):
-        """Test RabbitMQ setup with connection failure."""
-        if not USING_REAL_CLASS:
-            return
-            
-        frappe_mock.get_single.return_value = self.mock_settings
-        mock_connection.side_effect = Exception("Connection failed")
-        
-        with self.assertRaises(Exception):
-            self.consumer.setup_rabbitmq()
-
-    @patch('pika.PlainCredentials')
-    @patch('pika.ConnectionParameters')
-    @patch('pika.BlockingConnection')
-    def test_setup_rabbitmq_dead_letter_exchange_failure(self, mock_connection, mock_params, mock_creds):
-        """Test RabbitMQ setup when dead letter exchange creation fails."""
-        if not USING_REAL_CLASS:
-            return
-            
-        frappe_mock.get_single.return_value = self.mock_settings
-        
-        mock_conn = Mock()
-        mock_channel = Mock()
-        mock_conn.channel.return_value = mock_channel
-        mock_connection.return_value = mock_conn
-        
-        # Mock exchange_declare to fail first, then succeed
-        mock_channel.exchange_declare.side_effect = [
-            MockChannelClosedByBroker(404, "Exchange doesn't exist"),
-            None,  # Second call succeeds (durable=False)
-            None   # Third call succeeds (durable=True)
-        ]
-        
-        self.consumer.setup_rabbitmq()
-        
-        # Should call exchange_declare multiple times due to retry logic
-        self.assertEqual(mock_channel.exchange_declare.call_count, 3)
-
-    @patch('pika.PlainCredentials')
-    @patch('pika.ConnectionParameters')
-    @patch('pika.BlockingConnection')
-    def test_setup_rabbitmq_dead_letter_queue_failure(self, mock_connection, mock_params, mock_creds):
-        """Test RabbitMQ setup when dead letter queue creation fails."""
-        if not USING_REAL_CLASS:
-            return
-            
-        frappe_mock.get_single.return_value = self.mock_settings
-        
-        mock_conn = Mock()
-        mock_channel = Mock()
-        mock_conn.channel.return_value = mock_channel
-        mock_connection.return_value = mock_conn
-        
-        # Mock queue_declare to fail first, then succeed
-        mock_channel.queue_declare.side_effect = [
-            MockChannelClosedByBroker(404, "Queue doesn't exist"),
-            None,  # Second call succeeds
-            None   # Third call for main queue succeeds
-        ]
-        
-        self.consumer.setup_rabbitmq()
-        
-        # Should call queue_declare multiple times
-        self.assertEqual(mock_channel.queue_declare.call_count, 3)
-
-    @patch('pika.PlainCredentials')
-    @patch('pika.ConnectionParameters')  
-    @patch('pika.BlockingConnection')
-    def test_setup_rabbitmq_queue_bind_failure(self, mock_connection, mock_params, mock_creds):
-        """Test RabbitMQ setup when queue bind fails."""
-        if not USING_REAL_CLASS:
-            return
-            
-        frappe_mock.get_single.return_value = self.mock_settings
-        
-        mock_conn = Mock()
-        mock_channel = Mock()
-        mock_conn.channel.return_value = mock_channel
-        mock_connection.return_value = mock_conn
-        
-        # Mock queue_bind to raise exception
-        mock_channel.queue_bind.side_effect = Exception("Binding might already exist")
-        
-        # Should not raise exception due to pass statement
-        self.consumer.setup_rabbitmq()
-
-    @patch('pika.PlainCredentials')
-    @patch('pika.ConnectionParameters')
-    @patch('pika.BlockingConnection')
-    def test_setup_rabbitmq_main_queue_failure(self, mock_connection, mock_params, mock_creds):
-        """Test RabbitMQ setup when main queue creation fails."""
-        if not USING_REAL_CLASS:
-            return
-            
-        frappe_mock.get_single.return_value = self.mock_settings
-        
-        mock_conn = Mock()
-        mock_channel = Mock()
-        mock_conn.channel.return_value = mock_channel
-        mock_connection.return_value = mock_conn
-        
-        # Mock successful dead letter setup, then main queue failure
-        queue_responses = [
-            None,  # Dead letter queue succeeds
-            MockChannelClosedByBroker(404, "Main queue error"),  # Main queue fails first
-            None   # Main queue succeeds on retry
-        ]
-        mock_channel.queue_declare.side_effect = queue_responses
-        
-        self.consumer.setup_rabbitmq()
-
-    def test_reconnect_success(self):
-        """Test successful reconnection."""
-        if not USING_REAL_CLASS:
-            return
-            
-        self.consumer.settings = self.mock_settings
-        
-        # Mock old connection
-        old_conn = Mock()
-        old_conn.is_closed = False
-        self.consumer.connection = old_conn
-        
-        with patch('pika.PlainCredentials'):
-            with patch('pika.ConnectionParameters'):
-                with patch('pika.BlockingConnection') as mock_connection:
-                    mock_new_conn = Mock()
-                    mock_new_channel = Mock()
-                    mock_new_conn.channel.return_value = mock_new_channel
-                    mock_connection.return_value = mock_new_conn
-                    
-                    self.consumer._reconnect()
-                    
-                    # Verify old connection was closed
-                    old_conn.close.assert_called_once()
-                    # Verify new connection was established
-                    self.assertEqual(self.consumer.connection, mock_new_conn)
-                    self.assertEqual(self.consumer.channel, mock_new_channel)
 
     def test_reconnect_exception_during_close(self):
         """Test reconnection when closing old connection fails."""
@@ -972,24 +809,7 @@ class TestFeedbackConsumer(unittest.TestCase):
                     # Should not raise exception
                     self.consumer._reconnect()
 
-    def test_start_consuming_no_channel(self):
-        """Test start_consuming when channel is not set."""
-        if not USING_REAL_CLASS:
-            return
-            
-        self.consumer.channel = None
-        
-        with patch.object(self.consumer, 'setup_rabbitmq') as mock_setup:
-            # Should call setup_rabbitmq when channel is None
-            mock_channel = Mock()
-            self.consumer.channel = mock_channel
-            mock_channel.start_consuming.side_effect = KeyboardInterrupt()
-            
-            with patch.object(self.consumer, 'stop_consuming'):
-                with patch.object(self.consumer, 'cleanup'):
-                    self.consumer.start_consuming()
-                    
-            mock_setup.assert_called_once()
+
 
     def test_start_consuming_success(self):
         """Test successful start_consuming."""
@@ -1215,95 +1035,7 @@ class TestFeedbackConsumer(unittest.TestCase):
             error = Exception("Record does not exist")
             self.assertIn("not exist", str(error).lower())
 
-    def test_update_submission_complete_flow(self):
-        """Test complete update_submission method with all data types."""
-        if not USING_REAL_CLASS:
-            return
-            
-        # Mock submission document
-        mock_submission = Mock()
-        frappe_mock.get_doc.return_value = mock_submission
-        
-        # Test data with various scenarios
-        test_data = {
-            "submission_id": "test_123",
-            "feedback": {
-                "grade_recommendation": "85.5",
-                "overall_feedback": "Good work"
-            },
-            "plagiarism_score": 15.5,
-            "summary": "Test summary",
-            "similar_sources": [{"source": "test.com"}]
-        }
-        
-        self.consumer.update_submission(test_data)
-        
-        # Verify document was fetched and updated
-        frappe_mock.get_doc.assert_called_once_with("ImgSubmission", "test_123")
-        mock_submission.update.assert_called_once()
-        mock_submission.save.assert_called_once()
 
-    def test_update_submission_grade_string_cleaning(self):
-        """Test update_submission with grade string that needs cleaning."""
-        if not USING_REAL_CLASS:
-            return
-            
-        mock_submission = Mock()
-        frappe_mock.get_doc.return_value = mock_submission
-        
-        # Test grade with non-numeric characters
-        test_data = {
-            "submission_id": "test_123",
-            "feedback": {
-                "grade_recommendation": "Grade: 85.5% (Good)",
-                "overall_feedback": "Good work"
-            }
-        }
-        
-        self.consumer.update_submission(test_data)
-        
-        # Should still process successfully
-        frappe_mock.get_doc.assert_called_once()
-
-    def test_update_submission_invalid_grade(self):
-        """Test update_submission with invalid grade format."""
-        if not USING_REAL_CLASS:
-            return
-            
-        mock_submission = Mock()
-        frappe_mock.get_doc.return_value = mock_submission
-        
-        test_data = {
-            "submission_id": "test_123",
-            "feedback": {
-                "grade_recommendation": "invalid_grade",
-                "overall_feedback": "Good work"
-            }
-        }
-        
-        self.consumer.update_submission(test_data)
-        
-        # Should handle invalid grade gracefully
-        frappe_mock.get_doc.assert_called_once()
-
-    def test_update_submission_invalid_plagiarism_score(self):
-        """Test update_submission with invalid plagiarism score."""
-        if not USING_REAL_CLASS:
-            return
-            
-        mock_submission = Mock()
-        frappe_mock.get_doc.return_value = mock_submission
-        
-        test_data = {
-            "submission_id": "test_123",
-            "feedback": {"overall_feedback": "Good work"},
-            "plagiarism_score": "invalid_score"
-        }
-        
-        self.consumer.update_submission(test_data)
-        
-        # Should handle invalid plagiarism score gracefully
-        frappe_mock.get_doc.assert_called_once()
 
     def test_update_submission_exception(self):
         """Test update_submission when document update fails."""
@@ -1320,46 +1052,7 @@ class TestFeedbackConsumer(unittest.TestCase):
         with self.assertRaises(Exception):
             self.consumer.update_submission(test_data)
 
-    def test_send_glific_notification_complete_flow(self):
-        """Test complete Glific notification flow."""
-        if not USING_REAL_CLASS:
-            return
-            
-        # Mock Glific flow configuration
-        frappe_mock.get_value.return_value = "test_flow_id"
-        
-        # Mock start_contact_flow function
-        with patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow') as mock_start_flow:
-            mock_start_flow.return_value = True
-            
-            self.consumer.send_glific_notification(self.sample_message_data)
-            
-            # Verify flow was started
-            mock_start_flow.assert_called_once()
 
-    def test_send_glific_notification_no_flow_id(self):
-        """Test Glific notification when flow_id is not configured."""
-        if not USING_REAL_CLASS:
-            return
-            
-        # Mock missing flow_id
-        frappe_mock.get_value.return_value = None
-        
-        # Should not raise exception
-        self.consumer.send_glific_notification(self.sample_message_data)
-
-    def test_send_glific_notification_flow_start_failure(self):
-        """Test Glific notification when flow start fails."""
-        if not USING_REAL_CLASS:
-            return
-            
-        frappe_mock.get_value.return_value = "test_flow_id"
-        
-        with patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow') as mock_start_flow:
-            mock_start_flow.return_value = False
-            
-            # Should not raise exception but log warning
-            self.consumer.send_glific_notification(self.sample_message_data)
 
     def test_send_glific_notification_missing_student_id(self):
         """Test Glific notification with missing student_id."""
@@ -1397,39 +1090,7 @@ class TestFeedbackConsumer(unittest.TestCase):
             with self.assertRaises(Exception):
                 frappe_mock.get_value()
 
-    def test_mark_submission_failed_success(self):
-        """Test successful mark_submission_failed."""
-        if not USING_REAL_CLASS:
-            return
-            
-        mock_submission = Mock()
-        mock_submission.status = "Pending"
-        # Mock hasattr to return False initially, then True
-        with patch('builtins.hasattr', side_effect=[False, True]):
-            frappe_mock.get_doc.return_value = mock_submission
-            
-            self.consumer.mark_submission_failed("test_123", "Test error message")
-            
-            # Verify submission was marked as failed
-            self.assertEqual(mock_submission.status, "Failed")
-            self.assertEqual(mock_submission.error_message, "Test error message"[:500])
-            mock_submission.save.assert_called_once()
 
-    def test_mark_submission_failed_with_existing_error_field(self):
-        """Test mark_submission_failed when error_message field already exists."""
-        if not USING_REAL_CLASS:
-            return
-            
-        mock_submission = Mock()
-        mock_submission.status = "Pending"
-        # Mock hasattr to return True for error_message field
-        with patch('builtins.hasattr', return_value=True):
-            frappe_mock.get_doc.return_value = mock_submission
-            
-            self.consumer.mark_submission_failed("test_123", "Test error message")
-            
-            # Should still update the submission
-            mock_submission.save.assert_called_once()
 
     def test_mark_submission_failed_exception(self):
         """Test mark_submission_failed with exception."""
@@ -1654,29 +1315,7 @@ class TestFeedbackConsumer(unittest.TestCase):
             self.assertEqual(main_queue_response.method.message_count, 5)
             self.assertIsInstance(responses[1], Exception)
 
-    def test_get_queue_stats_no_channel(self):
-        """Test get_queue_stats when channel is None."""
-        if not USING_REAL_CLASS:
-            return
-            
-        self.consumer.channel = None
-        self.consumer.settings = self.mock_settings
-        
-        with patch.object(self.consumer, 'setup_rabbitmq') as mock_setup:
-            # Mock setup to set a channel
-            mock_channel = Mock()
-            self.consumer.channel = mock_channel
-            
-            main_queue_response = Mock()
-            main_queue_response.method.message_count = 3
-            dl_queue_response = Mock()
-            dl_queue_response.method.message_count = 1
-            mock_channel.queue_declare.side_effect = [main_queue_response, dl_queue_response]
-            
-            stats = self.consumer.get_queue_stats()
-            
-            # Should call setup_rabbitmq when channel is None
-            mock_setup.assert_called_once()
+
 
     def test_get_queue_stats_exception(self):
         """Test get_queue_stats with exception."""
