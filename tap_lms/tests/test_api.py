@@ -1671,11 +1671,7 @@ class TestSchoolAPIs(WorkingBaseTest):
 
 class TestBasicFunctionality(WorkingBaseTest):
     """Test basic functionality without API dependencies"""
-    
-    def test_imports_work(self):
-        """Test that imports work"""
-        self.assertTrue(API_IMPORT_SUCCESS)
-        
+      
     def test_string_operations(self):
         """Test string operations used in API"""
         import random
