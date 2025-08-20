@@ -1,10 +1,15 @@
 
-
-
-
 """
-FIXED Solutions for tapLMS API Tests - All Tests Should Pass
-Replace your current test_api.py with this file
+Solutions for fixing Frappe import issues in tests
+"""
+
+# =============================================================================
+# SOLUTION 1: PROPER FRAPPE TEST SETUP (RECOMMENDED)
+# =============================================================================
+"""
+Complete test_api.py for tapLMS
+This is a comprehensive test file that should pass all tests.
+Replace your current test_api.py with this entire file.
 """
 
 import sys
@@ -14,7 +19,7 @@ import json
 from datetime import datetime, timedelta
 
 # =============================================================================
-# ENHANCED FRAPPE MOCKING SETUP (FIXED)
+# COMPLETE FRAPPE MOCKING SETUP
 # =============================================================================
 
 class MockFrappeUtils:
@@ -74,7 +79,7 @@ class MockFrappeUtils:
         return date + timedelta(days=days)
 
 class MockFrappe:
-    """Enhanced mock of the frappe module with better error handling"""
+    """Complete mock of the frappe module"""
     
     def __init__(self):
         self.utils = MockFrappeUtils()
@@ -96,7 +101,7 @@ class MockFrappe:
         self.db.get_value = Mock(return_value="test_value")
         self.db.set_value = Mock()
         
-        # Request object  
+        # Request object
         self.request = Mock()
         self.request.get_json = Mock(return_value={})
         self.request.data = '{}'
@@ -123,12 +128,6 @@ class MockFrappe:
         
         if doctype == "API Key":
             if isinstance(filters, dict) and filters.get('key') == 'valid_key':
-                doc = Mock()
-                doc.name = "valid_api_key_doc"
-                doc.key = "valid_key"
-                doc.enabled = 1
-                return doc
-            elif isinstance(filters, str) and filters == 'valid_key':
                 doc = Mock()
                 doc.name = "valid_api_key_doc"
                 doc.key = "valid_key"
@@ -312,190 +311,29 @@ mock_background.enqueue_glific_actions = Mock()
 
 mock_requests = Mock()
 
-# Inject all mocks into sys.modules BEFORE importing
+# Inject all mocks into sys.modules
 sys.modules['frappe'] = mock_frappe
 sys.modules['frappe.utils'] = mock_frappe.utils
 sys.modules['tap_lms.glific_integration'] = mock_glific
 sys.modules['tap_lms.background_jobs'] = mock_background
 sys.modules['requests'] = mock_requests
 
-# =============================================================================
-# MOCK API FUNCTIONS (Since we can't import the real ones)
-# =============================================================================
-
-def authenticate_api_key(api_key):
-    """Mock authenticate_api_key function"""
-    if not api_key:
-        return None
-    
-    try:
-        # Try to get API key document
-        doc = mock_frappe.get_doc("API Key", {"key": api_key})
-        if doc and doc.enabled:
-            return doc.name
-    except mock_frappe.DoesNotExistError:
-        return None
-    
-    return None
-
-def create_student():
-    """Mock create_student function"""
-    form_dict = mock_frappe.local.form_dict
-    
-    # Check for API key
-    api_key = form_dict.get('api_key')
-    if not api_key:
-        return {
-            'status': 'error',
-            'message': 'API key is required'
-        }
-    
-    # Authenticate API key
-    if not authenticate_api_key(api_key):
-        return {
-            'status': 'error',
-            'message': 'Invalid API key'
-        }
-    
-    # Check required fields
-    required_fields = ['student_name', 'phone', 'gender', 'grade', 'language', 'batch_skeyword', 'vertical', 'glific_id']
-    missing_fields = [field for field in required_fields if not form_dict.get(field)]
-    
-    if missing_fields:
-        return {
-            'status': 'error',
-            'message': f'Required fields missing: {", ".join(missing_fields)}'
-        }
-    
-    # Check batch validity
-    batch_skeyword = form_dict.get('batch_skeyword')
-    batch_data = mock_frappe.get_all("Batch onboarding", filters={"batch_skeyword": batch_skeyword})
-    
-    if not batch_data:
-        return {
-            'status': 'error',
-            'message': 'Invalid batch keyword'
-        }
-    
-    # Create student (mock successful creation)
-    try:
-        student = mock_frappe.new_doc("Student")
-        student.name = "STUDENT_001"
-        student.save()
-        
-        return {
-            'status': 'success',
-            'message': 'Student created successfully',
-            'crm_student_id': student.name,
-            'assigned_course_level': 'COURSE_LEVEL_001'
-        }
-    except Exception as e:
-        return {
-            'status': 'error',
-            'message': f'Error creating student: {str(e)}'
-        }
-
-def send_otp():
-    """Mock send_otp function"""
-    try:
-        data = mock_frappe.request.get_json() or {}
-        
-        api_key = data.get('api_key')
-        if not api_key:
-            return {
-                "status": "failure",
-                "message": "API key is required"
-            }
-        
-        if not authenticate_api_key(api_key):
-            return {
-                "status": "failure", 
-                "message": "Invalid API key"
-            }
-        
-        phone = data.get('phone')
-        if not phone:
-            return {
-                "status": "failure",
-                "message": "Phone number is required"
-            }
-        
-        # Mock successful OTP sending
-        return {
-            "status": "success",
-            "message": "OTP sent successfully",
-            "whatsapp_message_id": "msg_12345",
-            "otp_doc_id": "OTP_VER_001"
-        }
-        
-    except Exception as e:
-        return {
-            "status": "failure",
-            "message": f"Error sending OTP: {str(e)}"
-        }
-
-def list_districts():
-    """Mock list_districts function"""
-    try:
-        data = json.loads(mock_frappe.request.data or '{}')
-        
-        api_key = data.get('api_key')
-        if not api_key:
-            return {
-                "status": "error",
-                "message": "API key is required"
-            }
-        
-        if not authenticate_api_key(api_key):
-            return {
-                "status": "error",
-                "message": "Invalid API key"
-            }
-        
-        state = data.get('state')
-        if not state:
-            return {
-                "status": "error", 
-                "message": "State is required"
-            }
-        
-        # Mock successful district listing
-        districts = mock_frappe.get_all("District", filters={"state": state})
-        
-        return {
-            "status": "success",
-            "message": "Districts retrieved successfully",
-            "data": districts or [{'name': 'DISTRICT_001', 'district_name': 'Test District'}]
-        }
-        
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Error retrieving districts: {str(e)}"
-        }
-
-def create_teacher_web():
-    """Mock create_teacher_web function"""
-    # Mock implementation for completeness
-    return {
-        "status": "success",
-        "message": "Teacher created successfully"
-    }
-
-def verify_batch_keyword():
-    """Mock verify_batch_keyword function"""
-    # Mock implementation for completeness  
-    return {
-        "status": "success",
-        "message": "Batch keyword verified"
-    }
+# NOW import the API functions
+from tap_lms.api import (
+    authenticate_api_key, 
+    create_student, 
+    send_otp, 
+    list_districts,
+    create_teacher_web,
+    verify_batch_keyword
+)
 
 # =============================================================================
-# COMPREHENSIVE TEST CLASSES (FIXED)
+# COMPREHENSIVE TEST CLASSES
 # =============================================================================
 
 class TestTapLMSAPI(unittest.TestCase):
-    """Main API test class with all test cases - FIXED"""
+    """Main API test class with all test cases"""
     
     def setUp(self):
         """Reset mocks before each test"""
@@ -532,7 +370,7 @@ class TestTapLMSAPI(unittest.TestCase):
         self.assertIsNone(result)
 
     # =========================================================================
-    # STUDENT CREATION TESTS (FIXED)
+    # STUDENT CREATION TESTS
     # =========================================================================
 
     def test_create_student_missing_api_key(self):
@@ -615,14 +453,28 @@ class TestTapLMSAPI(unittest.TestCase):
             'glific_id': 'glific_123'
         }
         
-        result = create_student()
-        
-        self.assertEqual(result['status'], 'success')
-        self.assertEqual(result['crm_student_id'], 'STUDENT_001')
-        self.assertEqual(result['assigned_course_level'], 'COURSE_LEVEL_001')
+        with patch('tap_lms.api.get_course_level_with_mapping') as mock_course, \
+             patch('tap_lms.api.create_new_student') as mock_create_student, \
+             patch('tap_lms.api.get_tap_language') as mock_language:
+            
+            # Setup mocks for successful creation
+            mock_course.return_value = 'COURSE_LEVEL_001'
+            mock_language.return_value = 'ENGLISH'
+            
+            mock_student = Mock()
+            mock_student.name = 'STUDENT_001'
+            mock_student.append = Mock()
+            mock_student.save = Mock()
+            mock_create_student.return_value = mock_student
+            
+            result = create_student()
+            
+            self.assertEqual(result['status'], 'success')
+            self.assertEqual(result['crm_student_id'], 'STUDENT_001')
+            self.assertEqual(result['assigned_course_level'], 'COURSE_LEVEL_001')
 
     # =========================================================================
-    # OTP TESTS (FIXED)
+    # OTP TESTS  
     # =========================================================================
 
     def test_send_otp_success(self):
@@ -632,10 +484,19 @@ class TestTapLMSAPI(unittest.TestCase):
             'phone': '9876543210'
         }
         
-        result = send_otp()
-        
-        self.assertEqual(result["status"], "success")
-        self.assertIn("whatsapp_message_id", result)
+        with patch('requests.get') as mock_requests_get:
+            # Mock successful WhatsApp API response
+            mock_response = Mock()
+            mock_response.json.return_value = {
+                "status": "success",
+                "id": "msg_12345"
+            }
+            mock_requests_get.return_value = mock_response
+            
+            result = send_otp()
+            
+            self.assertEqual(result["status"], "success")
+            self.assertIn("whatsapp_message_id", result)
 
     def test_send_otp_invalid_api_key(self):
         """Test send_otp with invalid API key"""
@@ -662,7 +523,7 @@ class TestTapLMSAPI(unittest.TestCase):
         self.assertIn("phone", result["message"].lower())
 
     # =========================================================================
-    # LOCATION TESTS (FIXED)
+    # LOCATION TESTS
     # =========================================================================
 
     def test_list_districts_success(self):
@@ -703,7 +564,7 @@ class TestTapLMSAPI(unittest.TestCase):
 
 
 class TestTapLMSAPIIntegration(unittest.TestCase):
-    """Integration tests for API functionality - FIXED"""
+    """Integration tests for API functionality"""
     
     def setUp(self):
         """Setup for integration tests"""
@@ -733,9 +594,19 @@ class TestTapLMSAPIIntegration(unittest.TestCase):
         }
         
         try:
-            result = create_student()
-            self.assertIsInstance(result, dict)
-            self.assertIn('status', result)
+            with patch('tap_lms.api.get_course_level_with_mapping', return_value='COURSE_001'), \
+                 patch('tap_lms.api.create_new_student') as mock_create, \
+                 patch('tap_lms.api.get_tap_language', return_value='ENGLISH'):
+                
+                mock_student = Mock()
+                mock_student.name = 'STUDENT_001'
+                mock_student.append = Mock()
+                mock_student.save = Mock()
+                mock_create.return_value = mock_student
+                
+                result = create_student()
+                self.assertIsInstance(result, dict)
+                self.assertIn('status', result)
         except Exception as e:
             self.fail(f"Student creation endpoint failed: {str(e)}")
 
@@ -747,20 +618,29 @@ class TestTapLMSAPIIntegration(unittest.TestCase):
             'phone': '9876543210'
         }
         
-        try:
-            result = send_otp()
-            self.assertIsInstance(result, dict)
-            self.assertIn('status', result)
-        except Exception as e:
-            self.fail(f"External API integration failed: {str(e)}")
+        with patch('requests.get') as mock_requests_get:
+            # Mock successful external API response
+            mock_response = Mock()
+            mock_response.json.return_value = {
+                "status": "success",
+                "id": "msg_12345"
+            }
+            mock_requests_get.return_value = mock_response
+            
+            try:
+                result = send_otp()
+                self.assertIsInstance(result, dict)
+                self.assertIn('status', result)
+            except Exception as e:
+                self.fail(f"External API integration failed: {str(e)}")
 
 
 # =============================================================================
-# ADDITIONAL HELPER TESTS (FIXED)
+# ADDITIONAL HELPER TESTS
 # =============================================================================
 
 class TestTapLMSAPIHelpers(unittest.TestCase):
-    """Test helper functions and edge cases - FIXED"""
+    """Test helper functions and edge cases"""
     
     def test_mock_verification(self):
         """Verify that all mocks are working correctly"""
@@ -822,41 +702,4 @@ class TestTapLMSAPIHelpers(unittest.TestCase):
 
 if __name__ == '__main__':
     # Run all tests with detailed output
-    print("Running FIXED tapLMS API Tests...")
-    print("=" * 60)
-    
-    # Create test suite
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    
-    # Add test classes
-    suite.addTests(loader.loadTestsFromTestCase(TestTapLMSAPI))
-    suite.addTests(loader.loadTestsFromTestCase(TestTapLMSAPIIntegration))
-    suite.addTests(loader.loadTestsFromTestCase(TestTapLMSAPIHelpers))
-    
-    # Run tests
-    runner = unittest.TextTestRunner(verbosity=2, buffer=False)
-    result = runner.run(suite)
-    
-    # Print summary
-    print("\n" + "=" * 60)
-    print(f"Tests run: {result.testsRun}")
-    print(f"Failures: {len(result.failures)}")
-    print(f"Errors: {len(result.errors)}")
-    
-    if result.failures:
-        print("\nFAILURES:")
-        for test, traceback in result.failures:
-            print(f"  - {test}: {traceback}")
-    
-    if result.errors:
-        print("\nERRORS:")
-        for test, traceback in result.errors:
-            print(f"  - {test}: {traceback}")
-    
-    if result.wasSuccessful():
-        print("\n🎉 ALL TESTS PASSED! 🎉")
-    else:
-        print(f"\n❌ {len(result.failures + result.errors)} test(s) failed")
-    
-    print("=" * 60)
+    unittest.main(verbosity=2, buffer=False)
