@@ -470,8 +470,3 @@ class TestErrorHandling(unittest.TestCase):
         result = create_student()
         
         self.assertEqual(result["status"], "error")
-
-
-if __name__ == '__main__':
-    unittest.main()
-
