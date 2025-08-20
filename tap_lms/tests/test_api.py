@@ -152,20 +152,13 @@ class TestAuthenticationAPI(unittest.TestCase):
         result = authenticate_api_key("valid_api_key")
         self.assertEqual(result, "valid_key")
         
-    # @patch('frappe.get_doc')
-    # def test_authenticate_api_key_invalid(self, mock_get_doc):
-    #     """Test authenticate_api_key with invalid key"""
-    #     mock_get_doc.side_effect = mock_frappe.DoesNotExistError("Not found")
+    @patch('frappe.get_doc')
+    def test_authenticate_api_key_invalid(self, mock_get_doc):
+        """Test authenticate_api_key with invalid key"""
+        mock_get_doc.side_effect = mock_frappe.DoesNotExistError("Not found")
         
-    #     result = authenticate_api_key("invalid_key")
-    #     self.assertIsNone(result)
-def test_authenticate_api_key_invalid(self, mocker):
-    """Test authenticate_api_key with invalid key"""
-    mock_get_doc = mocker.patch('frappe.get_doc')
-    mock_get_doc.side_effect = frappe.DoesNotExistError("Not found")
-   
-    result = authenticate_api_key("invalid_key")
-    self.assertIsNone(result)
+        result = authenticate_api_key("invalid_key")
+        self.assertIsNone(result)
 
 
 class TestLocationAPI(unittest.TestCase):
