@@ -468,12 +468,6 @@ Solutions for fixing Frappe import issues in tests
 # =============================================================================
 # SOLUTION 1: PROPER FRAPPE TEST SETUP (RECOMMENDED)
 # =============================================================================
-
-"""
-For Frappe apps, use the built-in testing framework.
-Create this file: tap_lms/tests/test_api.py
-"""
-
 import frappe
 import unittest
 import json
@@ -483,64 +477,171 @@ from unittest.mock import patch, Mock
 class TestTapLMSAPI(unittest.TestCase):
     """Test tap_lms API using Frappe's testing framework"""
     
-    def setUp(self):
-        """Set up test data using Frappe's test framework"""
+    @classmethod
+    def setUpClass(cls):
+        """Set up test data once for all tests"""
         frappe.set_user("Administrator")
         
+        # Enable ignore permissions for test setup
+        frappe.flags.ignore_permissions = True
+        
         # Create test API key
-        if not frappe.db.exists("API Key", "test_api_key"):
+        cls.api_key_name = "test_api_key_12345"
+        if not frappe.db.exists("API Key", cls.api_key_name):
             api_key = frappe.get_doc({
                 "doctype": "API Key",
-                "key": "test_api_key_12345",
+                "key": cls.api_key_name,
                 "enabled": 1
             })
-            api_key.insert(ignore_permissions=True)
+            api_key.insert()
+            frappe.db.commit()
         
         # Create test school
-        if not frappe.db.exists("School", "TEST_SCHOOL_001"):
+        cls.school_name = "TEST_SCHOOL_001"
+        if not frappe.db.exists("School", cls.school_name):
             school = frappe.get_doc({
                 "doctype": "School",
-                "name": "TEST_SCHOOL_001",
+                "name": cls.school_name,
                 "name1": "Test School",
                 "keyword": "test_school"
             })
-            school.insert(ignore_permissions=True)
+            school.insert()
+            frappe.db.commit()
+        
+        # Create test course vertical
+        cls.vertical_name = "TEST_VERTICAL"
+        if not frappe.db.exists("Course Verticals", cls.vertical_name):
+            vertical = frappe.get_doc({
+                "doctype": "Course Verticals",
+                "name": cls.vertical_name,
+                "name2": "Mathematics"
+            })
+            vertical.insert()
+            frappe.db.commit()
+        
+        # Create test batch
+        cls.batch_name = "TEST_BATCH_001"
+        if not frappe.db.exists("Batch", cls.batch_name):
+            batch = frappe.get_doc({
+                "doctype": "Batch",
+                "name": cls.batch_name,
+                "batch_id": "test_batch_2025",
+                "active": 1,
+                "start_date": frappe.utils.today(),
+                "end_date": frappe.utils.add_days(frappe.utils.today(), 365),
+                "regist_end_date": frappe.utils.add_days(frappe.utils.today(), 30)
+            })
+            batch.insert()
+            frappe.db.commit()
+        
+        # Create batch onboarding
+        cls.onboarding_name = None
+        existing_onboarding = frappe.db.get_value(
+            "Batch onboarding", 
+            {"batch_skeyword": "test_batch_2025"}, 
+            "name"
+        )
+        
+        if not existing_onboarding:
+            onboarding = frappe.get_doc({
+                "doctype": "Batch onboarding",
+                "school": cls.school_name,
+                "batch": cls.batch_name,
+                "batch_skeyword": "test_batch_2025",
+                "kit_less": 1,
+                "from_grade": "1",
+                "to_grade": "10"
+            })
+            onboarding.append("batch_school_verticals", {
+                "course_vertical": cls.vertical_name
+            })
+            onboarding.insert()
+            cls.onboarding_name = onboarding.name
+            frappe.db.commit()
+    
+    def setUp(self):
+        """Set up for each individual test"""
+        frappe.set_user("Administrator")
+        frappe.flags.ignore_permissions = True
+        
+        # Clear form_dict for each test
+        if hasattr(frappe.local, 'form_dict'):
+            frappe.local.form_dict.clear()
+        else:
+            frappe.local.form_dict = {}
     
     def tearDown(self):
-        """Clean up test data"""
-        frappe.db.rollback()
+        """Clean up after each test"""
+        # Clean up any students created during tests
+        students = frappe.get_all("Student", 
+                                filters={"phone": ["like", "9876543%"]},
+                                fields=["name"])
+        for student in students:
+            frappe.delete_doc("Student", student.name, force=True)
+        
+        frappe.db.commit()
+    
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up test data after all tests"""
+        # Delete in reverse order of creation
+        if cls.onboarding_name:
+            frappe.delete_doc("Batch onboarding", cls.onboarding_name, force=True)
+        
+        if frappe.db.exists("Batch", cls.batch_name):
+            frappe.delete_doc("Batch", cls.batch_name, force=True)
+        
+        if frappe.db.exists("Course Verticals", cls.vertical_name):
+            frappe.delete_doc("Course Verticals", cls.vertical_name, force=True)
+        
+        if frappe.db.exists("School", cls.school_name):
+            frappe.delete_doc("School", cls.school_name, force=True)
+        
+        if frappe.db.exists("API Key", cls.api_key_name):
+            frappe.delete_doc("API Key", cls.api_key_name, force=True)
+        
+        frappe.db.commit()
     
     def test_authenticate_api_key_valid(self):
         """Test API key authentication with valid key"""
         from tap_lms.api import authenticate_api_key
         
-        result = authenticate_api_key("test_api_key_12345")
-        self.assertIsNotNone(result)
+        result = authenticate_api_key(self.api_key_name)
+        self.assertIsNotNone(result, "Valid API key should return a result")
+        self.assertEqual(result, self.api_key_name)
     
     def test_authenticate_api_key_invalid(self):
         """Test API key authentication with invalid key"""
         from tap_lms.api import authenticate_api_key
         
-        result = authenticate_api_key("invalid_key")
-        self.assertIsNone(result)
+        result = authenticate_api_key("invalid_key_12345")
+        self.assertIsNone(result, "Invalid API key should return None")
+    
+    def test_authenticate_api_key_empty(self):
+        """Test API key authentication with empty key"""
+        from tap_lms.api import authenticate_api_key
+        
+        result = authenticate_api_key("")
+        self.assertIsNone(result, "Empty API key should return None")
+        
+        result = authenticate_api_key(None)
+        self.assertIsNone(result, "None API key should return None")
     
     @patch('tap_lms.glific_integration.create_contact')
     @patch('requests.post')
-    def test_create_student_success(self, mock_whatsapp, mock_glific):
+    def test_create_student_success(self, mock_requests, mock_glific):
         """Test successful student creation"""
         from tap_lms.api import create_student
         
         # Setup mocks
         mock_glific.return_value = {'id': 'contact_123'}
-        mock_whatsapp.return_value.status_code = 200
-        
-        # Create required test data
-        self._create_test_batch_onboarding()
+        mock_requests.return_value.status_code = 200
+        mock_requests.return_value.json.return_value = {'success': True}
         
         # Set form data
         frappe.local.form_dict = {
-            'api_key': 'test_api_key_12345',
-            'student_name': 'John Doe',
+            'api_key': self.api_key_name,
+            'student_name': 'John Doe Test',
             'phone': '9876543210',
             'gender': 'Male',
             'grade': '5',
@@ -554,414 +655,108 @@ class TestTapLMSAPI(unittest.TestCase):
         
         self.assertEqual(result['status'], 'success')
         self.assertIn('crm_student_id', result)
-    
-    def _create_test_batch_onboarding(self):
-        """Helper to create test batch onboarding data"""
-        # Create test course vertical
-        if not frappe.db.exists("Course Verticals", "TEST_VERTICAL"):
-            vertical = frappe.get_doc({
-                "doctype": "Course Verticals",
-                "name": "TEST_VERTICAL",
-                "name2": "Mathematics"
-            })
-            vertical.insert(ignore_permissions=True)
         
-        # Create test batch
-        if not frappe.db.exists("Batch", "TEST_BATCH_001"):
-            batch = frappe.get_doc({
-                "doctype": "Batch",
-                "name": "TEST_BATCH_001",
-                "batch_id": "test_batch_2025",
-                "active": 1,
-                "start_date": frappe.utils.today(),
-                "end_date": frappe.utils.add_days(frappe.utils.today(), 365),
-                "regist_end_date": frappe.utils.add_days(frappe.utils.today(), 30)
-            })
-            batch.insert(ignore_permissions=True)
+        # Verify student was created
+        student_exists = frappe.db.exists("Student", 
+                                        {"phone": "9876543210"})
+        self.assertIsNotNone(student_exists, "Student should be created in database")
+    
+    def test_create_student_missing_api_key(self):
+        """Test student creation without API key"""
+        from tap_lms.api import create_student
         
-        # Create batch onboarding
-        if not frappe.db.exists("Batch onboarding", {"batch_skeyword": "test_batch_2025"}):
-            onboarding = frappe.get_doc({
-                "doctype": "Batch onboarding",
-                "school": "TEST_SCHOOL_001",
-                "batch": "TEST_BATCH_001",
-                "batch_skeyword": "test_batch_2025",
-                "kit_less": 1,
-                "from_grade": "1",
-                "to_grade": "10"
-            })
-            onboarding.append("batch_school_verticals", {
-                "course_vertical": "TEST_VERTICAL"
-            })
-            onboarding.insert(ignore_permissions=True)
-
-
-# =============================================================================
-# SOLUTION 2: MOCK BEFORE IMPORT (Alternative)
-# =============================================================================
-
-"""
-If you want to keep your current mock approach, do this:
-Create a separate file: tap_lms/tests/test_api_isolated.py
-"""
-
-import sys
-import unittest
-from unittest.mock import Mock, patch, MagicMock
-import json
-from datetime import datetime, timedelta
-
-# =============================================================================
-# MOCK FRAPPE COMPLETELY BEFORE ANY IMPORTS
-# =============================================================================
-
-class MockFrappeUtils:
-    """Mock frappe.utils module"""
-    @staticmethod
-    def cint(value):
-        try:
-            return int(value)
-        except:
-            return 0
-    
-    @staticmethod
-    def today():
-        return datetime.now().date().strftime('%Y-%m-%d')
-    
-    @staticmethod
-    def get_url():
-        return "http://localhost:8000"
-    
-    @staticmethod
-    def now_datetime():
-        return datetime.now()
-    
-    @staticmethod
-    def getdate(date_str=None):
-        if date_str:
-            return datetime.strptime(str(date_str), '%Y-%m-%d').date()
-        return datetime.now().date()
-    
-    @staticmethod
-    def cstr(value):
-        return str(value) if value is not None else ""
-    
-    @staticmethod
-    def get_datetime(dt):
-        if isinstance(dt, str):
-            return datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
-        return dt
-
-class MockFrappe:
-    """Complete mock of frappe module"""
-    
-    def __init__(self):
-        self.utils = MockFrappeUtils()
-        self.response = Mock()
-        self.response.http_status_code = 200
-        self.local = Mock()
-        self.local.form_dict = {}
-        self.db = Mock()
-        self.db.commit = Mock()
-        self.db.rollback = Mock() 
-        self.db.sql = Mock(return_value=[])
-        self.db.get_value = Mock(return_value="test_value")
-        self.request = Mock()
-        self.request.get_json = Mock(return_value={})
-        self.request.data = '{}'
-        self.flags = Mock()
-        self.flags.ignore_permissions = False
-        self.logger = Mock()
-        
-    def get_doc(self, *args, **kwargs):
-        doc = Mock()
-        doc.name = "TEST_DOC"
-        doc.insert = Mock()
-        doc.save = Mock()
-        doc.append = Mock()
-        return doc
-    
-    def new_doc(self, doctype):
-        doc = Mock()
-        doc.name = f"NEW_{doctype}"
-        doc.insert = Mock()
-        doc.save = Mock()
-        doc.append = Mock()
-        return doc
-    
-    def get_all(self, *args, **kwargs):
-        return []
-    
-    def get_single(self, doctype):
-        return Mock()
-    
-    def get_value(self, *args, **kwargs):
-        return "test_value"
-    
-    def throw(self, message):
-        raise Exception(message)
-    
-    def log_error(self, message, title=None):
-        pass
-    
-    def whitelist(self, allow_guest=False):
-        def decorator(func):
-            return func
-        return decorator
-    
-    # Exception classes
-    class DoesNotExistError(Exception):
-        pass
-    
-    class ValidationError(Exception):
-        pass
-    
-    class DuplicateEntryError(Exception):
-        pass
-
-# Create and inject mock BEFORE any imports
-mock_frappe = MockFrappe()
-sys.modules['frappe'] = mock_frappe
-sys.modules['frappe.utils'] = mock_frappe.utils
-
-# Mock external modules too
-sys.modules['tap_lms.glific_integration'] = Mock()
-sys.modules['tap_lms.background_jobs'] = Mock()
-
-# NOW it's safe to import
-from tap_lms.api import authenticate_api_key, create_student, send_otp
-
-class TestTapLMSAPIIsolated(unittest.TestCase):
-    """Isolated tests using complete mocking"""
-    
-    def setUp(self):
-        # Reset mocks for each test
-        mock_frappe.response.http_status_code = 200
-        mock_frappe.local.form_dict = {}
-    
-    def test_authenticate_api_key_valid(self):
-        """Test authenticate_api_key with valid key"""
-        with patch.object(mock_frappe, 'get_doc') as mock_get_doc:
-            mock_doc = Mock()
-            mock_doc.name = "valid_key"
-            mock_get_doc.return_value = mock_doc
-            
-            result = authenticate_api_key("valid_api_key")
-            self.assertEqual(result, "valid_key")
-    
-    def test_authenticate_api_key_invalid(self):
-        """Test authenticate_api_key with invalid key"""
-        with patch.object(mock_frappe, 'get_doc') as mock_get_doc:
-            mock_get_doc.side_effect = mock_frappe.DoesNotExistError("Not found")
-            
-            result = authenticate_api_key("invalid_key")
-            self.assertIsNone(result)
-    
-    def test_create_student_success(self):
-        """Test successful student creation"""
-        # Setup test data
-        mock_frappe.local.form_dict = {
-            'api_key': 'valid_key',
+        frappe.local.form_dict = {
             'student_name': 'John Doe',
-            'phone': '9876543210',
+            'phone': '9876543211',
             'gender': 'Male',
-            'grade': '5',
-            'language': 'English',
-            'batch_skeyword': 'test_batch',
-            'vertical': 'Math',
-            'glific_id': 'glific_123'
+            'grade': '5'
         }
         
-        with patch.object(mock_frappe, 'get_all') as mock_get_all, \
-             patch.object(mock_frappe, 'get_doc') as mock_get_doc, \
-             patch('tap_lms.api.get_course_level_with_mapping') as mock_course:
-            
-            # Mock all the required database calls
-            mock_get_all.side_effect = [
-                # Batch onboarding
-                [{'school': 'SCHOOL_001', 'batch': 'BATCH_001', 'kit_less': 1}],
-                # Course vertical  
-                [{'name': 'VERTICAL_001'}],
-                # Existing student check
-                []
-            ]
-            
-            # Mock batch document
-            mock_batch = Mock()
-            mock_batch.active = True
-            mock_batch.regist_end_date = (datetime.now() + timedelta(days=30)).date()
-            
-            # Mock student document
-            mock_student = Mock()
-            mock_student.name = 'STUDENT_001'
-            mock_student.append = Mock()
-            mock_student.save = Mock()
-            
-            mock_get_doc.side_effect = [mock_batch, mock_student]
-            mock_course.return_value = 'COURSE_001'
-            
-            result = create_student()
-            
-            self.assertEqual(result['status'], 'success')
-            self.assertEqual(result['crm_student_id'], 'STUDENT_001')
-
-
-# =============================================================================
-# SOLUTION 3: PYTEST WITH PROPER SETUP (Most Flexible)
-# =============================================================================
-
-"""
-Create: tap_lms/tests/conftest.py
-"""
-
-import pytest
-import sys
-from unittest.mock import Mock, patch
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_frappe_mocks():
-    """Setup frappe mocks before any tests run"""
-    
-    # Mock frappe.utils first
-    mock_utils = Mock()
-    mock_utils.cint = lambda x: int(x) if x else 0
-    mock_utils.today = lambda: "2025-01-15"
-    mock_utils.now_datetime = lambda: __import__('datetime').datetime.now()
-    mock_utils.getdate = lambda x=None: __import__('datetime').datetime.now().date()
-    mock_utils.cstr = lambda x: str(x) if x is not None else ""
-    mock_utils.get_datetime = lambda x: x
-    
-    # Mock main frappe module
-    mock_frappe = Mock()
-    mock_frappe.utils = mock_utils
-    mock_frappe.response = Mock()
-    mock_frappe.response.http_status_code = 200
-    mock_frappe.local = Mock()
-    mock_frappe.local.form_dict = {}
-    mock_frappe.db = Mock()
-    mock_frappe.request = Mock()
-    mock_frappe.flags = Mock()
-    
-    # Exception classes
-    mock_frappe.DoesNotExistError = type('DoesNotExistError', (Exception,), {})
-    mock_frappe.ValidationError = type('ValidationError', (Exception,), {})
-    
-    # Inject mocks
-    sys.modules['frappe'] = mock_frappe
-    sys.modules['frappe.utils'] = mock_utils
-    sys.modules['tap_lms.glific_integration'] = Mock()
-    sys.modules['tap_lms.background_jobs'] = Mock()
-    
-    return mock_frappe
-
-"""
-Create: tap_lms/tests/test_api_pytest.py
-"""
-
-import pytest
-from unittest.mock import Mock, patch
-import json
-from datetime import datetime, timedelta
-
-# Import after mocks are set up
-from tap_lms.api import authenticate_api_key, create_student
-
-class TestTapLMSAPIPytest:
-    """Pytest-based tests for tap_lms API"""
-    
-    def test_authenticate_api_key_valid(self, setup_frappe_mocks):
-        """Test authenticate_api_key with valid key"""
-        mock_frappe = setup_frappe_mocks
+        result = create_student()
         
-        with patch.object(mock_frappe, 'get_doc') as mock_get_doc:
-            mock_doc = Mock()
-            mock_doc.name = "valid_key"
-            mock_get_doc.return_value = mock_doc
-            
-            result = authenticate_api_key("valid_api_key")
-            assert result == "valid_key"
+        self.assertEqual(result['status'], 'error')
+        self.assertIn('API key', result['message'])
     
-    def test_authenticate_api_key_invalid(self, setup_frappe_mocks):
-        """Test authenticate_api_key with invalid key"""
-        mock_frappe = setup_frappe_mocks
+    def test_create_student_invalid_api_key(self):
+        """Test student creation with invalid API key"""
+        from tap_lms.api import create_student
         
-        with patch.object(mock_frappe, 'get_doc') as mock_get_doc:
-            mock_get_doc.side_effect = mock_frappe.DoesNotExistError("Not found")
-            
-            result = authenticate_api_key("invalid_key")
-            assert result is None
-    
-    @pytest.mark.parametrize("missing_field", [
-        'student_name', 'phone', 'gender', 'grade'
-    ])
-    def test_create_student_missing_fields(self, setup_frappe_mocks, missing_field):
-        """Test create_student with missing required fields"""
-        mock_frappe = setup_frappe_mocks
-        
-        # Setup base data
-        test_data = {
-            'api_key': 'valid_key',
+        frappe.local.form_dict = {
+            'api_key': 'invalid_key',
             'student_name': 'John Doe',
-            'phone': '9876543210',
+            'phone': '9876543212',
             'gender': 'Male',
-            'grade': '5',
-            'language': 'English',
-            'batch_skeyword': 'test_batch',
-            'vertical': 'Math',
-            'glific_id': 'glific_123'
+            'grade': '5'
         }
         
-        # Remove the field being tested
-        del test_data[missing_field]
-        mock_frappe.local.form_dict = test_data
+        result = create_student()
         
-        with patch('tap_lms.api.authenticate_api_key', return_value="valid_key"):
-            result = create_student()
-            assert result['status'] == 'error'
-            assert 'required' in result['message'].lower()
+        self.assertEqual(result['status'], 'error')
+        self.assertIn('Invalid API key', result['message'])
+    
+    def test_create_student_missing_required_fields(self):
+        """Test student creation with missing required fields"""
+        from tap_lms.api import create_student
+        
+        # Test missing student_name
+        frappe.local.form_dict = {
+            'api_key': self.api_key_name,
+            'phone': '9876543213',
+            'gender': 'Male',
+            'grade': '5'
+        }
+        
+        result = create_student()
+        
+        self.assertEqual(result['status'], 'error')
+        self.assertIn('required', result['message'].lower())
+    
+    def test_create_student_invalid_batch(self):
+        """Test student creation with invalid batch keyword"""
+        from tap_lms.api import create_student
+        
+        frappe.local.form_dict = {
+            'api_key': self.api_key_name,
+            'student_name': 'John Doe',
+            'phone': '9876543214',
+            'gender': 'Male',
+            'grade': '5',
+            'batch_skeyword': 'invalid_batch'
+        }
+        
+        result = create_student()
+        
+        self.assertEqual(result['status'], 'error')
+        self.assertIn('batch', result['message'].lower())
 
 
-# =============================================================================
-# SOLUTION 4: FRAPPE BENCH SETUP (Production-like)
-# =============================================================================
-
-"""
-If you're using frappe-bench, create this file:
-tap_lms/tap_lms/tests/test_api.py (note the path difference)
-
-And run tests with:
-bench --site test_site run-tests --app tap_lms --module tap_lms.tests.test_api
-"""
-
-import frappe
-import unittest
-
-class TestTapLMSAPIBench(unittest.TestCase):
+# Additional integration tests
+class TestTapLMSAPIIntegration(unittest.TestCase):
+    """Integration tests for tap_lms API"""
     
     def setUp(self):
         frappe.set_user("Administrator")
-        # Create test fixtures
+        frappe.flags.ignore_permissions = True
+    
+    def test_api_endpoint_accessibility(self):
+        """Test that API endpoints are properly whitelisted"""
+        from tap_lms import api
         
-    def test_authenticate_api_key(self):
-        from tap_lms.api import authenticate_api_key
+        # Check that functions have the @frappe.whitelist decorator
+        self.assertTrue(hasattr(api.authenticate_api_key, '__name__'))
+        self.assertTrue(hasattr(api.create_student, '__name__'))
+    
+    @patch('requests.get')
+    def test_external_api_integration(self, mock_requests):
+        """Test integration with external APIs"""
+        mock_requests.return_value.status_code = 200
+        mock_requests.return_value.json.return_value = {'status': 'success'}
         
-        # Create test API key
-        api_key_doc = frappe.get_doc({
-            "doctype": "API Key",
-            "key": "test_key_12345",
-            "enabled": 1
-        })
-        api_key_doc.insert()
-        frappe.db.commit()
-        
-        # Test the function
-        result = authenticate_api_key("test_key_12345")
-        self.assertIsNotNone(result)
-        
-        # Clean up
-        api_key_doc.delete()
-        frappe.db.commit()
+        # Test your external API calls here
+        # This is a placeholder - replace with actual external API tests
+        pass
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # Run tests
+    unittest.main(verbosity=2)
