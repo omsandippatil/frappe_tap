@@ -170,10 +170,39 @@ class TestLocationAPI(unittest.TestCase):
             'state': 'test_state'
         })
     
+    # @patch('tap_lms.api.authenticate_api_key')
+    # @patch('tap_lms.api.frappe.get_all')  # Fixed patch path
+    # def test_list_districts_success(self, mock_get_all, mock_auth):
+    #     """Test list_districts with valid input"""
+    #     mock_auth.return_value = "valid_key"
+    #     mock_get_all.return_value = [
+    #         {"name": "DIST_001", "district_name": "Test District"}
+    #     ]
+        
+    #     result = list_districts()
+        
+    #     self.assertEqual(result["status"], "success")
+    #     self.assertIn("data", result)
+    #     mock_get_all.assert_called_once()
+    
+
     @patch('tap_lms.api.authenticate_api_key')
     @patch('tap_lms.api.frappe.get_all')  # Fixed patch path
     def test_list_districts_success(self, mock_get_all, mock_auth):
         """Test list_districts with valid input"""
+        # Set up request data for both possible parsing methods
+        request_data = {
+            'api_key': 'valid_key',
+            'state': 'test_state'
+        }
+        
+        # Mock both request.data and request.get_json()
+        mock_frappe.request.data = json.dumps(request_data)
+        mock_frappe.request.get_json.return_value = request_data
+        
+        # Also ensure local.form_dict is set up properly
+        mock_frappe.local.form_dict = request_data
+        
         mock_auth.return_value = "valid_key"
         mock_get_all.return_value = [
             {"name": "DIST_001", "district_name": "Test District"}
@@ -184,7 +213,7 @@ class TestLocationAPI(unittest.TestCase):
         self.assertEqual(result["status"], "success")
         self.assertIn("data", result)
         mock_get_all.assert_called_once()
-    
+
     @patch('tap_lms.api.authenticate_api_key')
     def test_list_districts_invalid_api_key(self, mock_auth):
         """Test list_districts with invalid API key"""
