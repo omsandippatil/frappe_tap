@@ -1263,7 +1263,7 @@ parse_mock.quote = Mock(side_effect=lambda x: x.replace(' ', '%20'))
 urllib_mock.parse = parse_mock
 
 # =============================================================================
-# STEP 2: INJECT ALL MOCKS BEFORE IMPORT
+# STEP 2: INJECT ALL MOCKS BEFORE IMPORT (ISOLATED)
 # =============================================================================
 
 # Store original modules to restore later if needed
@@ -1282,49 +1282,80 @@ modules_to_mock = [
     'tap_lms.background_jobs'
 ]
 
-for module_name in modules_to_mock:
-    if module_name in sys.modules:
-        original_modules[module_name] = sys.modules[module_name]
+def setup_mocks():
+    """Setup mocks in isolated manner"""
+    for module_name in modules_to_mock:
+        if module_name in sys.modules:
+            original_modules[module_name] = sys.modules[module_name]
 
-# Inject mocks
-sys.modules['frappe'] = frappe_mock
-sys.modules['frappe.utils'] = utils_mock
-sys.modules['requests'] = requests_mock
-sys.modules['random'] = random_mock
-sys.modules['string'] = string_mock
-sys.modules['urllib.parse'] = urllib_mock
-sys.modules['.glific_integration'] = glific_mock
-sys.modules['tap_lms.glific_integration'] = glific_mock
-sys.modules['.background_jobs'] = background_mock
-sys.modules['tap_lms.background_jobs'] = background_mock
+    # Inject mocks only for API testing
+    sys.modules['frappe'] = frappe_mock
+    sys.modules['frappe.utils'] = utils_mock
+    sys.modules['requests'] = requests_mock
+    sys.modules['random'] = random_mock
+    sys.modules['string'] = string_mock
+    sys.modules['urllib.parse'] = urllib_mock
+    sys.modules['.glific_integration'] = glific_mock
+    sys.modules['tap_lms.glific_integration'] = glific_mock
+    sys.modules['.background_jobs'] = background_mock
+    sys.modules['tap_lms.background_jobs'] = background_mock
 
-# Additional mock for JSON parsing
-json_mock = Mock()
-json_mock.loads = Mock(side_effect=lambda x: json.loads(x) if x and x != "{invalid json" else {})
-sys.modules['json'] = json_mock
+    # Additional mock for JSON parsing
+    json_mock = Mock()
+    json_mock.loads = Mock(side_effect=lambda x: json.loads(x) if x and x != "{invalid json" else {})
+    sys.modules['json'] = json_mock
+
+def cleanup_mocks():
+    """Clean up mock modules and restore originals if needed"""
+    for module_name in modules_to_mock:
+        if module_name in original_modules:
+            sys.modules[module_name] = original_modules[module_name]
+        elif module_name in sys.modules:
+            del sys.modules[module_name]
+
+# Only setup mocks if this is the main module being tested
+if __name__ == '__main__':
+    setup_mocks()
 
 # =============================================================================
-# STEP 3: IMPORT API MODULE
+# STEP 3: IMPORT API MODULE (ISOLATED)
 # =============================================================================
 
-try:
-    import tap_lms.api as api_module
-    API_IMPORTED = True
-    
-    # Get all functions
-    API_FUNCTIONS = [name for name in dir(api_module) 
-                    if callable(getattr(api_module, name)) and not name.startswith('_')]
-    
-    print(f"SUCCESS: Imported tap_lms.api with {len(API_FUNCTIONS)} functions")
-    print(f"Functions: {API_FUNCTIONS}")
-    
-except ImportError as e:
-    print(f"ERROR: Could not import tap_lms.api: {e}")
-    print("Traceback:")
-    traceback.print_exc()
-    API_IMPORTED = False
-    api_module = None
-    API_FUNCTIONS = []
+# Only try import if this is the main module
+API_IMPORTED = False
+api_module = None
+API_FUNCTIONS = []
+
+if __name__ == '__main__':
+    try:
+        import tap_lms.api as api_module
+        API_IMPORTED = True
+        
+        # Get all functions
+        API_FUNCTIONS = [name for name in dir(api_module) 
+                        if callable(getattr(api_module, name)) and not name.startswith('_')]
+        
+        print(f"SUCCESS: Imported tap_lms.api with {len(API_FUNCTIONS)} functions")
+        print(f"Functions: {API_FUNCTIONS}")
+        
+    except ImportError as e:
+        print(f"ERROR: Could not import tap_lms.api: {e}")
+        print("Traceback:")
+        traceback.print_exc()
+        API_IMPORTED = False
+        api_module = None
+        API_FUNCTIONS = []
+else:
+    # When imported as module, try to import but don't setup mocks
+    try:
+        import tap_lms.api as api_module
+        API_IMPORTED = True
+        API_FUNCTIONS = [name for name in dir(api_module) 
+                        if callable(getattr(api_module, name)) and not name.startswith('_')]
+    except ImportError:
+        API_IMPORTED = False
+        api_module = None
+        API_FUNCTIONS = []
 
 # =============================================================================
 # STEP 4: ENHANCED TEST SUITE
@@ -1841,19 +1872,12 @@ class TestTapLMSAPIComplete(unittest.TestCase):
 # CLEANUP AND TEST RUNNER
 # =============================================================================
 
-def cleanup_mocks():
-    """Clean up mock modules and restore originals if needed"""
-    for module_name in modules_to_mock:
-        if module_name in original_modules:
-            sys.modules[module_name] = original_modules[module_name]
-        elif module_name in sys.modules:
-            del sys.modules[module_name]
-
 if __name__ == '__main__':
     if not API_IMPORTED:
         print("CRITICAL: Could not import tap_lms.api!")
         print("Check that the module exists and is in the correct location")
         print("Make sure you're running this from the correct directory")
+        cleanup_mocks()
         sys.exit(1)
     
     try:
