@@ -1228,110 +1228,110 @@ class MockFrappe:
         self._configure_get_doc()
         self._configure_get_all()
     
-    def _configure_get_doc(self):
-        def get_doc_side_effect(doctype, filters=None, **kwargs):
-            if doctype == "API Key":
-                if isinstance(filters, dict):
-                    key = filters.get('key')
-                elif isinstance(filters, str):
-                    key = filters
-                else:
-                    key = kwargs.get('key', 'unknown_key')
+    # def _configure_get_doc(self):
+    #     def get_doc_side_effect(doctype, filters=None, **kwargs):
+    #         if doctype == "API Key":
+    #             if isinstance(filters, dict):
+    #                 key = filters.get('key')
+    #             elif isinstance(filters, str):
+    #                 key = filters
+    #             else:
+    #                 key = kwargs.get('key', 'unknown_key')
                 
-                if key in ['valid_key', 'test_key']:
-                    return MockFrappeDocument(doctype, key=key, enabled=1)
-                elif key == 'disabled_key':
-                    return MockFrappeDocument(doctype, key=key, enabled=0)
-                else:
-                    raise self.DoesNotExistError("API Key not found")
+    #             if key in ['valid_key', 'test_key']:
+    #                 return MockFrappeDocument(doctype, key=key, enabled=1)
+    #             elif key == 'disabled_key':
+    #                 return MockFrappeDocument(doctype, key=key, enabled=0)
+    #             else:
+    #                 raise self.DoesNotExistError("API Key not found")
             
-            elif doctype == "OTP Verification":
-                if isinstance(filters, dict):
-                    phone = filters.get('phone_number')
-                    if phone == '9876543210':
-                        return MockFrappeDocument(doctype, phone_number='9876543210', otp='1234',
-                                                expiry=datetime.now() + timedelta(minutes=15), verified=False)
-                    elif phone == 'expired_phone':
-                        return MockFrappeDocument(doctype, phone_number='expired_phone', otp='1234',
-                                                expiry=datetime.now() - timedelta(minutes=1), verified=False)
-                    elif phone == 'verified_phone':
-                        return MockFrappeDocument(doctype, phone_number='verified_phone', otp='1234',
-                                                expiry=datetime.now() + timedelta(minutes=15), verified=True)
-                    else:
-                        raise self.DoesNotExistError("OTP Verification not found")
-                else:
-                    raise self.DoesNotExistError("OTP Verification not found")
+    #         elif doctype == "OTP Verification":
+    #             if isinstance(filters, dict):
+    #                 phone = filters.get('phone_number')
+    #                 if phone == '9876543210':
+    #                     return MockFrappeDocument(doctype, phone_number='9876543210', otp='1234',
+    #                                             expiry=datetime.now() + timedelta(minutes=15), verified=False)
+    #                 elif phone == 'expired_phone':
+    #                     return MockFrappeDocument(doctype, phone_number='expired_phone', otp='1234',
+    #                                             expiry=datetime.now() - timedelta(minutes=1), verified=False)
+    #                 elif phone == 'verified_phone':
+    #                     return MockFrappeDocument(doctype, phone_number='verified_phone', otp='1234',
+    #                                             expiry=datetime.now() + timedelta(minutes=15), verified=True)
+    #                 else:
+    #                     raise self.DoesNotExistError("OTP Verification not found")
+    #             else:
+    #                 raise self.DoesNotExistError("OTP Verification not found")
             
-            elif doctype == "Student":
-                if isinstance(filters, dict):
-                    if filters.get("phone") == "existing_phone":
-                        return MockFrappeDocument(doctype, phone="existing_phone", name1="Existing Student")
-                    elif filters.get("glific_id") == "existing_student":
-                        return MockFrappeDocument(doctype, glific_id="existing_student", name1="Existing Student")
-                elif isinstance(filters, str):
-                    return MockFrappeDocument(doctype, name=filters)
-                else:
-                    raise self.DoesNotExistError("Student not found")
+    #         elif doctype == "Student":
+    #             if isinstance(filters, dict):
+    #                 if filters.get("phone") == "existing_phone":
+    #                     return MockFrappeDocument(doctype, phone="existing_phone", name1="Existing Student")
+    #                 elif filters.get("glific_id") == "existing_student":
+    #                     return MockFrappeDocument(doctype, glific_id="existing_student", name1="Existing Student")
+    #             elif isinstance(filters, str):
+    #                 return MockFrappeDocument(doctype, name=filters)
+    #             else:
+    #                 raise self.DoesNotExistError("Student not found")
             
-            elif doctype == "Teacher":
-                if isinstance(filters, dict):
-                    if filters.get("phone_number") == "existing_teacher":
-                        return MockFrappeDocument(doctype, phone_number="existing_teacher", first_name="Existing Teacher")
-                elif isinstance(filters, str):
-                    return MockFrappeDocument(doctype, name=filters)
-                else:
-                    raise self.DoesNotExistError("Teacher not found")
+    #         elif doctype == "Teacher":
+    #             if isinstance(filters, dict):
+    #                 if filters.get("phone_number") == "existing_teacher":
+    #                     return MockFrappeDocument(doctype, phone_number="existing_teacher", first_name="Existing Teacher")
+    #             elif isinstance(filters, str):
+    #                 return MockFrappeDocument(doctype, name=filters)
+    #             else:
+    #                 raise self.DoesNotExistError("Teacher not found")
             
-            return MockFrappeDocument(doctype, **kwargs)
+    #         return MockFrappeDocument(doctype, **kwargs)
         
-        self.get_doc = Mock(side_effect=get_doc_side_effect)
+    #     self.get_doc = Mock(side_effect=get_doc_side_effect)
     
-    def _configure_get_all(self):
-        def get_all_side_effect(doctype, filters=None, fields=None, **kwargs):
-            if doctype == "Teacher":
-                if filters and filters.get("phone_number") == "existing_teacher":
-                    return [{'name': 'TEACHER_001', 'first_name': 'Existing Teacher'}]
-                return []
+    # def _configure_get_all(self):
+    #     def get_all_side_effect(doctype, filters=None, fields=None, **kwargs):
+    #         if doctype == "Teacher":
+    #             if filters and filters.get("phone_number") == "existing_teacher":
+    #                 return [{'name': 'TEACHER_001', 'first_name': 'Existing Teacher'}]
+    #             return []
             
-            elif doctype == "Student":
-                if filters:
-                    if filters.get("glific_id") == "existing_student":
-                        return [{'name': 'STUDENT_001', 'name1': 'Existing Student'}]
-                    elif filters.get("phone") == "existing_phone":
-                        return [{'name': 'STUDENT_001', 'name1': 'Existing Student'}]
-                return []
+    #         elif doctype == "Student":
+    #             if filters:
+    #                 if filters.get("glific_id") == "existing_student":
+    #                     return [{'name': 'STUDENT_001', 'name1': 'Existing Student'}]
+    #                 elif filters.get("phone") == "existing_phone":
+    #                     return [{'name': 'STUDENT_001', 'name1': 'Existing Student'}]
+    #             return []
             
-            elif doctype == "Batch onboarding":
-                if filters and filters.get("batch_skeyword") == "invalid_batch":
-                    return []
-                else:
-                    return [{'name': 'BATCH_ONBOARDING_001', 'school': 'SCHOOL_001',
-                           'batch': 'BATCH_001', 'kit_less': 1, 'model': 'MODEL_001'}]
+    #         elif doctype == "Batch onboarding":
+    #             if filters and filters.get("batch_skeyword") == "invalid_batch":
+    #                 return []
+    #             else:
+    #                 return [{'name': 'BATCH_ONBOARDING_001', 'school': 'SCHOOL_001',
+    #                        'batch': 'BATCH_001', 'kit_less': 1, 'model': 'MODEL_001'}]
             
-            elif doctype == "Course Verticals":
-                return [{'name': 'VERTICAL_001', 'name2': 'Math'}]
+    #         elif doctype == "Course Verticals":
+    #             return [{'name': 'VERTICAL_001', 'name2': 'Math'}]
             
-            elif doctype == "District":
-                return [{'name': 'DISTRICT_001', 'district_name': 'Test District'}]
+    #         elif doctype == "District":
+    #             return [{'name': 'DISTRICT_001', 'district_name': 'Test District'}]
             
-            elif doctype == "City":
-                return [{'name': 'CITY_001', 'city_name': 'Test City'}]
+    #         elif doctype == "City":
+    #             return [{'name': 'CITY_001', 'city_name': 'Test City'}]
             
-            elif doctype == "Batch":
-                if filters and filters.get("school") == "SCHOOL_001":
-                    return [{'name': 'BATCH_001', 'batch_id': 'BATCH_2025_001', 'active': True,
-                           'regist_end_date': (datetime.now() + timedelta(days=30)).date()}]
-                return []
+    #         elif doctype == "Batch":
+    #             if filters and filters.get("school") == "SCHOOL_001":
+    #                 return [{'name': 'BATCH_001', 'batch_id': 'BATCH_2025_001', 'active': True,
+    #                        'regist_end_date': (datetime.now() + timedelta(days=30)).date()}]
+    #             return []
             
-            elif doctype == "TAP Language":
-                return [{'name': 'LANG_001', 'language_name': 'English', 'glific_language_id': '1'}]
+    #         elif doctype == "TAP Language":
+    #             return [{'name': 'LANG_001', 'language_name': 'English', 'glific_language_id': '1'}]
             
-            elif doctype == "School":
-                return [{'name': 'SCHOOL_001', 'name1': 'Test School', 'keyword': 'test_school'}]
+    #         elif doctype == "School":
+    #             return [{'name': 'SCHOOL_001', 'name1': 'Test School', 'keyword': 'test_school'}]
             
-            return []
+    #         return []
         
-        self.get_all = Mock(side_effect=get_all_side_effect)
+    #     self.get_all = Mock(side_effect=get_all_side_effect)
     
     def new_doc(self, doctype):
         return MockFrappeDocument(doctype)
@@ -2928,19 +2928,3 @@ class TestFinalCoverageValidation(unittest.TestCase):
         self.assertEqual(mock_response.status_code, 200)
         self.assertIsInstance(mock_response.json(), dict)
 
-# =============================================================================
-# TEST RUNNER AND MAIN
-# =============================================================================
-
-if __name__ == '__main__':
-    if not API_MODULE_IMPORTED:
-        print("CRITICAL ERROR: tap_lms.api module could not be imported!")
-        print("Please ensure the module exists and dependencies are available")
-        sys.exit(1)
-    else:
-        print(f"SUCCESS: Loaded tap_lms.api with {len(AVAILABLE_FUNCTIONS)} functions")
-        print("Running COMPREHENSIVE tests for 100% coverage...")
-        print("Available functions:", AVAILABLE_FUNCTIONS)
-    
-    # Configure test runner for maximum output
-    unittest.main(verbosity=2, buffer=False)
