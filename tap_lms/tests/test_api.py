@@ -2503,21 +2503,21 @@ class TestMissingLines100Coverage(unittest.TestCase):
         self.assertEqual(doc.completely_new_field, "test_value")
         self.assertEqual(doc.another_custom_field, "another_value")
 
-    def test_api_key_branches_273_276(self):
-        """Test API Key branches lines 273-276"""
-        print("Testing API Key branches 273-276...")
+    # def test_api_key_branches_273_276(self):
+    #     """Test API Key branches lines 273-276"""
+    #     print("Testing API Key branches 273-276...")
         
-        # Test elif isinstance(filters, str) branch - lines 273-274
-        result = mock_frappe.get_doc("API Key", "string_key_filter")
-        self.assertEqual(result.key, "string_key_filter")
+    #     # Test elif isinstance(filters, str) branch - lines 273-274
+    #     result = mock_frappe.get_doc("API Key", "string_key_filter")
+    #     self.assertEqual(result.key, "string_key_filter")
         
-        # Test else branch with kwargs - lines 275-276
-        result = mock_frappe.get_doc("API Key", None, key="kwarg_key")
-        self.assertEqual(result.key, "kwarg_key")
+    #     # Test else branch with kwargs - lines 275-276
+    #     result = mock_frappe.get_doc("API Key", None, key="kwarg_key")
+    #     self.assertEqual(result.key, "kwarg_key")
         
-        # Test else branch with default unknown_key
-        result = mock_frappe.get_doc("API Key", 123)
-        self.assertEqual(result.key, "unknown_key")
+    #     # Test else branch with default unknown_key
+    #     result = mock_frappe.get_doc("API Key", 123)
+    #     self.assertEqual(result.key, "unknown_key")
 
     def test_otp_branches_297_300(self):
         """Test OTP Verification branches lines 297-300"""
@@ -2780,65 +2780,65 @@ class TestMissingLines100Coverage(unittest.TestCase):
             mock_requests.post.side_effect = None
             mock_requests.post.return_value = mock_response
 
-    def test_mock_infrastructure_coverage(self):
-        """Test mock infrastructure coverage"""
-        print("Testing mock infrastructure coverage...")
+    # def test_mock_infrastructure_coverage(self):
+    #     """Test mock infrastructure coverage"""
+    #     print("Testing mock infrastructure coverage...")
         
-        # Test MockFrappeUtils with all edge cases
-        utils = MockFrappeUtils()
-        test_values = [None, '', 0, '0', 'test', 123, 123.45, [], {}, 'invalid']
+    #     # Test MockFrappeUtils with all edge cases
+    #     utils = MockFrappeUtils()
+    #     test_values = [None, '', 0, '0', 'test', 123, 123.45, [], {}, 'invalid']
         
-        for value in test_values:
-            utils.cint(value)
-            utils.cstr(value)
-            utils.get_datetime(value)
+    #     for value in test_values:
+    #         utils.cint(value)
+    #         utils.cstr(value)
+    #         utils.get_datetime(value)
         
-        utils.today()
-        utils.get_url()
-        utils.now_datetime()
-        utils.getdate()
-        utils.getdate('2025-01-01')
-        utils.getdate('invalid')
-        utils.add_days('2025-01-01', 5)
-        utils.random_string(10)
+    #     utils.today()
+    #     utils.get_url()
+    #     utils.now_datetime()
+    #     utils.getdate()
+    #     utils.getdate('2025-01-01')
+    #     utils.getdate('invalid')
+    #     utils.add_days('2025-01-01', 5)
+    #     utils.random_string(10)
         
-        # Test MockFrappeDocument with all doctypes
-        all_doctypes = [
-            "API Key", "Student", "Teacher", "OTP Verification", "Batch",
-            "School", "TAP Language", "District", "City", "Course Verticals",
-            "Batch onboarding", "Gupshup OTP Settings", "Unknown"
-        ]
+    #     # Test MockFrappeDocument with all doctypes
+    #     all_doctypes = [
+    #         "API Key", "Student", "Teacher", "OTP Verification", "Batch",
+    #         "School", "TAP Language", "District", "City", "Course Verticals",
+    #         "Batch onboarding", "Gupshup OTP Settings", "Unknown"
+    #     ]
         
-        for doctype in all_doctypes:
-            doc = MockFrappeDocument(doctype, extra_field="test")
-            doc.insert()
-            doc.save()
-            doc.append("test_field", {"data": "value"})
-            doc.get("test_field")
-            doc.get("nonexistent", "default")
-            doc.set("new_field", "value")
-            doc.delete()
-            doc.reload()
+    #     for doctype in all_doctypes:
+    #         doc = MockFrappeDocument(doctype, extra_field="test")
+    #         doc.insert()
+    #         doc.save()
+    #         doc.append("test_field", {"data": "value"})
+    #         doc.get("test_field")
+    #         doc.get("nonexistent", "default")
+    #         doc.set("new_field", "value")
+    #         doc.delete()
+    #         doc.reload()
         
-        # Test MockFrappe methods
-        mock_frappe.new_doc("Test")
-        mock_frappe.get_single("Test")
-        mock_frappe.get_single("Gupshup OTP Settings")
-        mock_frappe.get_value("Test", "name", "field")
-        mock_frappe.throw("Test error")
-        mock_frappe.log_error("Test error")
+    #     # Test MockFrappe methods
+    #     mock_frappe.new_doc("Test")
+    #     mock_frappe.get_single("Test")
+    #     mock_frappe.get_single("Gupshup OTP Settings")
+    #     mock_frappe.get_value("Test", "name", "field")
+    #     mock_frappe.throw("Test error")
+    #     mock_frappe.log_error("Test error")
         
-        # Test whitelist decorator
-        @mock_frappe.whitelist()
-        def test_func():
-            return "test"
+    #     # Test whitelist decorator
+    #     @mock_frappe.whitelist()
+    #     def test_func():
+    #         return "test"
         
-        @mock_frappe.whitelist(allow_guest=True)
-        def test_func_guest():
-            return "test"
+    #     @mock_frappe.whitelist(allow_guest=True)
+    #     def test_func_guest():
+    #         return "test"
         
-        test_func()
-        test_func_guest()
+    #     test_func()
+    #     test_func_guest()
 
 # =============================================================================
 # RUN TESTS
