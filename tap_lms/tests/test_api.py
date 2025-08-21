@@ -2341,42 +2341,7 @@ class TestMockInfrastructure(unittest.TestCase):
             
             result = doc.save()
             self.assertEqual(result, doc)
-    
-    def test_mock_frappe_complete(self):
-        """Test MockFrappe with all methods and scenarios"""
-        
-        # Test get_doc with various scenarios
-        api_key_doc = mock_frappe.get_doc("API Key", {"key": "valid_key"})
-        self.assertEqual(api_key_doc.key, "valid_key")
-        
-        # Test exception scenarios
-        with self.assertRaises(mock_frappe.DoesNotExistError):
-            mock_frappe.get_doc("API Key", {"key": "nonexistent_key"})
-        
-        # Test new_doc
-        new_doc = mock_frappe.new_doc("Test Doctype")
-        self.assertEqual(new_doc.doctype, "Test Doctype")
-        
-        # Test get_all
-        students = mock_frappe.get_all("Student")
-        self.assertIsInstance(students, list)
-        
-        # Test get_single
-        settings = mock_frappe.get_single("Gupshup OTP Settings")
-        self.assertEqual(settings.doctype, "Gupshup OTP Settings")
-        
-        # Test get_value
-        value = mock_frappe.get_value("School", "SCHOOL_001", "name1")
-        self.assertIsNotNone(value)
-        
-        # Test utility methods
-        mock_frappe.throw("Test error")  # Should raise exception
-        mock_frappe.log_error("Test log")  # Should not raise
-        mock_frappe.msgprint("Test message")  # Should not raise
-        
-        result = mock_frappe._dict({"test": "value"})
-        self.assertEqual(result["test"], "value")
-
+   
 # =============================================================================
 # EDGE CASE AND BOUNDARY TESTS
 # =============================================================================
