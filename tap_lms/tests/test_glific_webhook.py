@@ -4001,9 +4001,9 @@ class TestGlificWebhookComplete(unittest.TestCase):
         for i, method in enumerate(import_methods):
             try:
                 if i == 0:
-                    # Try direct import
-                    import glific_webhook
-                    self.module = glific_webhook
+                    # Try direct import - use importlib to avoid variable conflicts
+                    glific_module = importlib.import_module('glific_webhook')
+                    self.module = glific_module
                     print(f"✅ Direct import method {i} successful")
                     break
                 elif i == 1:
@@ -4262,6 +4262,9 @@ number = 42
         """Test import handling for all libraries"""
         print("📦 Testing library imports...")
         
+        # Use global frappe variable
+        global frappe, requests
+        
         # Test frappe import success
         if FRAPPE_AVAILABLE:
             print("✅ Frappe is available")
@@ -4282,7 +4285,8 @@ number = 42
         for scenario in import_scenarios:
             with patch.dict('sys.modules', scenario, clear=False):
                 try:
-                    import frappe
+                    # Use importlib to avoid local variable conflict
+                    frappe_module = importlib.import_module('frappe')
                     print("✅ Frappe imported in scenario")
                 except ImportError as e:
                     print(f"❌ Frappe ImportError in scenario: {e}")
@@ -4304,7 +4308,8 @@ number = 42
         # Test requests import failure
         with patch.dict('sys.modules', {'requests': None}):
             try:
-                import requests
+                # Use importlib to avoid local variable conflict
+                requests_module = importlib.import_module('requests')
                 print("✅ Requests imported")
             except ImportError as e:
                 print(f"❌ Requests ImportError: {e}")
@@ -4359,9 +4364,9 @@ number = 42
         for i, method in enumerate([lambda: __import__('glific_webhook')]):
             try:
                 if i == 0:
-                    # Try direct import
-                    import glific_webhook
-                    self.module = glific_webhook
+                    # Try direct import - use importlib to avoid variable conflicts
+                    glific_module = importlib.import_module('glific_webhook')
+                    self.module = glific_module
                     print(f"✅ Direct import method {i} successful")
                     break
             except ImportError as e:
@@ -4457,6 +4462,8 @@ number = 42
                 print(f"    Signature: Could not determine for {obj_name} - Exception: {e}")
         
         # Test frappe import scenarios based on availability
+        global frappe, requests
+        
         if FRAPPE_AVAILABLE:
             print(f"✅ Frappe is available")
         else:
@@ -4466,7 +4473,8 @@ number = 42
         for scenario in [{'frappe': None}]:
             with patch.dict('sys.modules', scenario, clear=False):
                 try:
-                    import frappe
+                    # Use importlib to avoid local variable conflict
+                    frappe_module = importlib.import_module('frappe')
                     print(f"✅ Frappe imported in scenario")
                 except ImportError as e:
                     print(f"❌ Frappe ImportError in scenario: {e}")
@@ -4484,7 +4492,8 @@ number = 42
         # Test lines 385-394: Requests import failure scenarios
         with patch.dict('sys.modules', {'requests': None}):
             try:
-                import requests
+                # Use importlib to avoid local variable conflict
+                requests_module = importlib.import_module('requests')
                 print(f"✅ Requests imported")
             except ImportError as e:
                 print(f"❌ Requests ImportError: {e}")
@@ -4517,7 +4526,7 @@ number = 42
         
         # Force specific exception types that might be missed
         exception_scenarios = [
-            (ImportError, "import sys; raise ImportError('forced')"),
+            (ImportError, "raise ImportError('forced')"),
             (FileNotFoundError, "open('/nonexistent/path/file.txt')"),
             (PermissionError, "open('/root/restricted')"),  
             (UnicodeDecodeError, "b'\\xff\\xfe'.decode('utf-8')"),
@@ -4540,7 +4549,7 @@ number = 42
         for i in import_methods:
             try:
                 if i == 0:
-                    __import__('nonexistent_module_direct')
+                    importlib.import_module('nonexistent_module_direct')
                 elif i == 1:
                     importlib.import_module('nonexistent_module_importlib')
                 else:
