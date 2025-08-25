@@ -4061,5 +4061,3 @@ class Test100Coverage(unittest.TestCase):
         
         print(f"\n🎯 100% COVERAGE ACHIEVED")
 
-if __name__ == '__main__':
-    unittest.main(verbosity=2)
