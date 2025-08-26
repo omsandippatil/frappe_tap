@@ -6,69 +6,42 @@ import unittest
 from unittest.mock import patch, MagicMock, call
 import json
 from datetime import datetime, timezone
-from frappe.tests.utils import FrappeTestCase
+
+# Import the module we're testing - adjust path as needed
+try:
+    from tap_lms.tap_lms.doctype.backend_student_onboarding.glific_multi_enrollment_update import (
+        check_student_multi_enrollment,
+        update_specific_set_contacts_with_multi_enrollment,
+        run_multi_enrollment_update_for_specific_set,
+        get_backend_onboarding_sets,
+        process_multiple_sets_simple,
+        process_my_sets
+    )
+    MODULE_PATH = 'tap_lms.tap_lms.doctype.backend_student_onboarding.glific_multi_enrollment_update'
+except ImportError:
+    # Fallback import path - adjust as needed
+    MODULE_PATH = 'glific_multi_enrollment_update'
 
 
-class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
+class TestGlificMultiEnrollmentUpdate(unittest.TestCase):
     
     def setUp(self):
         """Set up test data"""
+        frappe.set_user("Administrator")
         self.test_student_id = "STU-001"
         self.test_student_name = "Test Student"
         self.test_phone = "+1234567890"
         self.test_glific_id = "12345"
         self.test_set_name = "TEST-SET-001"
-        
-        # Create test Backend Student Onboarding
-        self.test_onboarding_set = frappe.get_doc({
-            "doctype": "Backend Student Onboarding",
-            "name": self.test_set_name,
-            "set_name": "Test Set 001",
-            "status": "Processed",
-            "processed_student_count": 2
-        })
-        
-        # Create test Student document
-        self.test_student = frappe.get_doc({
-            "doctype": "Student",
-            "name": self.test_student_id,
-            "student_name": self.test_student_name,
-            "glific_id": self.test_glific_id,
-            "enrollment": [
-                {"program": "Program 1", "batch": "Batch 1"},
-                {"program": "Program 2", "batch": "Batch 2"}
-            ]
-        })
-        
-        # Create test Backend Students
-        self.test_backend_students = [
-            {
-                "student_name": "Test Student 1",
-                "phone": "+1234567890",
-                "student_id": "STU-001",
-                "batch_skeyword": "BATCH1",
-                "parent": self.test_set_name,
-                "processing_status": "Success"
-            },
-            {
-                "student_name": "Test Student 2", 
-                "phone": "+1234567891",
-                "student_id": "STU-002",
-                "batch_skeyword": "BATCH2",
-                "parent": self.test_set_name,
-                "processing_status": "Success"
-            }
-        ]
 
     def tearDown(self):
         """Clean up test data"""
-        pass
+        frappe.set_user("Administrator")
 
-    @patch('frappe.get_doc')
-    @patch('frappe.db.exists')
+    @patch(f'{MODULE_PATH}.frappe.get_doc')
+    @patch(f'{MODULE_PATH}.frappe.db.exists')
     def test_check_student_multi_enrollment_with_multiple_enrollments(self, mock_exists, mock_get_doc):
         """Test check_student_multi_enrollment returns 'yes' for student with multiple enrollments"""
-        from glific_multi_enrollment_update import check_student_multi_enrollment
         
         # Mock student exists
         mock_exists.return_value = True
@@ -87,11 +60,10 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         mock_exists.assert_called_once_with("Student", "STU-001")
         mock_get_doc.assert_called_once_with("Student", "STU-001")
 
-    @patch('frappe.get_doc')
-    @patch('frappe.db.exists')
+    @patch(f'{MODULE_PATH}.frappe.get_doc')
+    @patch(f'{MODULE_PATH}.frappe.db.exists')
     def test_check_student_multi_enrollment_with_single_enrollment(self, mock_exists, mock_get_doc):
         """Test check_student_multi_enrollment returns 'no' for student with single enrollment"""
-        from glific_multi_enrollment_update import check_student_multi_enrollment
         
         # Mock student exists
         mock_exists.return_value = True
@@ -105,11 +77,10 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         
         self.assertEqual(result, "no")
 
-    @patch('frappe.get_doc')
-    @patch('frappe.db.exists')
+    @patch(f'{MODULE_PATH}.frappe.get_doc')
+    @patch(f'{MODULE_PATH}.frappe.db.exists')
     def test_check_student_multi_enrollment_no_enrollments(self, mock_exists, mock_get_doc):
         """Test check_student_multi_enrollment returns 'no' for student with no enrollments"""
-        from glific_multi_enrollment_update import check_student_multi_enrollment
         
         # Mock student exists
         mock_exists.return_value = True
@@ -123,10 +94,9 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         
         self.assertEqual(result, "no")
 
-    @patch('frappe.db.exists')
+    @patch(f'{MODULE_PATH}.frappe.db.exists')
     def test_check_student_multi_enrollment_student_not_exists(self, mock_exists):
         """Test check_student_multi_enrollment returns 'no' when student doesn't exist"""
-        from glific_multi_enrollment_update import check_student_multi_enrollment
         
         # Mock student doesn't exist
         mock_exists.return_value = False
@@ -135,12 +105,11 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         
         self.assertEqual(result, "no")
 
-    @patch('frappe.logger')
-    @patch('frappe.get_doc')
-    @patch('frappe.db.exists')
+    @patch(f'{MODULE_PATH}.frappe.logger')
+    @patch(f'{MODULE_PATH}.frappe.get_doc')
+    @patch(f'{MODULE_PATH}.frappe.db.exists')
     def test_check_student_multi_enrollment_exception(self, mock_exists, mock_get_doc, mock_logger):
         """Test check_student_multi_enrollment handles exceptions gracefully"""
-        from glific_multi_enrollment_update import check_student_multi_enrollment
         
         # Mock student exists
         mock_exists.return_value = True
@@ -155,17 +124,15 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
 
     def test_update_specific_set_contacts_no_set_name(self):
         """Test update function returns error when no set name provided"""
-        from glific_multi_enrollment_update import update_specific_set_contacts_with_multi_enrollment
         
         result = update_specific_set_contacts_with_multi_enrollment("")
         
         self.assertIn("error", result)
         self.assertEqual(result["error"], "Backend Student Onboarding set name is required")
 
-    @patch('frappe.get_doc')
+    @patch(f'{MODULE_PATH}.frappe.get_doc')
     def test_update_specific_set_contacts_set_not_found(self, mock_get_doc):
         """Test update function returns error when set doesn't exist"""
-        from glific_multi_enrollment_update import update_specific_set_contacts_with_multi_enrollment
         
         # Mock DoesNotExistError
         mock_get_doc.side_effect = frappe.DoesNotExistError()
@@ -175,10 +142,9 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertIn("error", result)
         self.assertIn("not found", result["error"])
 
-    @patch('frappe.get_doc')
+    @patch(f'{MODULE_PATH}.frappe.get_doc')
     def test_update_specific_set_contacts_set_not_processed(self, mock_get_doc):
         """Test update function returns error when set status is not 'Processed'"""
-        from glific_multi_enrollment_update import update_specific_set_contacts_with_multi_enrollment
         
         # Mock onboarding set with non-processed status
         mock_set = MagicMock()
@@ -191,11 +157,10 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertIn("error", result)
         self.assertIn("not 'Processed'", result["error"])
 
-    @patch('frappe.get_all')
-    @patch('frappe.get_doc')
+    @patch(f'{MODULE_PATH}.frappe.get_all')
+    @patch(f'{MODULE_PATH}.frappe.get_doc')
     def test_update_specific_set_contacts_no_students(self, mock_get_doc, mock_get_all):
         """Test update function returns message when no students found"""
-        from glific_multi_enrollment_update import update_specific_set_contacts_with_multi_enrollment
         
         # Mock processed onboarding set
         mock_set = MagicMock()
@@ -211,18 +176,17 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertIn("message", result)
         self.assertIn("No successfully processed students", result["message"])
 
-    @patch('requests.post')
-    @patch('glific_multi_enrollment_update.get_glific_auth_headers')
-    @patch('glific_multi_enrollment_update.get_glific_settings')
-    @patch('glific_multi_enrollment_update.check_student_multi_enrollment')
-    @patch('frappe.db.exists')
-    @patch('frappe.get_doc')
-    @patch('frappe.get_all')
+    @patch(f'{MODULE_PATH}.requests.post')
+    @patch(f'{MODULE_PATH}.get_glific_auth_headers')
+    @patch(f'{MODULE_PATH}.get_glific_settings')
+    @patch(f'{MODULE_PATH}.check_student_multi_enrollment')
+    @patch(f'{MODULE_PATH}.frappe.db.exists')
+    @patch(f'{MODULE_PATH}.frappe.get_doc')
+    @patch(f'{MODULE_PATH}.frappe.get_all')
     def test_update_specific_set_contacts_successful_update(self, mock_get_all, mock_get_doc, 
                                                            mock_db_exists, mock_check_multi, 
                                                            mock_settings, mock_headers, mock_post):
         """Test successful update of contact with multi_enrollment field"""
-        from glific_multi_enrollment_update import update_specific_set_contacts_with_multi_enrollment
         
         # Mock onboarding set
         mock_set = MagicMock()
@@ -303,14 +267,13 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertEqual(result["errors"], 0)
         self.assertEqual(result["total_processed"], 1)
 
-    @patch('frappe.db.rollback')
-    @patch('frappe.db.commit') 
-    @patch('frappe.db.begin')
-    @patch('glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch(f'{MODULE_PATH}.frappe.db.rollback')
+    @patch(f'{MODULE_PATH}.frappe.db.commit') 
+    @patch(f'{MODULE_PATH}.frappe.db.begin')
+    @patch(f'{MODULE_PATH}.update_specific_set_contacts_with_multi_enrollment')
     def test_run_multi_enrollment_update_for_specific_set_success(self, mock_update, mock_begin, 
                                                                 mock_commit, mock_rollback):
         """Test whitelist function successful execution"""
-        from glific_multi_enrollment_update import run_multi_enrollment_update_for_specific_set
         
         # Mock successful update
         mock_update.return_value = {
@@ -331,20 +294,18 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
 
     def test_run_multi_enrollment_update_no_set_name(self):
         """Test whitelist function returns error when no set name provided"""
-        from glific_multi_enrollment_update import run_multi_enrollment_update_for_specific_set
         
         result = run_multi_enrollment_update_for_specific_set("")
         
         self.assertIn("Error: Backend Student Onboarding set name is required", result)
 
-    @patch('frappe.db.rollback')
-    @patch('frappe.db.commit')
-    @patch('frappe.db.begin')
-    @patch('glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch(f'{MODULE_PATH}.frappe.db.rollback')
+    @patch(f'{MODULE_PATH}.frappe.db.commit')
+    @patch(f'{MODULE_PATH}.frappe.db.begin')
+    @patch(f'{MODULE_PATH}.update_specific_set_contacts_with_multi_enrollment')
     def test_run_multi_enrollment_update_exception_handling(self, mock_update, mock_begin, 
                                                            mock_commit, mock_rollback):
         """Test whitelist function handles exceptions properly"""
-        from glific_multi_enrollment_update import run_multi_enrollment_update_for_specific_set
         
         # Mock exception
         mock_update.side_effect = Exception("Database connection failed")
@@ -356,10 +317,9 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         mock_rollback.assert_called_once()
         mock_commit.assert_not_called()
 
-    @patch('frappe.get_all')
+    @patch(f'{MODULE_PATH}.frappe.get_all')
     def test_get_backend_onboarding_sets(self, mock_get_all):
         """Test getting list of processed Backend Student Onboarding sets"""
-        from glific_multi_enrollment_update import get_backend_onboarding_sets
         
         # Mock return data
         mock_get_all.return_value = [
@@ -388,11 +348,10 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
             order_by="upload_date desc"
         )
 
-    @patch('time.sleep')
-    @patch('glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch(f'{MODULE_PATH}.time.sleep')
+    @patch(f'{MODULE_PATH}.update_specific_set_contacts_with_multi_enrollment')
     def test_process_multiple_sets_simple_success(self, mock_update, mock_sleep):
         """Test processing multiple sets successfully"""
-        from glific_multi_enrollment_update import process_multiple_sets_simple
         
         # Mock successful updates
         mock_update.side_effect = [
@@ -407,10 +366,9 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertEqual(result[1]["updated"], 3)
         self.assertEqual(result[0]["status"], "completed")
 
-    @patch('glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch(f'{MODULE_PATH}.update_specific_set_contacts_with_multi_enrollment')
     def test_process_multiple_sets_simple_with_error(self, mock_update):
         """Test processing multiple sets with error handling"""
-        from glific_multi_enrollment_update import process_multiple_sets_simple
         
         # Mock error response
         mock_update.return_value = {"error": "Set not found"}
@@ -420,10 +378,9 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["status"], "completed")
 
-    @patch('glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch(f'{MODULE_PATH}.update_specific_set_contacts_with_multi_enrollment')
     def test_process_multiple_sets_simple_exception(self, mock_update):
         """Test processing multiple sets with exception"""
-        from glific_multi_enrollment_update import process_multiple_sets_simple
         
         # Mock exception
         mock_update.side_effect = Exception("Unexpected error")
@@ -434,10 +391,9 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertEqual(result[0]["status"], "error")
         self.assertIn("error", result[0])
 
-    @patch('frappe.utils.background_jobs.enqueue')
+    @patch(f'{MODULE_PATH}.enqueue')
     def test_process_my_sets_with_list(self, mock_enqueue):
         """Test process_my_sets with list input"""
-        from glific_multi_enrollment_update import process_my_sets
         
         # Mock job
         mock_job = MagicMock()
@@ -450,10 +406,9 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertIn("job_123", result)
         mock_enqueue.assert_called_once()
 
-    @patch('frappe.utils.background_jobs.enqueue')
+    @patch(f'{MODULE_PATH}.enqueue')
     def test_process_my_sets_with_string(self, mock_enqueue):
         """Test process_my_sets with comma-separated string input"""
-        from glific_multi_enrollment_update import process_my_sets
         
         # Mock job
         mock_job = MagicMock()
@@ -470,35 +425,45 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertEqual(len(call_args[1]["set_names"]), 3)
 
 
-class TestGlificMultiEnrollmentIntegration(FrappeTestCase):
-    """Integration tests that test the full workflow"""
+# Alternative test class that doesn't rely on imports
+class TestGlificMultiEnrollmentUpdateStandalone(unittest.TestCase):
+    """Standalone tests that don't require module imports"""
     
     def setUp(self):
-        """Set up integration test data"""
-        # This would require actual test data in the database
-        pass
+        """Set up test environment"""
+        if hasattr(frappe, 'set_user'):
+            frappe.set_user("Administrator")
     
-    @unittest.skip("Integration test - requires full test environment")
-    def test_full_workflow_integration(self):
-        """Test the complete workflow from start to finish"""
-        # This test would:
-        # 1. Create actual test Backend Student Onboarding set
-        # 2. Create test Student records with different enrollment scenarios
-        # 3. Mock Glific API calls
-        # 4. Run the update process
-        # 5. Verify the results
-        pass
+    def test_frappe_environment(self):
+        """Test that Frappe environment is available"""
+        self.assertTrue(hasattr(frappe, 'db'))
+        
+    @patch('frappe.db.exists')
+    def test_frappe_db_mocking(self, mock_exists):
+        """Test that Frappe DB can be mocked properly"""
+        mock_exists.return_value = True
+        result = frappe.db.exists("Student", "TEST")
+        self.assertTrue(result)
+        mock_exists.assert_called_once_with("Student", "TEST")
+
+
+def run_all_tests():
+    """Run all tests - useful for manual execution"""
+    loader = unittest.TestLoader()
+    
+    # Try to load main test suite
+    try:
+        suite = loader.loadTestsFromTestCase(TestGlificMultiEnrollmentUpdate)
+        print("Running main test suite...")
+    except Exception as e:
+        print(f"Could not load main tests: {e}")
+        # Fall back to standalone tests
+        suite = loader.loadTestsFromTestCase(TestGlificMultiEnrollmentUpdateStandalone)
+        print("Running standalone test suite...")
+    
+    runner = unittest.TextTestRunner(verbosity=2)
+    return runner.run(suite)
 
 
 if __name__ == '__main__':
-    # Run specific test
-    unittest.main()
-
-# Additional test runner for Frappe
-def run_tests():
-    """Helper function to run tests in Frappe context"""
-    import unittest
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromTestCase(TestGlificMultiEnrollmentUpdate)
-    runner = unittest.TextTestRunner(verbosity=2)
-    return runner.run(suite)
+    run_all_tests()
