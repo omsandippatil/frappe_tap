@@ -1018,11 +1018,3 @@ class TestGlificMultiEnrollmentComplete(unittest.TestCase):
             # This should trigger logger usage
             self.module.check_student_multi_enrollment("NONEXISTENT")
 
-
-def run_complete_tests():
-    """Run all tests for complete coverage"""
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromTestCase(TestGlificMultiEnrollmentComplete)
-    runner = unittest.TextTestRunner(verbosity=2)
-    return runner.run(suite)
-
