@@ -2928,6 +2928,7 @@ class TestExhaustiveCoverage(unittest.TestCase):
                 except:
                     pass
                 
+                
                 # Reset all side effects
                 frappe_mock.new_doc.side_effect = None
             
