@@ -5,21 +5,40 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock, call
 import json
 from datetime import datetime, timezone
-import frappe
-from frappe.tests.utils import FrappeTestCase
+import sys
+import os
+
+# Add the current directory to Python path for imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Mock frappe before importing
+sys.modules['frappe'] = Mock()
+sys.modules['frappe.utils'] = Mock()
+sys.modules['frappe.utils.background_jobs'] = Mock()
 
 # Import the functions to test
-from your_app.glific_multi_enrollment_update import (
-    check_student_multi_enrollment,
-    update_specific_set_contacts_with_multi_enrollment,
-    run_multi_enrollment_update_for_specific_set,
-    get_backend_onboarding_sets,
-    process_multiple_sets_simple,
-    process_my_sets
-)
+try:
+    from tap_lms.tap_lms.glific_multi_enrollment_update import (
+        check_student_multi_enrollment,
+        update_specific_set_contacts_with_multi_enrollment,
+        run_multi_enrollment_update_for_specific_set,
+        get_backend_onboarding_sets,
+        process_multiple_sets_simple,
+        process_my_sets
+    )
+except ImportError:
+    # Alternative import path
+    from glific_multi_enrollment_update import (
+        check_student_multi_enrollment,
+        update_specific_set_contacts_with_multi_enrollment,
+        run_multi_enrollment_update_for_specific_set,
+        get_backend_onboarding_sets,
+        process_multiple_sets_simple,
+        process_my_sets
+    )
 
 
-class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
+class TestGlificMultiEnrollmentUpdate(unittest.TestCase):
     
     def setUp(self):
         """Set up test data"""
@@ -150,9 +169,9 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
     @patch('frappe.get_all')
     @patch('frappe.get_doc')
     @patch('frappe.db.exists')
-    @patch('your_app.glific_multi_enrollment_update.get_glific_settings')
-    @patch('your_app.glific_multi_enrollment_update.get_glific_auth_headers')
-    @patch('your_app.glific_multi_enrollment_update.check_student_multi_enrollment')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.get_glific_settings')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.get_glific_auth_headers')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.check_student_multi_enrollment')
     def test_update_specific_set_contacts_successful_update(self, mock_check_enrollment, 
                                                           mock_auth_headers, mock_settings,
                                                           mock_exists, mock_get_doc, 
@@ -221,8 +240,8 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
     @patch('frappe.get_all')
     @patch('frappe.get_doc')
     @patch('frappe.db.exists')
-    @patch('your_app.glific_multi_enrollment_update.get_glific_settings')
-    @patch('your_app.glific_multi_enrollment_update.get_glific_auth_headers')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.get_glific_settings')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.get_glific_auth_headers')
     def test_update_specific_set_contacts_glific_api_error(self, mock_auth_headers, mock_settings,
                                                          mock_exists, mock_get_doc, 
                                                          mock_get_all, mock_requests_post):
@@ -258,7 +277,7 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertEqual(result["errors"], 1)
         self.assertEqual(result["total_processed"], 1)
 
-    @patch('your_app.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
     @patch('frappe.db.begin')
     @patch('frappe.db.commit')
     def test_run_multi_enrollment_update_for_specific_set_success(self, mock_commit, mock_begin, mock_update):
@@ -284,7 +303,7 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         
         self.assertIn("Error: Backend Student Onboarding set name is required", result)
 
-    @patch('your_app.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
     @patch('frappe.db.begin')
     @patch('frappe.db.rollback')
     def test_run_multi_enrollment_update_for_specific_set_exception(self, mock_rollback, mock_begin, mock_update):
@@ -328,7 +347,7 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         )
 
     @patch('time.sleep')
-    @patch('your_app.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
     def test_process_multiple_sets_simple_success(self, mock_update, mock_sleep):
         """Test processing multiple sets successfully"""
         set_names = ["SET-001", "SET-002"]
@@ -347,7 +366,7 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertEqual(results[0]["status"], "completed")
 
     @patch('time.sleep')
-    @patch('your_app.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
     def test_process_multiple_sets_simple_with_error(self, mock_update, mock_sleep):
         """Test processing multiple sets with error"""
         set_names = ["SET-001"]
@@ -363,7 +382,7 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertEqual(results[0]["status"], "completed")
 
     @patch('time.sleep')
-    @patch('your_app.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
+    @patch('tap_lms.tap_lms.glific_multi_enrollment_update.update_specific_set_contacts_with_multi_enrollment')
     def test_process_multiple_sets_simple_exception(self, mock_update, mock_sleep):
         """Test processing multiple sets with exception"""
         set_names = ["SET-001"]
@@ -424,7 +443,7 @@ class TestGlificMultiEnrollmentUpdate(FrappeTestCase):
         self.assertIn("inserted_at", existing_fields["multi_enrollment"])
 
 
-class TestGlificMultiEnrollmentIntegration(FrappeTestCase):
+class TestGlificMultiEnrollmentIntegration(unittest.TestCase):
     """Integration tests that test the full workflow"""
     
     def setUp(self):
