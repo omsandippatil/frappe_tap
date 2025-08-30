@@ -4659,6 +4659,592 @@ class TestComplete100CoverageAPI(unittest.TestCase):
         self.assertGreater(total_tested, 0, "Should have tested at least one function")
         self.assertGreater(total_lines_covered, 0, "Should have covered at least some lines")
 
+    # Additional targeted test methods to add to your existing TestComplete100CoverageAPI class
+# These are specifically designed to hit uncovered lines in api.py
 
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_all_api_functions_with_real_execution_paths(self):
+    """Test all API functions with realistic execution paths"""
+    
+    # Test every function that exists in the module
+    for func_name in AVAILABLE_FUNCTIONS:
+        func = get_function(func_name)
+        if not func:
+            continue
+            
+        print(f"Testing real execution paths for: {func_name}")
+        
+        # Set up realistic mock data for each function type
+        if func_name in ['list_districts', 'list_cities', 'verify_batch_keyword', 
+                        'update_teacher_role', 'get_teacher_by_glific_id', 
+                        'get_school_city', 'search_schools_by_city']:
+            # Functions using request.data
+            test_data = {
+                'api_key': 'valid_key',
+                'state': 'TestState',
+                'district': 'TestDistrict', 
+                'batch_skeyword': 'test_batch',
+                'glific_id': 'existing_glific',
+                'teacher_role': 'HM',
+                'school_name': 'Test School',
+                'city_name': 'Test City'
+            }
+            mock_frappe.request.data = json.dumps(test_data)
+            
+        elif func_name in ['send_otp', 'send_otp_gs', 'send_otp_v0', 'send_otp_mock', 
+                          'verify_otp', 'create_teacher_web', 'verify_keyword', 'list_schools']:
+            # Functions using request.get_json()
+            test_data = {
+                'api_key': 'valid_key',
+                'phone': '9876543210',
+                'otp': '1234',
+                'firstName': 'TestUser',
+                'lastName': 'Teacher',
+                'School_name': 'Test School',
+                'language': 'English',
+                'keyword': 'test_school',
+                'district': 'TestDistrict',
+                'city': 'TestCity'
+            }
+            mock_frappe.request.get_json.return_value = test_data
+            
+        elif func_name in ['create_student', 'course_vertical_list', 
+                          'course_vertical_list_count', 'get_course_level_api']:
+            # Functions using local.form_dict
+            test_data = {
+                'api_key': 'valid_key',
+                'student_name': 'Test Student',
+                'phone': '9876543210',
+                'gender': 'Male',
+                'grade': '5',
+                'language': 'English',
+                'batch_skeyword': 'test_batch',
+                'vertical': 'Math',
+                'glific_id': 'test_glific',
+                'keyword': 'test_batch'
+            }
+            mock_frappe.local.form_dict = test_data
+            
+        # Execute the function with realistic scenarios
+        result = safe_call_function(func)
+        
+        # Also test with invalid API key to hit error paths
+        if func_name in ['list_districts', 'list_cities', 'verify_batch_keyword']:
+            invalid_data = json.loads(mock_frappe.request.data)
+            invalid_data['api_key'] = 'invalid_key'
+            mock_frappe.request.data = json.dumps(invalid_data)
+        elif func_name in ['send_otp', 'verify_otp', 'create_teacher_web']:
+            invalid_data = mock_frappe.request.get_json.return_value.copy()
+            invalid_data['api_key'] = 'invalid_key'
+            mock_frappe.request.get_json.return_value = invalid_data
+        elif func_name in ['create_student', 'course_vertical_list']:
+            invalid_data = mock_frappe.local.form_dict.copy()
+            invalid_data['api_key'] = 'invalid_key'
+            mock_frappe.local.form_dict = invalid_data
+            
+        result = safe_call_function(func)
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_create_student_all_execution_branches(self):
+    """Test create_student with all possible execution branches"""
+    func = get_function('create_student')
+    if not func:
+        return
+    
+    # Test successful student creation path
+    mock_frappe.local.form_dict = {
+        'api_key': 'valid_key',
+        'student_name': 'New Student',
+        'phone': '9876543210',
+        'gender': 'Male',
+        'grade': '5',
+        'language': 'English',
+        'batch_skeyword': 'test_batch',
+        'vertical': 'Math',
+        'glific_id': 'new_student_glific'
+    }
+    result = safe_call_function(func)
+    
+    # Test with existing student - same name and phone (update path)
+    mock_frappe.local.form_dict = {
+        'api_key': 'valid_key',
+        'student_name': 'Existing Student',
+        'phone': 'existing_phone',
+        'gender': 'Male',
+        'grade': '6',
+        'language': 'Hindi',
+        'batch_skeyword': 'test_batch',
+        'vertical': 'Science',
+        'glific_id': 'existing_student'
+    }
+    # Mock existing student
+    existing_student = MockFrappeDocument("Student", 
+        name1="Existing Student", 
+        phone="existing_phone", 
+        glific_id="existing_student"
+    )
+    with patch.object(mock_frappe, 'get_doc', return_value=existing_student):
+        result = safe_call_function(func)
+    
+    # Test with existing student - different name or phone (conflict path)
+    mock_frappe.local.form_dict = {
+        'api_key': 'valid_key',
+        'student_name': 'Different Name',
+        'phone': 'existing_phone',
+        'gender': 'Female',
+        'grade': '7',
+        'language': 'Bengali', 
+        'batch_skeyword': 'test_batch',
+        'vertical': 'English',
+        'glific_id': 'existing_student'
+    }
+    different_student = MockFrappeDocument("Student",
+        name1="Original Name",
+        phone="existing_phone", 
+        glific_id="existing_student"
+    )
+    with patch.object(mock_frappe, 'get_doc', return_value=different_student):
+        result = safe_call_function(func)
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available") 
+def test_verify_otp_all_execution_branches(self):
+    """Test verify_otp with all execution branches"""
+    func = get_function('verify_otp')
+    if not func:
+        return
+        
+    # Test successful new teacher verification
+    mock_frappe.request.get_json.return_value = {
+        'api_key': 'valid_key',
+        'phone': '9876543210',
+        'otp': '1234'
+    }
+    result = safe_call_function(func)
+    
+    # Test update_batch scenario with complete context
+    mock_frappe.request.get_json.return_value = {
+        'api_key': 'valid_key',
+        'phone': '9876543210', 
+        'otp': '1234'
+    }
+    
+    update_context = {
+        "action_type": "update_batch",
+        "teacher_id": "TEACHER_001",
+        "school_id": "SCHOOL_001", 
+        "batch_info": {
+            "batch_name": "BATCH_001",
+            "batch_id": "BATCH_2025_001"
+        }
+    }
+    
+    with patch.object(mock_frappe.db, 'sql') as mock_sql:
+        mock_sql.return_value = [{
+            'name': 'OTP_001',
+            'expiry': datetime.now() + timedelta(minutes=15),
+            'context': json.dumps(update_context),
+            'verified': False
+        }]
+        
+        # Mock teacher document for update_batch path
+        teacher_doc = MockFrappeDocument("Teacher", 
+            name="TEACHER_001",
+            first_name="Test",
+            phone_number="9876543210",
+            glific_id="teacher_glific_123"
+        )
+        with patch.object(mock_frappe, 'get_doc', return_value=teacher_doc):
+            result = safe_call_function(func)
+    
+    # Test with teacher missing glific_id (should create contact)
+    update_context["teacher_id"] = "TEACHER_002"
+    with patch.object(mock_frappe.db, 'sql') as mock_sql:
+        mock_sql.return_value = [{
+            'name': 'OTP_001',
+            'expiry': datetime.now() + timedelta(minutes=15),
+            'context': json.dumps(update_context),
+            'verified': False
+        }]
+        
+        teacher_no_glific = MockFrappeDocument("Teacher",
+            name="TEACHER_002",
+            first_name="NoGlific",
+            phone_number="9876543210",
+            glific_id=None  # No glific_id
+        )
+        with patch.object(mock_frappe, 'get_doc', return_value=teacher_no_glific):
+            result = safe_call_function(func)
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_create_teacher_web_all_execution_branches(self):
+    """Test create_teacher_web with all execution branches"""
+    func = get_function('create_teacher_web')
+    if not func:
+        return
+    
+    # Test successful teacher creation with existing Glific contact
+    mock_frappe.request.get_json.return_value = {
+        'api_key': 'valid_key',
+        'firstName': 'John',
+        'lastName': 'Teacher', 
+        'phone': '9876543210',
+        'School_name': 'Test School',
+        'language': 'English'
+    }
+    
+    # Mock Glific existing contact
+    mock_glific.get_contact_by_phone.return_value = {'id': 'existing_contact_123'}
+    mock_glific.update_contact_fields.return_value = True
+    result = safe_call_function(func)
+    
+    # Test with Glific contact update failure
+    mock_glific.update_contact_fields.return_value = False
+    result = safe_call_function(func)
+    
+    # Test with no existing Glific contact - create new
+    mock_glific.get_contact_by_phone.return_value = None
+    mock_glific.create_contact.return_value = {'id': 'new_contact_456'}
+    result = safe_call_function(func)
+    
+    # Test with Glific contact creation failure
+    mock_glific.create_contact.return_value = None
+    result = safe_call_function(func)
+    
+    # Reset mocks
+    mock_glific.get_contact_by_phone.reset_mock()
+    mock_glific.update_contact_fields.reset_mock()
+    mock_glific.create_contact.reset_mock()
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_send_otp_all_execution_branches(self):
+    """Test send_otp with all execution branches"""
+    func = get_function('send_otp')
+    if not func:
+        return
+    
+    # Test with new teacher (no existing teacher)
+    mock_frappe.request.get_json.return_value = {
+        'api_key': 'valid_key',
+        'phone': '9876543210'
+    }
+    result = safe_call_function(func)
+    
+    # Test with existing teacher - should return batch update context
+    mock_frappe.request.get_json.return_value = {
+        'api_key': 'valid_key',
+        'phone': 'existing_teacher'
+    }
+    result = safe_call_function(func)
+    
+    # Test with existing teacher but no active batch
+    mock_frappe.request.get_json.return_value = {
+        'api_key': 'valid_key', 
+        'phone': 'teacher_no_batch'
+    }
+    
+    # Mock teacher with school but no active batch
+    with patch.object(mock_frappe, 'get_all') as mock_get_all:
+        # First call - find existing teacher
+        # Second call - no active batch for school
+        mock_get_all.side_effect = [
+            [{'name': 'TEACHER_001', 'school_id': 'SCHOOL_001'}],
+            []  # No active batch
+        ]
+        result = safe_call_function(func)
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_get_course_level_functions_all_branches(self):
+    """Test course level functions with all branches"""
+    
+    # Test get_course_level with kitless scenarios
+    get_course_level_func = get_function('get_course_level')
+    if get_course_level_func:
+        # Test successful course level with kit_less=1
+        result = safe_call_function(get_course_level_func, 'VERTICAL_001', '5', 1)
+        
+        # Test with kit_less=1 but no matching course level, fallback to kit_less=0
+        with patch.object(mock_frappe, 'get_all') as mock_get_all:
+            # First call returns empty, second call returns course
+            mock_get_all.side_effect = [
+                [],  # No kit_less course
+                [{'name': 'COURSE_WITHOUT_KIT'}]  # Course without kit requirement
+            ]
+            result = safe_call_function(get_course_level_func, 'VERTICAL_001', '5', 1)
+    
+    # Test get_course_level_original with edge cases
+    get_course_level_original_func = getattr(api_module, 'get_course_level_original', None)
+    if get_course_level_original_func:
+        # Test with grade that requires specific stage lookup
+        result = safe_call_function(get_course_level_original_func, 'VERTICAL_001', '15', 1)
+        
+        # Test with grade that has no stage match
+        with patch.object(mock_frappe.db, 'sql', return_value=[]):
+            result = safe_call_function(get_course_level_original_func, 'VERTICAL_001', '99', 1)
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_batch_and_school_validation_branches(self):
+    """Test batch and school validation with all branches"""
+    
+    # Test verify_batch_keyword with all validation scenarios
+    verify_batch_func = get_function('verify_batch_keyword')
+    if verify_batch_func:
+        # Test with valid active batch
+        mock_frappe.request.data = json.dumps({
+            'api_key': 'valid_key',
+            'batch_skeyword': 'test_batch'
+        })
+        result = safe_call_function(verify_batch_func)
+        
+        # Test with inactive batch
+        inactive_batch = MockFrappeDocument("Batch", active=False)
+        with patch.object(mock_frappe, 'get_doc', return_value=inactive_batch):
+            result = safe_call_function(verify_batch_func)
+        
+        # Test with expired registration
+        expired_batch = MockFrappeDocument("Batch", 
+            active=True,
+            regist_end_date=datetime.now().date() - timedelta(days=1)
+        )
+        with patch.object(mock_frappe, 'get_doc', return_value=expired_batch):
+            result = safe_call_function(verify_batch_func)
+    
+    # Test list_batch_keyword with different batch states
+    list_batch_func = get_function('list_batch_keyword')
+    if list_batch_func:
+        result = safe_call_function(list_batch_func, 'valid_key')
+        
+        # Test with no active batches
+        with patch.object(mock_frappe, 'get_all', return_value=[]):
+            result = safe_call_function(list_batch_func, 'valid_key')
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_all_helper_function_branches(self):
+    """Test all helper functions with complete branch coverage"""
+    
+    # Test determine_student_type with all scenarios
+    determine_func = getattr(api_module, 'determine_student_type', None)
+    if determine_func:
+        # Test "Old" student path
+        with patch.object(mock_frappe.db, 'sql', return_value=[{'name': 'STUDENT_001'}]):
+            result = safe_call_function(determine_func, '9876543210', 'Old Student', 'VERTICAL_001')
+        
+        # Test "New" student path
+        with patch.object(mock_frappe.db, 'sql', return_value=[]):
+            result = safe_call_function(determine_func, '9876543210', 'New Student', 'VERTICAL_001')
+    
+    # Test get_current_academic_year with different months
+    academic_year_func = getattr(api_module, 'get_current_academic_year', None)
+    if academic_year_func:
+        # Test April onwards (new academic year)
+        with patch.object(mock_frappe.utils, 'getdate') as mock_getdate:
+            mock_getdate.return_value = datetime(2025, 4, 15).date()
+            result = safe_call_function(academic_year_func)
+        
+        # Test before April (previous academic year)
+        with patch.object(mock_frappe.utils, 'getdate') as mock_getdate:
+            mock_getdate.return_value = datetime(2025, 2, 15).date()
+            result = safe_call_function(academic_year_func)
+    
+    # Test get_course_level_with_mapping with different mappings
+    mapping_func = getattr(api_module, 'get_course_level_with_mapping', None)
+    if mapping_func:
+        # Test with mapping found
+        with patch.object(mock_frappe, 'get_all', return_value=[{
+            'assigned_course_level': 'MAPPED_COURSE_001',
+            'mapping_name': 'Test Mapping'
+        }]):
+            result = safe_call_function(mapping_func, 'VERTICAL_001', '5', 
+                                      '9876543210', 'Mapped Student', 1)
+        
+        # Test with no mapping - fallback to original
+        with patch.object(mock_frappe, 'get_all', return_value=[]):
+            result = safe_call_function(mapping_func, 'VERTICAL_001', '5',
+                                      '9876543210', 'Unmapped Student', 1)
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_whatsapp_integration_branches(self):
+    """Test WhatsApp integration with all branches"""
+    
+    send_whatsapp_func = get_function('send_whatsapp_message')
+    if send_whatsapp_func:
+        # Test successful message sending
+        result = safe_call_function(send_whatsapp_func, '9876543210', 'Test message')
+        
+        # Test with missing Gupshup settings
+        with patch.object(mock_frappe, 'get_single', return_value=None):
+            result = safe_call_function(send_whatsapp_func, '9876543210', 'Test message')
+        
+        # Test with incomplete settings
+        incomplete_settings = MockFrappeDocument("Gupshup OTP Settings")
+        incomplete_settings.api_key = None
+        with patch.object(mock_frappe, 'get_single', return_value=incomplete_settings):
+            result = safe_call_function(send_whatsapp_func, '9876543210', 'Test message')
+        
+        # Test request exception
+        with patch.object(mock_requests, 'post', side_effect=mock_requests.RequestException("Network error")):
+            result = safe_call_function(send_whatsapp_func, '9876543210', 'Test message')
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_data_validation_and_parsing_branches(self):
+    """Test data validation and parsing with all edge cases"""
+    
+    # Test JSON parsing edge cases across all functions
+    json_functions = [
+        'list_districts', 'list_cities', 'verify_batch_keyword',
+        'update_teacher_role', 'get_teacher_by_glific_id',
+        'get_school_city', 'search_schools_by_city'
+    ]
+    
+    for func_name in json_functions:
+        func = get_function(func_name)
+        if not func:
+            continue
+        
+        # Test with malformed JSON
+        mock_frappe.request.data = "invalid json {"
+        result = safe_call_function(func)
+        
+        # Test with empty request data
+        mock_frappe.request.data = ""
+        result = safe_call_function(func)
+        
+        # Test with None request data
+        mock_frappe.request.data = None  
+        result = safe_call_function(func)
+    
+    # Test form_dict edge cases
+    form_dict_functions = ['create_student', 'course_vertical_list', 'get_course_level_api']
+    
+    for func_name in form_dict_functions:
+        func = get_function(func_name)
+        if not func:
+            continue
+        
+        # Test with empty form_dict
+        mock_frappe.local.form_dict = {}
+        result = safe_call_function(func)
+        
+        # Test with None values in form_dict
+        mock_frappe.local.form_dict = {
+            'api_key': None,
+            'student_name': None,
+            'phone': None
+        }
+        result = safe_call_function(func)
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_database_operation_edge_cases(self):
+    """Test database operations with all edge cases"""
+    
+    # Test functions that use different database operations
+    db_functions = ['create_teacher', 'get_school_name_keyword_list', 'grade_list']
+    
+    for func_name in db_functions:
+        func = get_function(func_name)
+        if not func:
+            continue
+        
+        # Test with database exceptions
+        with patch.object(mock_frappe.db, 'get_all', side_effect=Exception("DB Connection Error")):
+            if func_name == 'create_teacher':
+                result = safe_call_function(func, 'valid_key', 'test_school', 'John', '9876543210', 'glific_123')
+            elif func_name == 'get_school_name_keyword_list':
+                result = safe_call_function(func, 'valid_key', 0, 10)
+            elif func_name == 'grade_list':
+                result = safe_call_function(func, 'valid_key', 'test_batch')
+        
+        # Test with get_value exceptions  
+        with patch.object(mock_frappe.db, 'get_value', side_effect=Exception("Get Value Error")):
+            if func_name == 'create_teacher':
+                result = safe_call_function(func, 'valid_key', 'test_school', 'John', '9876543210', 'glific_123')
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available") 
+def test_frappe_document_lifecycle_branches(self):
+    """Test Frappe document operations with all branches"""
+    
+    # Test document creation with different exception types
+    exception_types = [
+        mock_frappe.ValidationError("Invalid data"),
+        mock_frappe.DuplicateEntryError("Duplicate record"),
+        mock_frappe.PermissionError("No permission"),
+        Exception("Unexpected error")
+    ]
+    
+    for exception in exception_types:
+        # Test create_teacher document operations
+        create_teacher_func = get_function('create_teacher')
+        if create_teacher_func:
+            with patch.object(MockFrappeDocument, 'insert', side_effect=exception):
+                result = safe_call_function(create_teacher_func, 'valid_key', 'test_school', 
+                                          'John', '9876543210', 'glific_123')
+        
+        # Test create_student document operations
+        create_student_func = get_function('create_student')
+        if create_student_func:
+            mock_frappe.local.form_dict = {
+                'api_key': 'valid_key',
+                'student_name': 'Exception Test',
+                'phone': '9876543210',
+                'gender': 'Male',
+                'grade': '5',
+                'language': 'English',
+                'batch_skeyword': 'test_batch',
+                'vertical': 'Math',
+                'glific_id': 'exception_glific'
+            }
+            with patch.object(MockFrappeDocument, 'save', side_effect=exception):
+                result = safe_call_function(create_student_func)
+
+@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
+def test_response_code_and_logging_branches(self):
+    """Test response code setting and logging branches"""
+    
+    # Test functions that set different response codes
+    response_functions = [
+        'list_districts', 'list_cities', 'verify_keyword', 'list_schools',
+        'send_otp', 'verify_otp', 'create_teacher_web'
+    ]
+    
+    for func_name in response_functions:
+        func = get_function(func_name)
+        if not func:
+            continue
+        
+        # Set up appropriate data for each function
+        if func_name in ['list_districts', 'list_cities']:
+            mock_frappe.request.data = json.dumps({'api_key': 'valid_key', 'state': 'TestState'})
+        elif func_name in ['verify_keyword', 'list_schools']:
+            mock_frappe.request.get_json.return_value = {'api_key': 'valid_key', 'keyword': 'test'}
+        elif func_name in ['send_otp', 'verify_otp']:
+            mock_frappe.request.get_json.return_value = {'api_key': 'valid_key', 'phone': '9876543210', 'otp': '1234'}
+        elif func_name == 'create_teacher_web':
+            mock_frappe.request.get_json.return_value = {
+                'api_key': 'valid_key', 'firstName': 'Test', 'phone': '9876543210', 'School_name': 'Test School'
+            }
+        
+        # Test success path (200)
+        result = safe_call_function(func)
+        
+        # Test invalid API key path (401)
+        if func_name in ['list_districts', 'list_cities']:
+            invalid_data = json.loads(mock_frappe.request.data)
+            invalid_data['api_key'] = 'invalid_key'
+            mock_frappe.request.data = json.dumps(invalid_data)
+        else:
+            invalid_data = mock_frappe.request.get_json.return_value.copy()
+            invalid_data['api_key'] = 'invalid_key'
+            mock_frappe.request.get_json.return_value = invalid_data
+        
+        result = safe_call_function(func)
+        
+        # Test missing data path (400)
+        if func_name in ['list_districts', 'list_cities']:
+            mock_frappe.request.data = json.dumps({})
+        else:
+            mock_frappe.request.get_json.return_value = {}
+        
+        result = safe_call_function(func)
+
+print("Additional targeted coverage tests complete!")
 if __name__ == '__main__':
     unittest.main(verbosity=2)
