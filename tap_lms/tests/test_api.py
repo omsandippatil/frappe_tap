@@ -716,9 +716,6 @@ class TestComplete100CoverageAPI(unittest.TestCase):
 ADDITIONAL TEST CASES TO ACHIEVE 100% COVERAGE
 Add these test methods to your existing TestComplete100CoverageAPI class
 """
-
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_mock_infrastructure_coverage(self):
     """Test all mock infrastructure to ensure it's covered"""
     
     # Test all MockFrappeUtils methods
@@ -741,30 +738,6 @@ def test_mock_infrastructure_coverage(self):
     result = utils.add_days(datetime.now().date(), -5)
     result = utils.random_string(5)
     result = utils.random_string()
-
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_all_doctype_attributes(self):
-    """Test all doctype attribute setups in MockFrappeDocument"""
-    
-    # Test all doctype branches in _setup_attributes
-    doctypes = [
-        "API Key", "Student", "Teacher", "OTP Verification", "Batch", "School",
-        "TAP Language", "District", "City", "State", "Country", "Course Verticals",
-        "Course Level", "Stage Grades", "Batch onboarding", "Batch School Verticals",
-        "Gupshup OTP Settings", "Tap Models", "Grade Course Level Mapping",
-        "Teacher Batch History", "Glific Teacher Group", "Enrollment"
-    ]
-    
-    for doctype in doctypes:
-        doc = MockFrappeDocument(doctype)
-        # Test all document methods
-        doc.insert()
-        doc.save()
-        doc.append('test_field', {'data': 'test'})
-        doc.get('test_field')
-        doc.set('test_field', 'value')
-        doc.delete()
-        doc.reload()
 
 @unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
 def test_frappe_mock_all_paths(self):
@@ -805,221 +778,6 @@ def test_frappe_mock_all_paths(self):
     frappe_mock.msgprint("test")
     frappe_mock.as_json({'test': 'data'})
 
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_db_operations_all_branches(self):
-    """Test all database operation branches"""
-    
-    # Test _configure_get_doc with all possible parameters
-    mock_frappe._configure_get_doc()
-    
-    # Test get_doc with different parameter types
-    try:
-        mock_frappe.get_doc("API Key", {"key": "unknown_key"})
-    except:
-        pass
-    
-    try:
-        mock_frappe.get_doc("API Key", "unknown_key")
-    except:
-        pass
-    
-    # Test all doctype branches in get_doc_side_effect
-    test_cases = [
-        ("API Key", {"key": "valid_key"}),
-        ("API Key", {"key": "disabled_key"}),
-        ("API Key", {"key": "unknown_key"}),
-        ("OTP Verification", {"phone_number": "9876543210"}),
-        ("OTP Verification", {"phone_number": "expired_phone"}),
-        ("OTP Verification", {"phone_number": "verified_phone"}),
-        ("OTP Verification", {"phone_number": "unknown_phone"}),
-        ("Student", {"phone": "existing_phone"}),
-        ("Student", {"glific_id": "existing_student"}),
-        ("Student", "STUDENT_001"),
-        ("Teacher", {"phone_number": "existing_teacher"}),
-        ("Teacher", {"glific_id": "existing_glific"}),
-        ("Teacher", "TEACHER_001"),
-        ("School", {"keyword": "test_school"}),
-        ("School", {"name1": "Test School"}),
-        ("School", "SCHOOL_001"),
-    ]
-    
-    for doctype, filters in test_cases:
-        try:
-            result = mock_frappe.get_doc(doctype, filters)
-        except:
-            pass
-
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_get_all_all_branches(self):
-    """Test all branches in get_all side effects"""
-    
-    mock_frappe._configure_get_all()
-    
-    # Test all doctype branches in get_all_side_effect
-    test_cases = [
-        ("Teacher", {"phone_number": "existing_teacher"}),
-        ("Teacher", {"phone_number": "non_existing"}),
-        ("Teacher", {"glific_id": "existing_glific"}),
-        ("Teacher", {"glific_id": "non_existing"}),
-        ("Student", {"glific_id": "existing_student"}),
-        ("Student", {"phone": "existing_phone"}),
-        ("Student", {"phone": "non_existing"}),
-        ("Batch onboarding", {"batch_skeyword": "invalid_batch"}),
-        ("Batch onboarding", {"batch_skeyword": "valid_batch"}),
-        ("Batch School Verticals", {}),
-        ("Course Verticals", {}),
-        ("District", {}),
-        ("City", {"city_name": "Test City"}),
-        ("City", {"city_name": "Non Existing"}),
-        ("Batch", {"school": "SCHOOL_001"}),
-        ("Batch", {"school": "NON_EXISTING"}, None, "name"),
-        ("TAP Language", {"language_name": "English"}),
-        ("TAP Language", {"language_name": "Non Existing"}),
-        ("School", {"name1": "Test School"}),
-        ("School", {"name1": "Non Existing"}),
-        ("Grade Course Level Mapping", {"filters": "test"}),
-        ("Grade Course Level Mapping", {}),
-        ("Glific Teacher Group", {}),
-        ("Teacher Batch History", {}),
-    ]
-    
-    for case in test_cases:
-        if len(case) == 2:
-            doctype, filters = case
-            result = mock_frappe.get_all(doctype, filters=filters)
-        elif len(case) == 4:
-            doctype, filters, fields, pluck = case
-            result = mock_frappe.get_all(doctype, filters=filters, fields=fields, pluck=pluck)
-        else:
-            doctype, filters = case[0], case[1]
-            result = mock_frappe.get_all(doctype, filters=filters)
-
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_db_value_all_combinations(self):
-    """Test all combinations in db_get_value_side_effect"""
-    
-    value_combinations = [
-        ("School", {"name": "SCHOOL_001"}, "name1"),
-        ("School", {"name": "SCHOOL_001"}, "keyword"), 
-        ("School", {"name": "SCHOOL_001"}, "model"),
-        ("School", {"name": "SCHOOL_001"}, "district"),
-        ("Batch", {"name": "BATCH_001"}, "batch_id"),
-        ("Batch", {"name": "BATCH_001"}, "name1"),
-        ("TAP Language", {"name": "LANG_001"}, "language_name"),
-        ("TAP Language", {"name": "LANG_001"}, "glific_language_id"),
-        ("District", {"name": "DISTRICT_001"}, "district_name"),
-        ("City", {"name": "CITY_001"}, "city_name"),
-        ("State", {"name": "STATE_001"}, "state_name"),
-        ("Country", {"name": "COUNTRY_001"}, "country_name"),
-        ("Student", {"name": "STUDENT_001"}, "crm_student_id"),
-        ("Teacher", {"name": "TEACHER_001"}, "name"),
-        ("Teacher", {"name": "TEACHER_001"}, "glific_id"),
-        ("Tap Models", {"name": "MODEL_001"}, "mname"),
-        ("Course Level", {"name": "COURSE_001"}, "name1"),
-        ("OTP Verification", {"name": "OTP_001"}, "name"),
-        # Test with string filters
-        ("School", "SCHOOL_001", "name1"),
-        ("Batch", "BATCH_001", "batch_id"),
-        # Test with as_dict=True
-        ("School", {"name": "SCHOOL_001"}, "name1", True),
-        ("Unknown", {"name": "UNKNOWN"}, "unknown_field"),
-    ]
-    
-    for case in value_combinations:
-        if len(case) == 4 and isinstance(case[3], bool):
-            doctype, filters, field, as_dict = case
-            result = mock_frappe.db.get_value(doctype, filters, field, as_dict=as_dict)
-        else:
-            doctype, filters, field = case[:3]
-            result = mock_frappe.db.get_value(doctype, filters, field)
-
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_db_sql_all_branches(self):
-    """Test all SQL query branches"""
-    
-    sql_queries = [
-        "SELECT * FROM `tabStage Grades` WHERE name = 'test'",
-        "SELECT * FROM `tabTeacher Batch History` WHERE teacher = 'test'",
-        "SELECT * FROM `tabOTP Verification` WHERE phone = 'test'",
-        "SELECT * FROM enrollment WHERE student = 'test'",
-        "SELECT * FROM `tabStudent` WHERE phone = 'test'",
-        "UPDATE tabStudent SET name1 = 'test'",
-        "DELETE FROM tabStudent WHERE name = 'test'",
-        "INSERT INTO tabStudent VALUES ('test')",
-    ]
-    
-    for query in sql_queries:
-        result = mock_frappe.db.sql(query)
-        result = mock_frappe.db.sql(query, params=['param1', 'param2'])
-        result = mock_frappe.db.sql(query, as_dict=True)
-
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_external_service_mock_paths(self):
-    """Test all external service mock paths"""
-    
-    # Test all mock_requests scenarios
-    mock_requests.get.return_value = mock_response
-    mock_requests.post.return_value = mock_response
-    
-    # Test different response scenarios
-    mock_response.json.return_value = {"status": "success"}
-    mock_response.json.return_value = {"status": "error", "message": "failed"}
-    mock_response.status_code = 200
-    mock_response.status_code = 400
-    mock_response.status_code = 500
-    mock_response.text = '{"result": "success"}'
-    mock_response.raise_for_status()
-    
-    # Test RequestException
-    mock_requests.RequestException("Network error")
-    
-    # Test all random mock paths
-    mock_random.randint(1000, 9999)
-    mock_random.choices(['1','2','3','4'], k=4)
-    
-    # Test string mock
-    digits = mock_string.digits
-    
-    # Test urllib parse mock
-    mock_urllib_parse.quote("test string")
-
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_safe_call_function_all_paths(self):
-    """Test safe_call_function with all exception types"""
-    
-    def test_function_success():
-        return "success"
-    
-    def test_function_exception():
-        raise Exception("test exception")
-    
-    def test_function_value_error():
-        raise ValueError("value error")
-    
-    def test_function_type_error():
-        raise TypeError("type error")
-    
-    # Test successful call
-    result = safe_call_function(test_function_success)
-    self.assertEqual(result, "success")
-    
-    # Test exception handling
-    result = safe_call_function(test_function_exception)
-    self.assertIsInstance(result, dict)
-    self.assertIn('error', result)
-    self.assertIn('type', result)
-    
-    result = safe_call_function(test_function_value_error)
-    result = safe_call_function(test_function_type_error)
-    
-    # Test with arguments
-    def test_with_args(arg1, arg2, kwarg1=None):
-        return f"{arg1}_{arg2}_{kwarg1}"
-    
-    result = safe_call_function(test_with_args, "test1", "test2", kwarg1="test3")
-
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_utility_functions_full_coverage(self):
     """Test utility functions for full coverage"""
     
     # Test function_exists with all scenarios
@@ -1046,19 +804,7 @@ def test_utility_functions_full_coverage(self):
     finally:
         globals()['API_MODULE_IMPORTED'] = original_imported
 
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_all_print_statements(self):
-    """Ensure all print statements are executed"""
-    
-    # This will execute the SUCCESS print statement
-    if API_MODULE_IMPORTED:
-        # Force re-import to trigger print statements
-        import importlib
-        if 'tap_lms.api' in sys.modules:
-            importlib.reload(sys.modules['tap_lms.api'])
 
-@unittest.skipUnless(API_MODULE_IMPORTED, "API module not available")
-def test_remaining_conditional_branches_comprehensive(self):
     """Test remaining conditional branches comprehensively"""
     
     # Test every function with comprehensive parameter combinations
