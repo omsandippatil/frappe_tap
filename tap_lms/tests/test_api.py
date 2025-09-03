@@ -2804,6 +2804,7 @@ class TestComplete100CoverageAPI(unittest.TestCase):
             # Test database state variations
             db_scenarios = [
                 # Normal state
+                
                 {},
                 # No data found
                 {'get_all_return': []},
