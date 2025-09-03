@@ -1,0 +1,13 @@
+[run]
+source = tap_lms
+include = tap_lms/api.py
+
+[report]
+show_missing = True
+precision = 2
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml
