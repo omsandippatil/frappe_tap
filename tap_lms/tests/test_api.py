@@ -4247,7 +4247,18 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 import frappe
-from tap_lms import api  # Adjust path if needed
+from tap_lms import api  # Adjust if needed
+
+
+# -----------------------------
+# Helper to mock frappe request & response
+# -----------------------------
+def mock_frappe_request(data):
+    frappe.local.request = MagicMock()
+    frappe.local.request.data = json.dumps(data)
+    frappe.local.request.get_json = lambda: data
+    frappe.response = MagicMock()
+    frappe.response.http_status_code = 200
 
 
 # -----------------------------
@@ -4262,44 +4273,44 @@ def test_authenticate_api_key_success(mock_get_doc):
 
 @patch("frappe.get_doc", side_effect=frappe.DoesNotExistError)
 def test_authenticate_api_key_invalid(mock_get_doc):
-    result = api.authenticate_api_key("invalid")
+    result = api.authenticate_api_key("wrong")
     assert result is None
 
 
 # -----------------------------
-# 2. Test list_districts API
+# 2. Test list_districts
 # -----------------------------
 @patch("frappe.get_all")
 @patch("tap_lms.api.authenticate_api_key")
 def test_list_districts_success(mock_auth, mock_get_all):
     mock_auth.return_value = True
     mock_get_all.return_value = [
-        MagicMock(name="D1", district_name="District One"),
-        MagicMock(name="D2", district_name="District Two")
+        {"district_name": "District One"},
+        {"district_name": "District Two"}
     ]
-    frappe.request.data = json.dumps({"api_key": "123", "state": "KA"})
+    mock_frappe_request({"api_key": "123", "state": "KA"})
     result = api.list_districts()
     assert result["status"] == "success"
     assert "District One" in result["data"].values()
 
 def test_list_districts_missing_params():
-    frappe.request.data = json.dumps({"api_key": ""})
+    mock_frappe_request({"api_key": ""})
     result = api.list_districts()
     assert result["status"] == "error"
 
 
 # -----------------------------
-# 3. Test list_cities API
+# 3. Test list_cities
 # -----------------------------
 @patch("frappe.get_all")
 @patch("tap_lms.api.authenticate_api_key")
 def test_list_cities_success(mock_auth, mock_get_all):
     mock_auth.return_value = True
-    mock_get_all.return_value = [MagicMock(name="C1", city_name="CityA")]
-    frappe.request.data = json.dumps({"api_key": "123", "district": "D1"})
+    mock_get_all.return_value = [{"city_name": "City A"}]
+    mock_frappe_request({"api_key": "123", "district": "D1"})
     result = api.list_cities()
     assert result["status"] == "success"
-    assert "CityA" in result["data"].values()
+    assert "City A" in result["data"].values()
 
 
 # -----------------------------
@@ -4328,19 +4339,19 @@ def test_send_whatsapp_message_no_settings(mock_get_single):
 def test_verify_keyword_success(mock_auth, mock_get_value):
     mock_auth.return_value = True
     mock_get_value.return_value = {"name1": "ABC School", "model": "Basic"}
-    frappe.request.get_json = lambda: {"api_key": "123", "keyword": "ABC"}
+    mock_frappe_request({"api_key": "123", "keyword": "ABC"})
     api.verify_keyword()
     assert frappe.response.http_status_code == 200
 
 @patch("tap_lms.api.authenticate_api_key", return_value=False)
 def test_verify_keyword_invalid_api(mock_auth):
-    frappe.request.get_json = lambda: {"api_key": "bad"}
+    mock_frappe_request({"api_key": "bad"})
     api.verify_keyword()
     assert frappe.response.http_status_code == 401
 
 
 # -----------------------------
-# 6. Test create_teacher API
+# 6. Test create_teacher
 # -----------------------------
 @patch("frappe.new_doc")
 @patch("frappe.db.get_value")
@@ -4377,7 +4388,7 @@ def test_get_school_name_keyword_list(mock_get_all, mock_auth):
 
 
 # -----------------------------
-# 8. Test send_otp (success)
+# 8. Test send_otp
 # -----------------------------
 @patch("tap_lms.api.get_active_batch_for_school")
 @patch("tap_lms.api.authenticate_api_key")
@@ -4385,7 +4396,7 @@ def test_get_school_name_keyword_list(mock_get_all, mock_auth):
 @patch("frappe.get_doc")
 @patch("requests.get")
 def test_send_otp_success(mock_req, mock_doc, mock_get_all, mock_auth, mock_batch):
-    frappe.request.get_json = lambda: {"api_key": "123", "phone": "9876543210"}
+    mock_frappe_request({"api_key": "123", "phone": "9876543210"})
     mock_auth.return_value = True
     mock_batch.return_value = {"batch_id": "B1"}
     mock_get_all.return_value = []
@@ -4394,24 +4405,18 @@ def test_send_otp_success(mock_req, mock_doc, mock_get_all, mock_auth, mock_batc
     result = api.send_otp()
     assert result["status"] == "success"
 
-
-# -----------------------------
-# 9. Test send_otp with invalid key
-# -----------------------------
-
-
 def test_send_otp_invalid_key():
-    frappe.request.get_json = lambda: {"api_key": "", "phone": "123"}
+    mock_frappe_request({"api_key": "", "phone": "123"})
     result = api.send_otp()
     assert result["status"] == "failure"
 
 
 # -----------------------------
-# 10. Test verify_otp invalid
+# 9. Test verify_otp
 # -----------------------------
 @patch("frappe.db.sql", return_value=[])
 @patch("tap_lms.api.authenticate_api_key", return_value=True)
 def test_verify_otp_invalid(mock_auth, mock_sql):
-    frappe.request.get_json = lambda: {"api_key": "123", "phone": "999", "otp": "1111"}
+    mock_frappe_request({"api_key": "123", "phone": "999", "otp": "1111"})
     result = api.verify_otp()
     assert result["status"] == "failure"
