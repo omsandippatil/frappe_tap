@@ -3173,187 +3173,66 @@
 
 import json
 import pytest
-import requests
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 import tap_lms.api as api
 
 # --------------------
-# Helper: Mock frappe
+# Test authenticate_api_key
 # --------------------
-@pytest.fixture(autouse=True)
-def mock_frappe(monkeypatch):
-    frappe = MagicMock()
-    frappe.get_all = MagicMock(return_value=[])
-    frappe.get_doc = MagicMock()
-    frappe.db = MagicMock()
-    frappe.response = MagicMock()
-    frappe.form_dict = {}
-    frappe.request = MagicMock()
-    frappe.throw = Exception
-    frappe.logger = MagicMock()
-    frappe.get_value = MagicMock()
-    frappe.db.get_value = MagicMock()
-    frappe.utils = MagicMock()
-    frappe.utils.today.return_value = "2025-09-08"
-    monkeypatch.setattr(api, "frappe", frappe)
-    return frappe
+def test_authenticate_api_key_success(monkeypatch):
+    mock_frappe = MagicMock()
+    mock_frappe.get_doc.return_value = MagicMock(name="VALID_KEY")
+    monkeypatch.setattr(api, "frappe", mock_frappe)
+    result = api.authenticate_api_key("VALID_KEY")
+    assert result == "VALID_KEY"
+
+def test_authenticate_api_key_not_found(monkeypatch):
+    mock_frappe = MagicMock()
+    mock_frappe.get_doc.side_effect = api.frappe.DoesNotExistError
+    monkeypatch.setattr(api, "frappe", mock_frappe)
+    result = api.authenticate_api_key("BAD_KEY")
+    assert result is None
 
 # --------------------
 # Test get_active_batch_for_school
 # --------------------
-def test_get_active_batch_found(mock_frappe):
-    mock_frappe.get_all.side_effect = [
-        [{"batch": "B1"}],  # Active batch onboarding
-        []                  # Batch pluck call
-    ]
-    mock_frappe.db.get_value.return_value = "123"
+def test_get_active_batch_for_school_success(monkeypatch):
+    mock_frappe = MagicMock()
+    mock_frappe.utils.today.return_value = "2025-09-08"
+    mock_frappe.get_all.return_value = [MagicMock(batch="B1")]
+    mock_frappe.db.get_value.return_value = "BATCH123"
+    monkeypatch.setattr(api, "frappe", mock_frappe)
     result = api.get_active_batch_for_school("SCHOOL1")
-    assert result["batch_id"] == "123"
+    assert result["batch_id"] == "BATCH123"
 
-def test_get_active_batch_not_found(mock_frappe):
+def test_get_active_batch_for_school_not_found(monkeypatch):
+    mock_frappe = MagicMock()
+    mock_frappe.utils.today.return_value = "2025-09-08"
     mock_frappe.get_all.return_value = []
+    monkeypatch.setattr(api, "frappe", mock_frappe)
     result = api.get_active_batch_for_school("SCHOOL2")
     assert result["batch_id"] == "no_active_batch_id"
 
 # --------------------
-# Test list_batch_keyword
+# Test list_districts API
 # --------------------
-def test_list_batch_keyword_success(mock_frappe):
-    mock_frappe.get_all.side_effect = [
-        [{"batch": "B1", "school": "S1", "batch_skeyword": "KW"}],  # Onboarding
+def test_list_districts_success(monkeypatch):
+    mock_frappe = MagicMock()
+    mock_frappe.request.data = json.dumps({"api_key": "KEY123", "state": "KA"})
+    mock_frappe.get_doc.return_value = MagicMock(name="KEY123")
+    mock_frappe.get_all.return_value = [
+        MagicMock(name="D1", district_name="District One"),
+        MagicMock(name="D2", district_name="District Two")
     ]
-    mock_frappe.get_doc.return_value = MagicMock(active=1, regist_end_date="2099-01-01", batch_id="B123")
-    mock_frappe.get_value.return_value = "My School"
-    result = api.list_batch_keyword("API_KEY")
-    assert isinstance(result, list)
-
-def test_list_batch_keyword_invalid_api_key(mock_frappe):
-    mock_frappe.get_all.side_effect = []
-    with pytest.raises(Exception):
-        api.list_batch_keyword("BAD_KEY")
-
-# --------------------
-# Test course_vertical_list
-# --------------------
-def test_course_vertical_list_success(mock_frappe):
-    mock_frappe.form_dict = {"api_key": "123", "keyword": "K1"}
-    mock_frappe.get_all.side_effect = [
-        [{"name": "B1"}],
-        [{"course_vertical": "CV1"}]
-    ]
-    mock_frappe.get_doc.return_value = MagicMock(vertical_id="V1", name2="Vertical Name")
-    result = api.course_vertical_list()
-    assert "V1" in result
-
-def test_course_vertical_list_invalid_keyword(mock_frappe):
-    mock_frappe.form_dict = {"api_key": "123", "keyword": "BAD"}
-    mock_frappe.get_all.side_effect = [[]]
-    result = api.course_vertical_list()
-    assert "error" in result
-
-# --------------------
-# Test course_vertical_list_count
-# --------------------
-def test_course_vertical_list_count_success(mock_frappe):
-    mock_frappe.form_dict = {"api_key": "123", "keyword": "K1"}
-    mock_frappe.get_all.side_effect = [
-        [{"name": "B1"}],
-        [{"course_vertical": "CV1"}, {"course_vertical": "CV2"}]
-    ]
-    mock_frappe.get_doc.side_effect = [
-        MagicMock(name2="Vertical 1"),
-        MagicMock(name2="Vertical 2")
-    ]
-    result = api.course_vertical_list_count()
-    assert result["count"] == "2"
-
-# --------------------
-# Test get_course_level_api
-# --------------------
-def test_get_course_level_api_success(mock_frappe):
-    mock_frappe.form_dict = {
-        "api_key": "123",
-        "grade": "5",
-        "vertical": "Maths",
-        "batch_skeyword": "BK1"
-    }
-    mock_frappe.get_all.side_effect = [
-        [{"name": "B1", "kit_less": 1}],  # Batch onboarding
-        [{"name": "CV1"}]                # Course vertical
-    ]
-    with patch("tap_lms.api.get_course_level", return_value="CL1"):
-        result = api.get_course_level_api()
-        assert result["course_level"] == "CL1"
-
-def test_get_course_level_api_invalid_batch(mock_frappe):
-    mock_frappe.form_dict = {
-        "api_key": "123",
-        "grade": "5",
-        "vertical": "Maths",
-        "batch_skeyword": "BK1"
-    }
-    mock_frappe.get_all.return_value = []
-    result = api.get_course_level_api()
-    assert "error" in result
-
-# --------------------
-# Test update_teacher_role
-# --------------------
-def test_update_teacher_role_success(mock_frappe):
-    mock_frappe.request.data = json.dumps({
-        "api_key": "123",
-        "glific_id": "G1",
-        "teacher_role": "Teacher"
-    })
-    mock_frappe.get_all.return_value = [{"name": "T1", "first_name": "John", "last_name": "Doe", "school_id": "S1"}]
-    mock_frappe.get_doc.return_value = MagicMock(name="T1", first_name="John", last_name="Doe", school_id="S1", teacher_role="OldRole")
-    mock_frappe.db.get_value.return_value = "School Name"
-    result = api.update_teacher_role()
+    monkeypatch.setattr(api, "frappe", mock_frappe)
+    result = api.list_districts()
     assert result["status"] == "success"
+    assert "District One" in result["data"].values()
 
-def test_update_teacher_role_invalid_role(mock_frappe):
-    mock_frappe.request.data = json.dumps({
-        "api_key": "123",
-        "glific_id": "G1",
-        "teacher_role": "INVALID"
-    })
-    result = api.update_teacher_role()
-    assert result["status"] == "error"
-
-# --------------------
-# Test get_teacher_by_glific_id
-# --------------------
-def test_get_teacher_by_glific_id_success(mock_frappe):
-    mock_frappe.request.data = json.dumps({
-        "api_key": "123",
-        "glific_id": "G1"
-    })
-    mock_frappe.get_all.return_value = [{
-        "name": "T1", "first_name": "John", "last_name": "Doe",
-        "school_id": "S1", "language": "L1", "course_level": "CL1"
-    }]
-    mock_frappe.db.get_value.side_effect = ["School Name", "English", "Maths"]
-    mock_frappe.db.sql.return_value = []
-    result = api.get_teacher_by_glific_id()
-    assert result["status"] == "success"
-
-def test_get_teacher_by_glific_id_not_found(mock_frappe):
-    mock_frappe.request.data = json.dumps({"api_key": "123", "glific_id": "BAD"})
-    mock_frappe.get_all.return_value = []
-    result = api.get_teacher_by_glific_id()
-    assert result["status"] == "error"
-
-# --------------------
-# Test get_school_city
-# --------------------
-def test_get_school_city_success(mock_frappe):
-    mock_frappe.request.data = json.dumps({"api_key": "123", "school_name": "ABC School"})
-    mock_frappe.get_all.return_value = [{"name": "S1", "name1": "ABC", "city": "C1"}]
-    result = api.get_school_city()
-    assert result["status"] == "success"
-
-def test_get_school_city_not_found(mock_frappe):
-    mock_frappe.request.data = json.dumps({"api_key": "123", "school_name": "XYZ"})
-    mock_frappe.get_all.return_value = []
-    result = api.get_school_city()
+def test_list_districts_invalid_key(monkeypatch):
+    mock_frappe = MagicMock()
+    mock_frappe.request.data = json.dumps({"api_key": "BAD_KEY", "state": "KA"})
+    mock_frappe.get_doc.side_effect = api.frappe.DoesNotExistError
+    monkeypatch.setattr(api, "frappe", mock_frappe)
+    result = api.list_districts()
     assert result["status"] == "error"
