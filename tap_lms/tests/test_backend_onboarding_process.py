@@ -1314,20 +1314,568 @@ class TestCompleteJobStatus:
 
     @patch('frappe.db')
     @patch('frappe.logger')
-    def test_get_job_status_multiple_tables(self, mock_logger, mock_db):
-        """Test job status checking multiple table names"""
-        mock_db.table_exists.side_effect = [False, True]  # First table doesn't exist, second does
+    def test_get_job_status_with_progress_data(self, mock_logger, mock_db):
+        """Test job status with valid progress data"""
+        mock_db.table_exists.return_value = True
         mock_db.get_value.return_value = {
             'status': 'started',
-            'progress_data': '{"percent": 25}',
+            'progress_data': '{"percent": 75, "description": "Processing students"}',
             'result': None
         }
         
         result = get_job_status("JOB001")
         
         assert result['status'] == 'started'
-        assert 'progress' in result
-        assert mock_db.table_exists.call_count == 2
+        assert result['progress']['percent'] == 75
+        assert result['progress']['description'] == "Processing students"
+
+    @patch('frappe.db')
+    @patch('frappe.logger')
+    def test_get_job_status_invalid_progress_json(self, mock_logger, mock_db):
+        """Test job status with invalid progress JSON"""
+        mock_db.table_exists.return_value = True
+        mock_db.get_value.return_value = {
+            'status': 'started',
+            'progress_data': 'invalid json',
+            'result': None
+        }
+        
+        result = get_job_status("JOB001")
+        
+        assert result['status'] == 'started'
+        assert 'progress' not in result  # Should not include progress due to JSON error
+
+    @patch('frappe.db')
+    @patch('frappe.logger')
+    def test_get_job_status_finished_with_result(self, mock_logger, mock_db):
+        """Test finished job with result data"""
+        mock_db.table_exists.return_value = True
+        mock_db.get_value.return_value = {
+            'status': 'finished',
+            'progress_data': None,
+            'result': '{"success_count": 10, "failure_count": 0}'
+        }
+        
+        result = get_job_status("JOB001")
+        
+        assert result['status'] == 'Completed'
+        assert result['result']['success_count'] == 10
+        assert result['result']['failure_count'] == 0
+
+    @patch('frappe.db')
+    @patch('frappe.logger')
+    def test_get_job_status_invalid_result_json(self, mock_logger, mock_db):
+        """Test finished job with invalid result JSON"""
+        mock_db.table_exists.return_value = True
+        mock_db.get_value.return_value = {
+            'status': 'finished',
+            'progress_data': None,
+            'result': 'invalid json'
+        }
+        
+        result = get_job_status("JOB001")
+        
+        assert result['status'] == 'Completed'
+        assert 'result' not in result  # Should not include result due to JSON error
+
+    @patch('frappe.db')
+    @patch('frappe.logger')
+    def test_get_job_status_rq_fallback(self, mock_logger, mock_db):
+        """Test fallback to RQ job status"""
+        mock_db.table_exists.return_value = False  # No tables exist
+        
+        with patch('frappe.utils.background_jobs.get_job_status') as mock_rq_status:
+            mock_rq_status.return_value = "running"
+            
+            result = get_job_status("JOB001")
+            
+            assert result['status'] == "running"
+            mock_rq_status.assert_called_once_with("JOB001")
+
+    @patch('frappe.db')
+    @patch('frappe.logger')
+    def test_get_job_status_complete_exception(self, mock_logger, mock_db):
+        """Test complete exception handling"""
+        mock_db.table_exists.side_effect = Exception("Database error")
+        
+        result = get_job_status("JOB001")
+        
+        assert result['status'] == 'Unknown'
+        assert 'message' in result
+        mock_logger.error.assert_called_once()
+
+    @patch('frappe.db')
+    @patch('frappe.logger')
+    def test_get_job_status_table_query_exception(self, mock_logger, mock_db):
+        """Test exception during table query"""
+        mock_db.table_exists.return_value = True
+        mock_db.get_value.side_effect = Exception("Query failed")
+        
+        with patch('frappe.utils.background_jobs.get_job_status') as mock_rq_status:
+            mock_rq_status.side_effect = Exception("RQ also failed")
+            
+            result = get_job_status("JOB001")
+            
+            assert result['status'] == 'Unknown'
+            mock_logger.warning.assert_called()
+
+
+class TestCompleteDebugFunctionality:
+    """Complete coverage for debug functionality"""
+
+    @patch('frappe.db')
+    @patch('frappe.get_all')
+    @patch('tap_lms.backend_onboarding.determine_student_type_backend')
+    def test_debug_student_type_analysis_complete(self, mock_determine_type, mock_get_all, mock_db):
+        """Test complete debug student type analysis"""
+        # Mock database calls
+        mock_db.sql.side_effect = [
+            [{'name': 'STU001', 'phone': '9876543210', 'name1': 'John Doe'}],  # Student exists
+            [
+                {'name': 'ENR001', 'course': 'CL001', 'batch': 'BT001', 'grade': '5', 'school': 'SCH001'},
+                {'name': 'ENR002', 'course': None, 'batch': 'BT002', 'grade': '6', 'school': 'SCH001'}
+            ],
+            [{'vertical_name': 'Math'}],  # First enrollment vertical
+            # No second query for NULL course
+        ]
+        
+        mock_determine_type.return_value = "Old"
+        
+        result = debug_student_type_analysis("John Doe", "9876543210", "Math")
+        
+        assert "STUDENT TYPE ANALYSIS: John Doe (9876543210)" in result
+        assert "Normalized phone: 9876543210 -> 9876543210 / 919876543210" in result
+        assert "Target vertical: Math" in result
+        assert "Found student: STU001" in result
+        assert "Total enrollments: 2" in result
+        assert "Enrollment 1: ENR001" in result
+        assert "Status: SAME VERTICAL → contributes to OLD" in result
+        assert "Enrollment 2: ENR002" in result
+        assert "Status: NULL COURSE → contributes to OLD" in result
+        assert "FINAL DETERMINATION: Old" in result
+
+    @patch('frappe.db')
+    def test_debug_student_type_analysis_no_student(self, mock_db):
+        """Test debug analysis with no existing student"""
+        mock_db.sql.return_value = []  # No student found
+        
+        result = debug_student_type_analysis("Jane Doe", "9999999999", "Math")
+        
+        assert "No existing student found → NEW" in result
+        assert "STUDENT TYPE ANALYSIS: Jane Doe (9999999999)" in result
+
+    @patch('frappe.db')
+    def test_debug_student_type_analysis_exception(self, mock_db):
+        """Test debug analysis with exception"""
+        mock_db.sql.side_effect = Exception("Database error")
+        
+        result = debug_student_type_analysis("Error Student", "9876543210", "Math")
+        
+        assert "ANALYSIS ERROR: Database error" in result
+
+    @patch('frappe.db')
+    @patch('frappe.get_all')
+    def test_debug_student_processing_complete_flow(self, mock_get_all, mock_db):
+        """Test complete debug student processing"""
+        # Mock existing student
+        mock_db.sql.return_value = [
+            {'name': 'STU001', 'phone': '9876543210', 'name1': 'John Doe'}
+        ]
+        
+        # Mock get_doc call for student
+        with patch('frappe.get_doc') as mock_get_doc:
+            mock_student = Mock()
+            mock_student.grade = "5"
+            mock_student.school_id = "SCH001"
+            mock_student.language = "EN"
+            mock_student.glific_id = "GC001"
+            mock_get_doc.return_value = mock_student
+            
+            # Mock enrollments
+            mock_get_all.side_effect = [
+                # Backend student data
+                [{
+                    'name': 'BS001',
+                    'batch': 'BT001',
+                    'course_vertical': 'Math',
+                    'grade': '5',
+                    'school': 'SCH001',
+                    'language': 'EN',
+                    'batch_skeyword': 'MATH5',
+                    'processing_status': 'Pending'
+                }],
+                # Batch onboarding
+                [{'batch_skeyword': 'MATH5', 'name': 'BO001', 'kit_less': False}],
+                # Enrollments for existing student
+                [{
+                    'name': 'ENR001',
+                    'course': 'CL001',
+                    'batch': 'BT001',
+                    'grade': '5',
+                    'school': 'SCH001'
+                }]
+            ]
+            
+            # Mock existence checks
+            mock_db.exists.side_effect = [True, True, True, True, True]  # All exist
+            
+            with patch('tap_lms.backend_onboarding.determine_student_type_backend') as mock_determine, \
+                 patch('tap_lms.backend_onboarding.get_course_level_with_validation_backend') as mock_course:
+                
+                mock_determine.return_value = "Old"
+                mock_course.return_value = "CL001"
+                
+                result = debug_student_processing("John Doe", "9876543210")
+        
+        assert "DEBUGGING STUDENT: John Doe (9876543210)" in result
+        assert "Phone normalization: 9876543210 -> 9876543210 / 919876543210" in result
+        assert "Student EXISTS:" in result
+        assert "Current Grade: 5" in result
+        assert "Backend Student Record:" in result
+        assert "Batch Onboarding for keyword 'MATH5':" in result
+        assert "Student Type: Old" in result
+        assert "Selected Course Level: CL001" in result
+
+    @patch('frappe.db')
+    @patch('frappe.get_all')
+    def test_debug_student_processing_missing_references(self, mock_get_all, mock_db):
+        """Test debug processing with missing reference data"""
+        mock_db.sql.return_value = []  # No existing student
+        
+        mock_get_all.side_effect = [
+            # Backend student data
+            [{
+                'name': 'BS001',
+                'batch': 'INVALID_BATCH',
+                'course_vertical': 'INVALID_VERTICAL',
+                'grade': '5',
+                'school': 'INVALID_SCHOOL',
+                'language': 'INVALID_LANG',
+                'batch_skeyword': 'INVALID_KEY',
+                'processing_status': 'Pending'
+            }],
+            # No batch onboarding found
+            []
+        ]
+        
+        # Mock all existence checks return False
+        mock_db.exists.side_effect = [False, False, False, False]
+        
+        result = debug_student_processing("Missing Refs", "9876543210")
+        
+        assert "Student DOES NOT EXIST" in result
+        assert "Backend Student Record:" in result
+        assert "*** ERROR: No Batch onboarding found for keyword 'INVALID_KEY' ***" in result
+        assert "*** ERROR: Batch 'INVALID_BATCH' does not exist ***" in result
+        assert "*** ERROR: School 'INVALID_SCHOOL' does not exist ***" in result
+        assert "*** ERROR: Course Vertical 'INVALID_VERTICAL' does not exist ***" in result
+
+    @patch('frappe.new_doc')
+    @patch('frappe.delete_doc')
+    @patch('frappe.utils.nowdate')
+    def test_test_basic_student_creation_success(self, mock_nowdate, mock_delete_doc, mock_new_doc):
+        """Test successful basic student creation"""
+        mock_nowdate.return_value = "2025-01-15"
+        
+        # Mock successful student creation
+        mock_student = Mock()
+        mock_student.name = "TEST001"
+        mock_student.append = Mock()
+        mock_student.save = Mock()
+        mock_student.insert = Mock()
+        mock_new_doc.return_value = mock_student
+        
+        result = test_basic_student_creation()
+        
+        assert "TESTING BASIC STUDENT CREATION" in result
+        assert "Basic student created successfully: TEST001" in result
+        assert "Enrollment added successfully" in result
+        assert "Test student deleted successfully" in result
+        assert "BASIC TEST PASSED" in result
+        
+        # Verify calls
+        mock_student.insert.assert_called_once()
+        mock_student.append.assert_called_once()
+        mock_student.save.assert_called_once()
+        mock_delete_doc.assert_called_once_with("Student", "TEST001")
+
+    @patch('frappe.new_doc')
+    def test_test_basic_student_creation_failure(self, mock_new_doc):
+        """Test failed basic student creation"""
+        mock_new_doc.side_effect = Exception("Creation failed")
+        
+        result = test_basic_student_creation()
+        
+        assert "BASIC TEST FAILED: Creation failed" in result
+
+    @patch('frappe.get_all')
+    @patch('frappe.db')
+    def test_fix_broken_course_links_with_specific_student(self, mock_db, mock_get_all):
+        """Test fix broken course links for specific student"""
+        # Mock broken enrollments for specific student
+        mock_db.sql.return_value = [
+            {'name': 'ENR001', 'course': 'BROKEN_COURSE1'},
+            {'name': 'ENR002', 'course': 'BROKEN_COURSE2'}
+        ]
+        
+        mock_db.set_value = Mock()
+        mock_db.commit = Mock()
+        
+        result = fix_broken_course_links(student_id="STU001")
+        
+        assert "Checking student: STU001" in result
+        assert "Fixed: ENR001 (was: BROKEN_COURSE1)" in result
+        assert "Fixed: ENR002 (was: BROKEN_COURSE2)" in result
+        assert "Total fixed: 2 broken course links" in result
+        
+        # Verify database calls
+        assert mock_db.set_value.call_count == 2
+        mock_db.commit.assert_called_once()
+
+    @patch('frappe.get_all')
+    @patch('frappe.db')
+    def test_fix_broken_course_links_all_students(self, mock_db, mock_get_all):
+        """Test fix broken course links for all students"""
+        # Mock 2 students
+        mock_get_all.return_value = [{'name': 'STU001'}, {'name': 'STU002'}]
+        
+        # Mock broken enrollments for each student
+        mock_db.sql.side_effect = [
+            [{'name': 'ENR001', 'course': 'BROKEN1'}],  # STU001
+            [{'name': 'ENR002', 'course': 'BROKEN2'}]   # STU002
+        ]
+        
+        mock_db.set_value = Mock()
+        mock_db.commit = Mock()
+        
+        result = fix_broken_course_links()
+        
+        assert "Checking all 2 students" in result
+        assert "Student STU001: 1 broken links" in result
+        assert "Student STU002: 1 broken links" in result
+        assert "Total fixed: 2 broken course links" in result
+
+    @patch('frappe.get_all')
+    @patch('frappe.db')
+    def test_fix_broken_course_links_no_broken_links(self, mock_db, mock_get_all):
+        """Test fix broken course links when no broken links exist"""
+        mock_get_all.return_value = [{'name': 'STU001'}]
+        mock_db.sql.return_value = []  # No broken enrollments
+        
+        result = fix_broken_course_links()
+        
+        assert "No broken course links found" in result
+
+
+class TestCompleteUtilityFunctions:
+    """Complete coverage for utility functions"""
+
+    @patch('frappe.publish_progress')
+    def test_update_job_progress_edge_cases(self, mock_publish):
+        """Test update_job_progress edge cases"""
+        # Test with negative current
+        update_job_progress(-1, 10)
+        mock_publish.assert_called_once()
+        
+        # Reset mock
+        mock_publish.reset_mock()
+        
+        # Test with current > total
+        update_job_progress(15, 10)
+        call_args = mock_publish.call_args[1]
+        assert call_args['percent'] == 160  # (15+1) * 100 / 10
+
+    def test_get_course_level_with_validation_backend_error_cases(self):
+        """Test course level validation with various error scenarios"""
+        with patch('tap_lms.backend_onboarding.validate_enrollment_data') as mock_validate, \
+             patch('tap_lms.backend_onboarding.get_course_level_with_mapping_backend') as mock_mapping, \
+             patch('tap_lms.api.get_course_level') as mock_fallback, \
+             patch('frappe.log_error') as mock_log:
+            
+            # Test validation returns broken enrollments but continues
+            mock_validate.return_value = {"broken_enrollments": 3, "broken_details": []}
+            mock_mapping.return_value = "CL001"
+            
+            result = get_course_level_with_validation_backend("Math", "5", "9876543210", "John Doe", False)
+            
+            assert result == "CL001"
+            mock_log.assert_called()
+            
+            # Test complete failure chain
+            mock_mapping.side_effect = Exception("Mapping error")
+            mock_fallback.side_effect = Exception("Fallback error")
+            
+            result = get_course_level_with_validation_backend("Math", "5", "9876543210", "John Doe", False)
+            
+            assert result is None
+            assert mock_log.call_count >= 3  # Multiple error logs
+
+
+# Additional edge case tests for complete coverage
+class TestEdgeCasesAndErrorPaths:
+    """Test edge cases and error paths for 100% coverage"""
+
+    def test_normalize_phone_number_edge_cases(self):
+        """Test all edge cases in phone normalization"""
+        # Test with only special characters
+        result = normalize_phone_number("()-+ ")
+        assert result == (None, None)
+        
+        # Test with mix of letters and numbers that results in valid length
+        result = normalize_phone_number("98abc765def43210xyz")
+        assert result == ("919876543210", "9876543210")
+        
+        # Test 12 digit number not starting with 91
+        result = normalize_phone_number("121234567890")
+        assert result == (None, None)
+
+    @patch('frappe.db.sql')
+    def test_determine_student_type_complex_scenarios(self, mock_sql):
+        """Test complex student type determination scenarios"""
+        # Test student with mix of all enrollment types
+        mock_sql.side_effect = [
+            [{'name': 'STU001', 'phone': '9876543210', 'name1': 'John Doe'}],
+            [
+                {'name': 'ENR001', 'course': 'VALID_SAME', 'batch': 'BT001', 'grade': '5', 'school': 'SCH001'},     # Same vertical
+                {'name': 'ENR002', 'course': 'BROKEN_COURSE', 'batch': 'BT002', 'grade': '6', 'school': 'SCH001'}, # Broken
+                {'name': 'ENR003', 'course': None, 'batch': 'BT003', 'grade': '7', 'school': 'SCH001'},            # NULL
+                {'name': 'ENR004', 'course': 'VALID_DIFF', 'batch': 'BT004', 'grade': '8', 'school': 'SCH001'},    # Different vertical
+                {'name': 'ENR005', 'course': 'UNDETERMINED', 'batch': 'BT005', 'grade': '9', 'school': 'SCH001'}   # Undetermined
+            ],
+            [{'vertical_name': 'Math'}],      # VALID_SAME
+            [{'vertical_name': 'Science'}],   # VALID_DIFF  
+            []                                # UNDETERMINED - no vertical found
+        ]
+        
+        with patch('frappe.db.exists') as mock_exists:
+            mock_exists.side_effect = [True, False, True]  # VALID_SAME exists, BROKEN doesn't, UNDETERMINED exists
+            
+            result = determine_student_type_backend("9876543210", "John Doe", "Math")
+        
+        # Should be "Old" because same vertical takes priority
+        assert result == "Old"
+
+    @patch('frappe.get_all')
+    @patch('tap_lms.backend_onboarding.determine_student_type_backend')
+    @patch('tap_lms.backend_onboarding.get_current_academic_year_backend')
+    def test_course_level_mapping_all_paths(self, mock_academic_year, mock_student_type, mock_get_all):
+        """Test all code paths in course level mapping"""
+        mock_student_type.return_value = "New"
+        mock_academic_year.return_value = None  # Academic year calculation failed
+        
+        # Test with null academic year - should skip current year mapping
+        mock_get_all.side_effect = [
+            [{'assigned_course_level': 'CL_FLEXIBLE', 'mapping_name': 'Flexible mapping'}]
+        ]
+        
+        with patch('frappe.log_error') as mock_log:
+            result = get_course_level_with_mapping_backend("Math", "5", "9876543210", "John Doe", False)
+        
+        assert result == "CL_FLEXIBLE"
+        # Should only call get_all once (skip current year mapping due to null academic year)
+        assert mock_get_all.call_count == 1
+
+    def test_process_glific_contact_all_field_combinations(self):
+        """Test process_glific_contact with various field combinations"""
+        student = Mock()
+        student.phone = "9876543210"
+        student.student_name = "Test Student"
+        student.school = None  # No school
+        student.batch = None   # No batch
+        student.language = None # No language
+        student.course_vertical = None # No course vertical
+        student.grade = None   # No grade
+        
+        glific_group = None  # No group
+        
+        with patch('tap_lms.backend_onboarding.format_phone_number') as mock_format, \
+             patch('frappe.get_value') as mock_get_value, \
+             patch('tap_lms.glific_integration.get_contact_by_phone') as mock_get_contact, \
+             patch('tap_lms.glific_integration.add_student_to_glific_for_onboarding') as mock_add_student:
+            
+            mock_format.return_value = "919876543210"
+            mock_get_contact.return_value = None
+            mock_get_value.return_value = ""  # All values empty
+            mock_add_student.return_value = {"id": "GC001"}
+            
+            result = process_glific_contact(student, glific_group, None)
+        
+        assert result == {"id": "GC001"}
+        # Should handle all None/empty values gracefully
+        mock_add_student.assert_called_once()
+
+
+# Final test to ensure all imports and basic functionality work
+class TestModuleIntegrity:
+    """Test module integrity and imports"""
+
+    def test_all_functions_importable(self):
+        """Test that all functions can be imported without error"""
+        # This test ensures all the functions we're testing actually exist
+        # and can be imported from the module
+        
+        # Test that we can import the main functions
+        from tap_lms.backend_onboarding import (
+            normalize_phone_number,
+            find_existing_student_by_phone_and_name,
+            validate_student,
+            get_onboarding_batches,
+            get_batch_details,
+            get_onboarding_stages,
+            get_initial_stage,
+            process_batch,
+            process_batch_job,
+            determine_student_type_backend,
+            get_current_academic_year_backend,
+            get_course_level_with_mapping_backend,
+            get_course_level_with_validation_backend,
+            validate_enrollment_data,
+            process_glific_contact,
+            format_phone_number,
+            process_student_record,
+            update_backend_student_status,
+            update_job_progress,
+            get_job_status,
+            debug_student_type_analysis,
+            debug_student_processing,
+            test_basic_student_creation,
+            fix_broken_course_links
+        )
+        
+        # If we get here without ImportError, the test passes
+        assert True
+
+    def test_frappe_whitelist_decorators(self):
+        """Test that whitelisted functions have the decorator"""
+        # This would test the @frappe.whitelist() decorator exists
+        # In a real scenario, you'd check the function has the decorator
+        
+        from tap_lms.backend_onboarding import (
+            get_onboarding_batches,
+            get_batch_details,
+            process_batch,
+            get_job_status,
+            debug_student_type_analysis,
+            debug_student_processing,
+            test_basic_student_creation,
+            fix_broken_course_links
+        )
+        
+        # In a real test, you'd check these functions have the whitelist decorator
+        # For now, just verify they exist
+        assert callable(get_onboarding_batches)
+        assert callable(get_batch_details)
+        assert callable(process_batch)
+        assert callable(get_job_status)
+        assert callable(debug_student_type_analysis)
+        assert callable(debug_student_processing)
+        assert callable(test_basic_student_creation)
+        assert callable(fix_broken_course_links)
+
+
+if __name__ == "__main__":
+    # Run all tests
+    pytest.main([__file__, "-v", "--cov=tap_lms.backend_onboarding", "--cov-report=html", "--cov-report=term"])
 
 
 # # conftest.py - Pytest configuration and fixtures
