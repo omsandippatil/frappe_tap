@@ -1155,9 +1155,6 @@ class TestOnboardingFlowEdgeCases(unittest.TestCase):
                     mock_onboarding, mock_stage, "Bearer token", "not_started", "flow_123"
                 )
 
-# Access the exception value, not the exception class
-exception_value = context.exception
-self.assertIn("timed out", str(exception_value))
 
 class TestOnboardingFlowPerformance(unittest.TestCase):
     """Performance and scalability tests"""
