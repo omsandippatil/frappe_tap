@@ -14,7 +14,7 @@
    "fieldname": "content_type",
    "fieldtype": "Select",
    "label": "Content Type",
-   "options": "Video Class\nLesson Note\nQuiz\nAssignment"
+   "options": "VideoClass\nNoteContent\nQuiz\nAssignment\nCourseProject"
   },
   {
    "fieldname": "content",
@@ -26,7 +26,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-17 17:08:17.233071",
+ "modified": "2025-09-10 22:02:56.124757",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "Related Content",

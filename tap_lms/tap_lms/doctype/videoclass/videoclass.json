@@ -21,7 +21,8 @@
   "video_translations",
   "additional_files",
   "estimated_duration",
-  "difficulty_tier"
+  "difficulty_tier",
+  "assessments"
  ],
  "fields": [
   {
@@ -63,7 +64,7 @@
   },
   {
    "fieldname": "video_transcript",
-   "fieldtype": "Data",
+   "fieldtype": "Text",
    "label": "Video Transcript"
   },
   {
@@ -73,13 +74,13 @@
   },
   {
    "fieldname": "video_translations",
-   "fieldtype": "Link",
+   "fieldtype": "Table",
    "label": "Video Translations",
    "options": "VideoTranslation"
   },
   {
    "fieldname": "additional_files",
-   "fieldtype": "Link",
+   "fieldtype": "Table",
    "label": "Additional Files ",
    "options": "ContentAttachment"
   },
@@ -99,11 +100,17 @@
    "fieldtype": "Link",
    "label": "Course Vertical",
    "options": "Course Verticals"
+  },
+  {
+   "fieldname": "assessments",
+   "fieldtype": "Table",
+   "label": "Assessments",
+   "options": "AssessmentList"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-09 23:40:26.413717",
+ "modified": "2025-09-10 21:40:00.508166",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "VideoClass",

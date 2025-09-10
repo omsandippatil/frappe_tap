@@ -13,11 +13,9 @@
   "attachments",
   "note_type",
   "estimated_duration",
-  "completion_duration",
   "difficulty_tier",
   "translated_content",
-  "assessment_type",
-  "assessment"
+  "assessments"
  ],
  "fields": [
   {
@@ -48,14 +46,9 @@
   },
   {
    "fieldname": "translated_content",
-   "fieldtype": "Link",
+   "fieldtype": "Table",
    "label": "Translated Content",
    "options": "NoteTranslation"
-  },
-  {
-   "fieldname": "completion_duration",
-   "fieldtype": "Data",
-   "label": "Completion Duration"
   },
   {
    "fieldname": "difficulty_tier",
@@ -64,21 +57,15 @@
    "options": "Remedial\nBasic\nIntermediate\nAdvanced"
   },
   {
-   "fieldname": "assessment_type",
-   "fieldtype": "Select",
-   "label": "Assessment Type",
-   "options": "Quiz\nAssignment"
-  },
-  {
-   "fieldname": "assessment",
-   "fieldtype": "Dynamic Link",
-   "label": "Assessment",
-   "options": "assessment_type"
+   "fieldname": "assessments",
+   "fieldtype": "Table",
+   "label": "Assessments",
+   "options": "AssessmentList"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-06 19:28:48.557893",
+ "modified": "2025-09-10 21:38:34.678428",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "NoteContent",
