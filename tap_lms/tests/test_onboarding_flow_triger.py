@@ -1196,13 +1196,16 @@ import json
 from datetime import datetime, timedelta
 import time
 import sys
-import frappe
+import os
+
+# Add the proper path to import the module
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Mock frappe before importing the actual module
 sys.modules['frappe'] = Mock()
 
 # Now import your actual module
-from onboarding_flow_trigger import (
+from tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger import (
     trigger_onboarding_flow,
     _trigger_onboarding_flow_job,
     trigger_group_flow,
@@ -1239,20 +1242,23 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.frappe_mock.db.commit = Mock()
         self.frappe_mock.get_all = Mock()
         self.frappe_mock.new_doc = Mock()
+        self.frappe_mock._ = lambda x: x
         
         # Patch frappe module
         self.frappe_patch = patch.dict('sys.modules', {'frappe': self.frappe_mock})
         self.frappe_patch.start()
         
+        # Also patch the import in the actual module
+        self.module_frappe_patch = patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe', self.frappe_mock)
+        self.module_frappe_patch.start()
+        
     def tearDown(self):
         """Clean up after tests"""
         self.frappe_patch.stop()
+        self.module_frappe_patch.stop()
     
-    @patch('onboarding_flow_trigger._')
-    def test_trigger_onboarding_flow_success(self, mock_translate):
+    def test_trigger_onboarding_flow_success(self):
         """Test successful trigger_onboarding_flow execution"""
-        mock_translate.return_value = lambda x: x
-        
         # Mock stage document with new structure
         mock_stage = Mock()
         mock_stage.name = self.mock_onboarding_stage
@@ -1280,11 +1286,8 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.frappe_mock.enqueue.assert_called_once()
         self.frappe_mock.throw.assert_not_called()
     
-    @patch('onboarding_flow_trigger._')
-    def test_trigger_onboarding_flow_missing_parameters(self, mock_translate):
+    def test_trigger_onboarding_flow_missing_parameters(self):
         """Test trigger_onboarding_flow with missing parameters"""
-        mock_translate.return_value = lambda x: x
-        
         # Test missing onboarding_set
         with self.assertRaises(Exception):
             trigger_onboarding_flow("", self.mock_onboarding_stage, self.mock_student_status)
@@ -1297,11 +1300,8 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         with self.assertRaises(Exception):
             trigger_onboarding_flow(self.mock_onboarding_set, self.mock_onboarding_stage, "")
     
-    @patch('onboarding_flow_trigger._')
-    def test_trigger_onboarding_flow_inactive_stage(self, mock_translate):
+    def test_trigger_onboarding_flow_inactive_stage(self):
         """Test trigger_onboarding_flow with inactive stage"""
-        mock_translate.return_value = lambda x: x
-        
         mock_stage = Mock()
         mock_stage.is_active = False
         self.frappe_mock.get_doc.return_value = mock_stage
@@ -1313,16 +1313,13 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
                 self.mock_student_status
             )
     
-    @patch('onboarding_flow_trigger.requests.post')
-    @patch('onboarding_flow_trigger._')
-    @patch('onboarding_flow_trigger.create_or_get_glific_group_for_batch')
-    @patch('onboarding_flow_trigger.get_students_from_onboarding')
-    @patch('onboarding_flow_trigger.update_student_stage_progress_batch')
+    @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.requests.post')
+    @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.create_or_get_glific_group_for_batch')
+    @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_students_from_onboarding')
+    @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.update_student_stage_progress_batch')
     def test_trigger_group_flow_success(self, mock_update_progress, mock_get_students, 
-                                      mock_create_group, mock_translate, mock_requests):
+                                      mock_create_group, mock_requests):
         """Test successful trigger_group_flow execution"""
-        mock_translate.return_value = lambda x: x
-        
         # Mock dependencies
         mock_onboarding = Mock()
         mock_onboarding.name = self.mock_onboarding_set
@@ -1365,26 +1362,20 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertEqual(result["group_count"], 3)
         mock_requests.assert_called_once()
     
-    @patch('onboarding_flow_trigger._')
-    def test_trigger_group_flow_no_flow_id(self, mock_translate):
+    def test_trigger_group_flow_no_flow_id(self):
         """Test trigger_group_flow without flow ID"""
-        mock_translate.return_value = lambda x: x
-        
         mock_onboarding = Mock()
         mock_stage = Mock()
         
         with self.assertRaises(Exception):
             trigger_group_flow(mock_onboarding, mock_stage, "Bearer test_token", self.mock_student_status, None)
     
-    @patch('onboarding_flow_trigger._')
-    @patch('onboarding_flow_trigger.get_students_from_onboarding')
-    @patch('onboarding_flow_trigger.start_contact_flow')
-    @patch('onboarding_flow_trigger.update_student_stage_progress')
+    @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_students_from_onboarding')
+    @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.start_contact_flow')
+    @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.update_student_stage_progress')
     def test_trigger_individual_flows_success(self, mock_update_progress, mock_start_flow, 
-                                            mock_get_students, mock_translate):
+                                            mock_get_students):
         """Test successful trigger_individual_flows execution"""
-        mock_translate.return_value = lambda x: x
-        
         # Mock students
         students = [
             Mock(name="student_1", name1="Student 1", glific_id="glific_1"),
@@ -1413,12 +1404,9 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertEqual(result["error_count"], 0)
         self.assertEqual(len(result["individual_flow_results"]), 3)
     
-    @patch('onboarding_flow_trigger._')
-    @patch('onboarding_flow_trigger.get_students_from_onboarding')
-    def test_trigger_individual_flows_missing_glific_id(self, mock_get_students, mock_translate):
+    @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_students_from_onboarding')
+    def test_trigger_individual_flows_missing_glific_id(self, mock_get_students):
         """Test trigger_individual_flows with students missing Glific ID"""
-        mock_translate.return_value = lambda x: x
-        
         # Mock student without Glific ID
         students = [Mock(name="student_1", name1="Student 1", glific_id=None)]
         mock_get_students.return_value = students
@@ -1488,29 +1476,11 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertEqual(mock_progress.stage, "STAGE_001")
         self.assertEqual(mock_progress.status, "assigned")
     
-    def test_get_job_status_complete_with_results(self):
-        """Test get_job_status for completed job with results"""
-        # Mock frappe background jobs
-        mock_job = Mock()
-        mock_job.result = {"success": True, "count": 5}
-        
-        with patch('onboarding_flow_trigger.get_job_status') as mock_get_job:
-            mock_get_job.return_value = "complete"
-            
-            # This is a simplified test since we can't easily mock RQ jobs
-            result = {"status": "complete", "results": {"success": True, "count": 5}}
-            
-            self.assertEqual(result["status"], "complete")
-            self.assertIn("results", result)
-            self.assertEqual(result["results"]["count"], 5)
-    
     def test_get_job_status_no_job_id(self):
         """Test get_job_status with no job ID"""
         result = get_job_status("")
         self.assertEqual(result["status"], "unknown")
 
-
-# Add more test classes for integration, edge cases, performance, and security
 
 class TestOnboardingFlowIntegration(unittest.TestCase):
     """Integration tests that test multiple functions working together"""
@@ -1534,20 +1504,23 @@ class TestOnboardingFlowIntegration(unittest.TestCase):
         self.frappe_mock.enqueue = Mock()
         self.frappe_mock.logger = Mock()
         self.frappe_mock.log_error = Mock()
+        self.frappe_mock._ = lambda x: x
         
         # Patch frappe module
         self.frappe_patch = patch.dict('sys.modules', {'frappe': self.frappe_mock})
         self.frappe_patch.start()
         
+        # Also patch the import in the actual module
+        self.module_frappe_patch = patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe', self.frappe_mock)
+        self.module_frappe_patch.start()
+        
     def tearDown(self):
         """Clean up after tests"""
         self.frappe_patch.stop()
+        self.module_frappe_patch.stop()
     
-    @patch('onboarding_flow_trigger._')
-    def test_complete_group_flow_workflow(self, mock_translate):
+    def test_complete_group_flow_workflow(self):
         """Test complete workflow from trigger to group flow execution"""
-        mock_translate.return_value = lambda x: x
-        
         # Setup stage and onboarding mocks
         mock_stage = Mock()
         mock_stage.is_active = True
@@ -1570,11 +1543,12 @@ class TestOnboardingFlowIntegration(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(result["job_id"], "integration_job_123")
         
-        # Verify job was enqueued with correct parameters
+        # Verify job was enqueued
         self.frappe_mock.enqueue.assert_called_once()
 
 
-# Add the remaining test classes (edge cases, performance, security) following the same pattern
+# Add more test classes as needed...
+
 
 if __name__ == '__main__':
     unittest.main()
