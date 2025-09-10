@@ -13,6 +13,16 @@ class TestOnboardingFlows(unittest.TestCase):
         self.setup_test_data()
         
     def setup_mocks(self):
+        # Import ValidationError before mocking frappe
+        try:
+            from frappe import ValidationError
+            self.ValidationError = ValidationError
+        except ImportError:
+            # Fallback for when frappe is not available
+            class ValidationError(Exception):
+                pass
+            self.ValidationError = ValidationError
+        
         # Mock frappe module
         self.frappe_patcher = patch.dict('sys.modules', {
             'frappe': MagicMock(),
@@ -24,6 +34,11 @@ class TestOnboardingFlows(unittest.TestCase):
             'frappe.utils.background_jobs': MagicMock(),
         })
         self.frappe_patcher.start()
+        
+        # Configure the frappe mock to include ValidationError
+        import frappe
+        frappe.ValidationError = self.ValidationError
+        frappe.throw = Mock(side_effect=self.ValidationError)
         
         # Mock other dependencies
         self.requests_patcher = patch.dict('sys.modules', {
@@ -106,7 +121,7 @@ class TestOnboardingFlows(unittest.TestCase):
         
         # Mock frappe functions
         import frappe
-        frappe.throw = Mock(side_effect=ValidationError)
+        frappe.throw = Mock(side_effect=self.ValidationError)
         frappe.log_error = Mock()
         frappe.logger = Mock()
         frappe.logger().info = Mock()
@@ -147,7 +162,7 @@ class TestOnboardingFlows(unittest.TestCase):
     @patch('tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_doc')
     def test_trigger_onboarding_flow_validation_errors(self, mock_get_doc):
         # Test missing parameters
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(self.ValidationError):
             self.trigger_onboarding_flow("", "", "")
             
         # Test inactive stage
@@ -155,7 +170,7 @@ class TestOnboardingFlows(unittest.TestCase):
         inactive_stage.is_active = False
         mock_get_doc.return_value = inactive_stage
         
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(self.ValidationError):
             self.trigger_onboarding_flow(self.onboarding.name, self.stage.name, "assigned")
             
         # Test onboarding not processed
@@ -163,7 +178,7 @@ class TestOnboardingFlows(unittest.TestCase):
         not_processed_onboarding.status = "Draft"
         mock_get_doc.side_effect = [self.stage, not_processed_onboarding]
         
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(self.ValidationError):
             self.trigger_onboarding_flow(self.onboarding.name, self.stage.name, "assigned")
             
         # Test no flow configured
@@ -173,7 +188,7 @@ class TestOnboardingFlows(unittest.TestCase):
         stage_no_flow.glific_flow_id = None
         mock_get_doc.side_effect = [stage_no_flow, self.onboarding]
         
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(self.ValidationError):
             self.trigger_onboarding_flow(self.onboarding.name, self.stage.name, "assigned")
 
     # Test 3: _trigger_onboarding_flow_job - Group flow
@@ -252,7 +267,7 @@ class TestOnboardingFlows(unittest.TestCase):
     def test_trigger_group_flow_error(self, mock_create_group):
         mock_create_group.return_value = None
         
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(self.ValidationError):
             self.trigger_group_flow(self.onboarding, self.stage, "test_token", "assigned", "flow_123")
 
     # Test 8: trigger_group_flow - API failure
@@ -270,7 +285,7 @@ class TestOnboardingFlows(unittest.TestCase):
         mock_response.text = "Internal Server Error"
         mock_post.return_value = mock_response
         
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(self.ValidationError):
             self.trigger_group_flow(self.onboarding, self.stage, "test_token", "assigned", "flow_123")
 
     # Test 9: trigger_individual_flows - Success case
@@ -292,7 +307,7 @@ class TestOnboardingFlows(unittest.TestCase):
     def test_trigger_individual_flows_no_students(self, mock_get_students):
         mock_get_students.return_value = []
         
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(self.ValidationError):
             self.trigger_individual_flows(self.onboarding, self.stage, "test_token", "assigned", "flow_123")
 
     # Test 11: trigger_individual_flows - Student without glific_id
@@ -461,7 +476,7 @@ class TestOnboardingFlows(unittest.TestCase):
         # Mock progress records
         mock_get_all.side_effect = [
             [{"name": "PROG-001", "student": self.student.name, "stage": self.stage.name, 
-              "status": "assigned", "start_timestamp": "2024-01-01 00:00:00"}],  # Progress records
+              'status': 'assigned', 'start_timestamp': '2024-01-01 00:00:00'}],  # Progress records
             [{"student_id": self.student.name}]  # Backend students for not_started check
         ]
         
