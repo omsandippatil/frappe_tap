@@ -1,8 +1,7 @@
 import pytest
 import frappe
-import json
 from unittest.mock import patch, MagicMock
-from tap_lms import glific_onboarding
+import tap_lms.glific_onboarding as glific_onboarding
 
 # ------------------------------------------
 # TEST: trigger_onboarding_flow
@@ -10,17 +9,16 @@ from tap_lms import glific_onboarding
 @patch("frappe.enqueue")
 @patch("frappe.get_doc")
 def test_trigger_onboarding_flow_success(mock_get_doc, mock_enqueue):
-    # Mock onboarding stage & onboarding set
+    # Mock stage & onboarding docs
     stage_mock = MagicMock()
     stage_mock.is_active = True
     stage_mock.stage_flows = [MagicMock(student_status="assigned", glific_flow_id="flow123", flow_type="Group")]
+
     onboarding_mock = MagicMock()
     onboarding_mock.status = "Processed"
 
-    # Mock frappe.get_doc return values
-    mock_get_doc.side_effect = lambda doctype, name=None: stage_mock if doctype == "OnboardingStage" else onboarding_mock
-
-    # Mock enqueue
+    # frappe.get_doc should return onboarding & stage mocks
+    mock_get_doc.side_effect = lambda doctype, name=None: onboarding_mock if doctype == "OnboardingSet" else stage_mock
     mock_enqueue.return_value = "job_123"
 
     result = glific_onboarding.trigger_onboarding_flow("onboard1", "stage1", student_status="assigned")
@@ -33,7 +31,8 @@ def test_trigger_onboarding_flow_stage_inactive(mock_get_doc):
     stage_mock.is_active = False
     onboarding_mock = MagicMock()
     onboarding_mock.status = "Processed"
-    mock_get_doc.side_effect = lambda doctype, name=None: stage_mock if doctype == "OnboardingStage" else onboarding_mock
+
+    mock_get_doc.side_effect = lambda doctype, name=None: onboarding_mock if doctype == "OnboardingSet" else stage_mock
 
     with pytest.raises(frappe.ValidationError):
         glific_onboarding.trigger_onboarding_flow("onboard1", "stage1", student_status="assigned")
@@ -47,7 +46,7 @@ def test_trigger_onboarding_flow_stage_inactive(mock_get_doc):
 def test_trigger_onboarding_flow_job_group(mock_get_doc, mock_get_auth, mock_trigger_group):
     stage_mock = MagicMock()
     onboarding_mock = MagicMock()
-    mock_get_doc.side_effect = lambda doctype, name=None: stage_mock if doctype == "OnboardingStage" else onboarding_mock
+    mock_get_doc.side_effect = lambda doctype, name=None: onboarding_mock if doctype == "OnboardingSet" else stage_mock
 
     mock_get_auth.return_value = {"authorization": "Bearer testtoken"}
     mock_trigger_group.return_value = {"status": "success"}
