@@ -1,9 +1,8 @@
 import frappe
 import unittest
-from frappe.tests.utils import FrappeTestCase
 from unittest.mock import patch, MagicMock, Mock
 import json
-from tap_lms.onboarding_flows import (
+from tap_ims.onboarding_flows import (
     trigger_onboarding_flow,
     _trigger_onboarding_flow_job,
     trigger_group_flow,
@@ -18,7 +17,7 @@ from tap_lms.onboarding_flows import (
 )
 
 
-class TestOnboardingFlows(FrappeTestCase):
+class TestOnboardingFlows(unittest.TestCase):
     def setUp(self):
         # Create test documents
         self.setup_test_data()
@@ -57,7 +56,7 @@ class TestOnboardingFlows(FrappeTestCase):
             "processing_status": "Success"
         }).insert()
         
-        # Create Glific Settings
+        # Create Glific Settings if not exists
         if not frappe.db.exists("Glific Settings", "Glific Settings"):
             self.glific_settings = frappe.get_doc({
                 "doctype": "Glific Settings",
@@ -69,14 +68,10 @@ class TestOnboardingFlows(FrappeTestCase):
 
     def tearDown(self):
         frappe.db.rollback()
-        # Clean up test data
-        for doctype in ["StudentStageProgress", "Backend Students", "Student", 
-                       "Backend Student Onboarding", "OnboardingStage"]:
-            frappe.db.sql(f"DELETE FROM `tab{doctype}`")
 
     # Test 1: trigger_onboarding_flow - Basic functionality
-    @patch('tap_lms.onboarding_flows.frappe.enqueue')
-    @patch('tap_lms.onboarding_flows.frappe.get_doc')
+    @patch('tap_ims.onboarding_flows.frappe.enqueue')
+    @patch('tap_ims.onboarding_flows.frappe.get_doc')
     def test_trigger_onboarding_flow_success(self, mock_get_doc, mock_enqueue):
         # Mock documents
         mock_stage = MagicMock()
@@ -98,7 +93,7 @@ class TestOnboardingFlows(FrappeTestCase):
         mock_enqueue.assert_called_once()
 
     # Test 2: trigger_onboarding_flow - Validation errors
-    @patch('tap_lms.onboarding_flows.frappe.get_doc')
+    @patch('tap_ims.onboarding_flows.frappe.get_doc')
     def test_trigger_onboarding_flow_validation_errors(self, mock_get_doc):
         # Test missing parameters
         with self.assertRaises(frappe.ValidationError):
@@ -113,9 +108,9 @@ class TestOnboardingFlows(FrappeTestCase):
             trigger_onboarding_flow(self.onboarding.name, self.stage.name, "assigned")
 
     # Test 3: _trigger_onboarding_flow_job - Group flow
-    @patch('tap_lms.onboarding_flows.get_glific_auth_headers')
-    @patch('tap_lms.onboarding_flows.trigger_group_flow')
-    @patch('tap_lms.onboarding_flows.frappe.get_doc')
+    @patch('tap_ims.onboarding_flows.get_glific_auth_headers')
+    @patch('tap_ims.onboarding_flows.trigger_group_flow')
+    @patch('tap_ims.onboarding_flows.frappe.get_doc')
     def test_trigger_onboarding_flow_job_group(self, mock_get_doc, mock_trigger_group, mock_auth_headers):
         mock_auth_headers.return_value = {"authorization": "test_token"}
         mock_stage = MagicMock()
@@ -130,9 +125,9 @@ class TestOnboardingFlows(FrappeTestCase):
         self.assertEqual(result, {"success": True})
 
     # Test 4: _trigger_onboarding_flow_job - Individual flow
-    @patch('tap_lms.onboarding_flows.get_glific_auth_headers')
-    @patch('tap_lms.onboarding_flows.trigger_individual_flows')
-    @patch('tap_lms.onboarding_flows.frappe.get_doc')
+    @patch('tap_ims.onboarding_flows.get_glific_auth_headers')
+    @patch('tap_ims.onboarding_flows.trigger_individual_flows')
+    @patch('tap_ims.onboarding_flows.frappe.get_doc')
     def test_trigger_onboarding_flow_job_individual(self, mock_get_doc, mock_trigger_individual, mock_auth_headers):
         mock_auth_headers.return_value = {"authorization": "test_token"}
         mock_stage = MagicMock()
@@ -147,11 +142,11 @@ class TestOnboardingFlows(FrappeTestCase):
         self.assertEqual(result, {"success": True})
 
     # Test 5: trigger_group_flow - Success case
-    @patch('tap_lms.onboarding_flows.create_or_get_glific_group_for_batch')
-    @patch('tap_lms.onboarding_flows.requests.post')
-    @patch('tap_lms.onboarding_flows.get_students_from_onboarding')
-    @patch('tap_lms.onboarding_flows.update_student_stage_progress_batch')
-    @patch('tap_lms.onboarding_flows.frappe.get_doc')
+    @patch('tap_ims.onboarding_flows.create_or_get_glific_group_for_batch')
+    @patch('tap_ims.onboarding_flows.requests.post')
+    @patch('tap_ims.onboarding_flows.get_students_from_onboarding')
+    @patch('tap_ims.onboarding_flows.update_student_stage_progress_batch')
+    @patch('tap_ims.onboarding_flows.frappe.get_doc')
     def test_trigger_group_flow_success(self, mock_get_doc, mock_update_progress, 
                                       mock_get_students, mock_post, mock_create_group):
         # Mock responses
@@ -175,9 +170,9 @@ class TestOnboardingFlows(FrappeTestCase):
         mock_update_progress.assert_called_once()
 
     # Test 6: trigger_individual_flows - Success case
-    @patch('tap_lms.onboarding_flows.start_contact_flow')
-    @patch('tap_lms.onboarding_flows.update_student_stage_progress')
-    @patch('tap_lms.onboarding_flows.get_students_from_onboarding')
+    @patch('tap_ims.onboarding_flows.start_contact_flow')
+    @patch('tap_ims.onboarding_flows.update_student_stage_progress')
+    @patch('tap_ims.onboarding_flows.get_students_from_onboarding')
     def test_trigger_individual_flows_success(self, mock_get_students, mock_update_progress, mock_start_flow):
         mock_get_students.return_value = [self.student]
         mock_start_flow.return_value = True
@@ -239,7 +234,7 @@ class TestOnboardingFlows(FrappeTestCase):
         self.assertEqual(len(progress), 1)
 
     # Test 11: get_job_status
-    @patch('tap_lms.onboarding_flows.get_job_status')
+    @patch('tap_ims.onboarding_flows.frappe.utils.background_jobs.get_job_status')
     def test_get_job_status(self, mock_frappe_job_status):
         mock_frappe_job_status.return_value = "finished"
         
@@ -263,8 +258,8 @@ class TestOnboardingFlows(FrappeTestCase):
         self.assertEqual(result["summary"]["assigned"], 1)
 
     # Test 13: update_incomplete_stages
-    @patch('tap_lms.onboarding_flows.now_datetime')
-    @patch('tap_lms.onboarding_flows.add_to_date')
+    @patch('tap_ims.onboarding_flows.now_datetime')
+    @patch('tap_ims.onboarding_flows.add_to_date')
     def test_update_incomplete_stages(self, mock_add_to_date, mock_now_datetime):
         # Create old assigned record
         old_date = frappe.utils.now_datetime().replace(year=2020)
@@ -287,8 +282,8 @@ class TestOnboardingFlows(FrappeTestCase):
         self.assertEqual(updated.status, "incomplete")
 
     # Test 14: Error handling in trigger_group_flow
-    @patch('tap_lms.onboarding_flows.create_or_get_glific_group_for_batch')
-    @patch('tap_lms.onboarding_flows.requests.post')
+    @patch('tap_ims.onboarding_flows.create_or_get_glific_group_for_batch')
+    @patch('tap_ims.onboarding_flows.requests.post')
     def test_trigger_group_flow_error(self, mock_post, mock_create_group):
         mock_create_group.return_value = None
         
@@ -296,7 +291,7 @@ class TestOnboardingFlows(FrappeTestCase):
             trigger_group_flow(self.onboarding, self.stage, "test_token", "assigned", "flow_123")
 
     # Test 15: Edge case - No students found
-    @patch('tap_lms.onboarding_flows.get_students_from_onboarding')
+    @patch('tap_ims.onboarding_flows.get_students_from_onboarding')
     def test_trigger_individual_flows_no_students(self, mock_get_students):
         mock_get_students.return_value = []
         
@@ -304,8 +299,8 @@ class TestOnboardingFlows(FrappeTestCase):
             trigger_individual_flows(self.onboarding, self.stage, "test_token", "assigned", "flow_123")
 
     # Test 16: Test with legacy flow configuration
-    @patch('tap_lms.onboarding_flows.frappe.enqueue')
-    @patch('tap_lms.onboarding_flows.frappe.get_doc')
+    @patch('tap_ims.onboarding_flows.frappe.enqueue')
+    @patch('tap_ims.onboarding_flows.frappe.get_doc')
     def test_trigger_onboarding_flow_legacy(self, mock_get_doc, mock_enqueue):
         mock_stage = MagicMock()
         mock_stage.is_active = True
@@ -325,8 +320,8 @@ class TestOnboardingFlows(FrappeTestCase):
         self.assertTrue(result["success"])
 
     # Test 17: Test authentication failure
-    @patch('tap_lms.onboarding_flows.get_glific_auth_headers')
-    @patch('tap_lms.onboarding_flows.frappe.get_doc')
+    @patch('tap_ims.onboarding_flows.get_glific_auth_headers')
+    @patch('tap_ims.onboarding_flows.frappe.get_doc')
     def test_authentication_failure(self, mock_get_doc, mock_auth_headers):
         mock_auth_headers.return_value = {}
         mock_stage = MagicMock()
@@ -340,9 +335,9 @@ class TestOnboardingFlows(FrappeTestCase):
         self.assertIn("error", result)
 
     # Test 18: Test API failure in group flow
-    @patch('tap_lms.onboarding_flows.create_or_get_glific_group_for_batch')
-    @patch('tap_lms.onboarding_flows.requests.post')
-    @patch('tap_lms.onboarding_flows.frappe.get_doc')
+    @patch('tap_ims.onboarding_flows.create_or_get_glific_group_for_batch')
+    @patch('tap_ims.onboarding_flows.requests.post')
+    @patch('tap_ims.onboarding_flows.frappe.get_doc')
     def test_group_flow_api_failure(self, mock_get_doc, mock_post, mock_create_group):
         mock_create_group.return_value = {"group_id": "group_123"}
         mock_group = MagicMock()
@@ -358,7 +353,7 @@ class TestOnboardingFlows(FrappeTestCase):
             trigger_group_flow(self.onboarding, self.stage, "test_token", "assigned", "flow_123")
 
     # Test 19: Test student without glific_id
-    @patch('tap_lms.onboarding_flows.get_students_from_onboarding')
+    @patch('tap_ims.onboarding_flows.get_students_from_onboarding')
     def test_student_without_glific_id(self, mock_get_students):
         # Create student without glific_id
         student_no_glific = frappe.get_doc({
