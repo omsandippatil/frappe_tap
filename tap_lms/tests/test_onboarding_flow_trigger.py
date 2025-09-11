@@ -151,14 +151,7 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         mock_contact_group = MagicMock()
         mock_contact_group.group_id = "group_123"
         
-        def get_doc_side_effect(doctype, name=None):
-            if doctype == "GlificSettings":
-                return mock_glific_settings
-            elif doctype == "ContactGroup":
-                return mock_contact_group
-            return MagicMock()
-        
-        mock_frappe.get_doc.side_effect = get_doc_side_effect
+       
         
         # Mock the HTTP response
         mock_response = MagicMock()
