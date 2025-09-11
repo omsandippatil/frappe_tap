@@ -202,11 +202,10 @@
 
 import unittest
 from unittest.mock import patch, MagicMock
-from frappe import _dict
 import frappe
 import json
 from datetime import datetime, timedelta
-from your_module import (
+from tap_lms.tap_lms import (
     trigger_onboarding_flow,
     _trigger_onboarding_flow_job,
     trigger_group_flow,
@@ -222,7 +221,7 @@ from your_module import (
 
 class TestOnboardingFlow(unittest.TestCase):
     def setUp(self):
-        # Mock frappe.get_doc to return a mock document
+        # Mock Frappe functions to avoid real database calls
         self.mock_get_doc = patch('frappe.get_doc').start()
         self.mock_get_all = patch('frappe.get_all').start()
         self.mock_enqueue = patch('frappe.enqueue').start()
@@ -243,8 +242,8 @@ class TestOnboardingFlow(unittest.TestCase):
             name="test_stage",
             is_active=True,
             stage_flows=[
-                _dict(student_status="not_started", glific_flow_id="123", flow_type="Group"),
-                _dict(student_status="assigned", glific_flow_id="124", flow_type="Individual")
+                {"student_status": "not_started", "glific_flow_id": "123", "flow_type": "Group"},
+                {"student_status": "assigned", "glific_flow_id": "124", "flow_type": "Individual"}
             ]
         )
         self.mock_glific_settings = MagicMock(api_url="https://glific.test/api")
@@ -255,7 +254,7 @@ class TestOnboardingFlow(unittest.TestCase):
             phone="1234567890"
         )
 
-        # Default return values
+        # Default return values for get_doc
         self.mock_get_doc.side_effect = lambda doctype, name: {
             "Backend Student Onboarding": self.mock_onboarding,
             "OnboardingStage": self.mock_stage,
@@ -278,14 +277,14 @@ class TestOnboardingFlow(unittest.TestCase):
         """Test trigger_onboarding_flow with missing inputs"""
         with self.assertRaises(Exception):
             trigger_onboarding_flow("", "test_stage", "not_started")
-        self.mock_throw.assert_called_with(_("Both Backend Student Onboarding Set and Onboarding Stage are required"))
+        self.mock_throw.assert_called_with("Both Backend Student Onboarding Set and Onboarding Stage are required")
 
     def test_trigger_onboarding_flow_inactive_stage(self):
         """Test trigger_onboarding_flow with inactive stage"""
         self.mock_stage.is_active = False
         with self.assertRaises(Exception):
             trigger_onboarding_flow("test_onboarding", "test_stage", "not_started")
-        self.mock_throw.assert_called_with(_("Selected Onboarding Stage is not active"))
+        self.mock_throw.assert_called_with("Selected Onboarding Stage is not active")
 
     def test_trigger_onboarding_flow_no_flow_id(self):
         """Test trigger_onboarding_flow with no flow ID"""
@@ -293,7 +292,7 @@ class TestOnboardingFlow(unittest.TestCase):
         with self.assertRaises(Exception):
             trigger_onboarding_flow("test_onboarding", "test_stage", "not_started")
         self.mock_throw.assert_called_with(
-            _("No flows configured for stage 'test_stage'")
+            "No flows configured for stage 'test_stage'"
         )
 
     def test_trigger_group_flow_success(self):
@@ -312,7 +311,7 @@ class TestOnboardingFlow(unittest.TestCase):
             }
         )
         self.mock_get_all.return_value = [
-            _dict(student_id="student_1")
+            {"student_id": "student_1"}
         ]
         result = trigger_group_flow(
             self.mock_onboarding,
@@ -328,9 +327,9 @@ class TestOnboardingFlow(unittest.TestCase):
     def test_trigger_individual_flows_success(self):
         """Test successful individual flows trigger"""
         self.mock_get_all.return_value = [
-            _dict(student_id="student_1")
+            {"student_id": "student_1"}
         ]
-        with patch('your_module.start_contact_flow', return_value=True):
+        with patch('tap_lms.tap_lms.start_contact_flow', return_value=True):
             result = trigger_individual_flows(
                 self.mock_onboarding,
                 self.mock_stage,
@@ -361,8 +360,8 @@ class TestOnboardingFlow(unittest.TestCase):
     def test_get_students_from_onboarding_with_status(self):
         """Test get_students_from_onboarding with status filter"""
         self.mock_get_all.side_effect = [
-            [_dict(student_id="student_1")],  # Backend Students
-            [_dict(name="progress_1")]  # StudentStageProgress
+            [{"student_id": "student_1"}],  # Backend Students
+            [{"name": "progress_1"}]  # StudentStageProgress
         ]
         result = get_students_from_onboarding(self.mock_onboarding, "test_stage", "not_started")
         self.assertEqual(len(result), 1)
@@ -371,7 +370,7 @@ class TestOnboardingFlow(unittest.TestCase):
     def test_get_students_from_onboarding_not_started(self):
         """Test get_students_from_onboarding for not_started status"""
         self.mock_get_all.side_effect = [
-            [_dict(student_id="student_1")],  # Backend Students
+            [{"student_id": "student_1"}],  # Backend Students
             []  # No StudentStageProgress
         ]
         result = get_students_from_onboarding(self.mock_onboarding, "test_stage", "not_started")
@@ -389,7 +388,7 @@ class TestOnboardingFlow(unittest.TestCase):
 
     def test_update_student_stage_progress_existing(self):
         """Test updating existing StudentStageProgress"""
-        self.mock_get_all.return_value = [_dict(name="progress_1")]
+        self.mock_get_all.return_value = [{"name": "progress_1"}]
         mock_progress = MagicMock(status="not_started")
         self.mock_get_doc.return_value = mock_progress
         update_student_stage_progress(self.mock_student, self.mock_stage)
@@ -399,13 +398,8 @@ class TestOnboardingFlow(unittest.TestCase):
     def test_get_onboarding_progress_report(self):
         """Test generating onboarding progress report"""
         self.mock_get_all.side_effect = [
-            [_dict(
-                name="progress_1",
-                student="student_1",
-                stage="test_stage",
-                status="assigned"
-            )],  # StudentStageProgress
-            [_dict(student_id="student_1")]  # Backend Students
+            [{"name": "progress_1", "student": "student_1", "stage": "test_stage", "status": "assigned"}],  # StudentStageProgress
+            [{"student_id": "student_1"}]  # Backend Students
         ]
         result = get_onboarding_progress_report(set="test_onboarding", stage="test_stage", status="assigned")
         self.assertEqual(result["summary"]["total"], 1)
@@ -416,7 +410,7 @@ class TestOnboardingFlow(unittest.TestCase):
         """Test updating incomplete stages"""
         three_days_ago = datetime.now() - timedelta(days=3)
         self.mock_get_all.return_value = [
-            _dict(name="progress_1", student="student_1", stage="test_stage", start_timestamp=three_days_ago)
+            {"name": "progress_1", "student": "student_1", "stage": "test_stage", "start_timestamp": three_days_ago}
         ]
         mock_progress = MagicMock(status="assigned")
         self.mock_get_doc.return_value = mock_progress
