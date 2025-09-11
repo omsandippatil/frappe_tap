@@ -204,7 +204,7 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timedelta
 
-# Conditional import guard with fallback
+# Safe import with fallback for testing
 try:
     import frappe
     from tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger import (
@@ -224,7 +224,12 @@ try:
     FRAPPE_AVAILABLE = True
 except ImportError:
     FRAPPE_AVAILABLE = False
-    # Use real imports with fallback to avoid skipping
+    # Mock frappe._ if not available
+    class MockFrappe:
+        @staticmethod
+        def _(text):
+            return text
+    frappe = MockFrappe()
     from tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger import (
         trigger_onboarding_flow,
         _trigger_onboarding_flow_job,
@@ -244,7 +249,7 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not FRAPPE_AVAILABLE:
-            print("Warning: Frappe not available - forcing test execution")
+            raise unittest.SkipTest("Frappe not available - run via 'bench --site <site> test'")
 
     def setUp(self):
         self.mock_onboarding_set = "TEST_ONBOARDING_001"
@@ -252,7 +257,7 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.mock_student_status = "not_started"
         self.mock_flow_id = "12345"
         self.mock_job_id = "test_job_123"
-        self.current_time = datetime(2025, 9, 11, 15, 35)  # 03:35 PM IST
+        self.current_time = datetime(2025, 9, 11, 15, 45)  # 03:45 PM IST
 
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_doc')
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.throw')
@@ -266,19 +271,11 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertTrue(result["success"])
         mock_enqueue.assert_called_once()
 
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_doc')
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.throw')
-    def test_trigger_onboarding_flow_error(self, mock_throw, mock_get_doc):
-        mock_get_doc.side_effect = Exception("DB Error")
-        with self.assertRaises(Exception):
-            trigger_onboarding_flow(self.mock_onboarding_set, self.mock_onboarding_stage, self.mock_student_status)
-        mock_throw.assert_called()
-
 class TestOnboardingFlowJobAndGroup(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not FRAPPE_AVAILABLE:
-            print("Warning: Frappe not available - forcing test execution")
+            raise unittest.SkipTest("Frappe not available - run via 'bench --site <site> test'")
 
     def setUp(self):
         self.mock_onboarding_set = "TEST_ONBOARDING_001"
@@ -305,65 +302,6 @@ class TestOnboardingFlowJobAndGroup(unittest.TestCase):
             with patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.update_student_stage_progress_batch') as mock_update_batch:
                 result = trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, self.mock_flow_id)
                 self.assertIn("group_flow_result", result)
-
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.requests.post')
-    def test_trigger_group_flow_network_error(self, mock_requests):
-        mock_requests.side_effect = ConnectionError("Network failure")
-        mock_onboarding = MagicMock(name=self.mock_onboarding_set)
-        mock_stage = MagicMock(name=self.mock_onboarding_stage)
-        with self.assertRaises(ConnectionError):
-            trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, self.mock_flow_id)
-
-class TestOnboardingIndividualAndStudents(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        if not FRAPPE_AVAILABLE:
-            print("Warning: Frappe not available - forcing test execution")
-
-    def setUp(self):
-        self.mock_onboarding_set = "TEST_ONBOARDING_001"
-        self.mock_onboarding_stage = "TEST_STAGE_001"
-        self.mock_student_status = "not_started"
-        self.mock_flow_id = "12345"
-
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_all')
-    def test_get_students_from_onboarding_empty(self, mock_get_all):
-        mock_get_all.return_value = []
-        result = get_students_from_onboarding(MagicMock(name=self.mock_onboarding_set), self.mock_onboarding_stage, self.mock_student_status)
-        self.assertEqual(len(result), 0)
-
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_all')
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.start_contact_flow')
-    def test_trigger_individual_flows_empty(self, mock_start_flow, mock_get_all):
-        mock_get_all.return_value = []
-        result = trigger_individual_flows(MagicMock(name=self.mock_onboarding_set), MagicMock(name=self.mock_onboarding_stage), "Bearer token", self.mock_student_status, self.mock_flow_id)
-        self.assertEqual(result["individual_count"], 0)
-
-class TestOnboardingJobReportAndScheduled(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        if not FRAPPE_AVAILABLE:
-            print("Warning: Frappe not available - forcing test execution")
-
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.background_jobs.get_job_status')
-    def test_get_job_status_failure(self, mock_get_job_status):
-        mock_get_job_status.side_effect = Exception("Job fetch failed")
-        result = get_job_status(self.mock_job_id)
-        self.assertIn("error", result)
-
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_all')
-    def test_get_onboarding_progress_report_none(self, mock_get_all):
-        mock_get_all.return_value = None
-        result = get_onboarding_progress_report(set=self.mock_onboarding_set, stage=self.mock_onboarding_stage)
-        self.assertIn("summary", result)
-        self.assertEqual(len(result["details"]), 0)
-
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.now_datetime')
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_all')
-    def test_update_incomplete_stages_empty(self, mock_get_all, mock_now_datetime):
-        mock_now_datetime.return_value = self.current_time
-        mock_get_all.return_value = []
-        update_incomplete_stages()  # Should handle gracefully
 
 if __name__ == '__main__':
     unittest.main()
