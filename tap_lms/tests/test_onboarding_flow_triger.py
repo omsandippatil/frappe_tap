@@ -1195,23 +1195,47 @@ import json
 from datetime import datetime, timedelta
 import time
 import sys
+import os
 
-# Import the actual module to test, adjusted for your nested structure
-from tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger import (
-    trigger_onboarding_flow,
-    _trigger_onboarding_flow_job,
-    trigger_group_flow,
-    trigger_individual_flows,
-    get_stage_flow_statuses,
-    get_students_from_onboarding,
-    update_student_stage_progress,
-    update_student_stage_progress_batch,
-    get_job_status,
-    get_onboarding_progress_report,
-    update_incomplete_stages
-)
+# Conditional import guard: Only import the module if frappe is available (i.e., during bench test execution, not discovery)
+try:
+    import frappe
+    # If frappe is importable, we're in bench context - safe to import the module
+    from tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger import (
+        trigger_onboarding_flow,
+        _trigger_onboarding_flow_job,
+        trigger_group_flow,
+        trigger_individual_flows,
+        get_stage_flow_statuses,
+        get_students_from_onboarding,
+        update_student_stage_progress,
+        update_student_stage_progress_batch,
+        get_job_status,
+        get_onboarding_progress_report,
+        update_incomplete_stages
+    )
+    FRAPPE_AVAILABLE = True
+except ImportError:
+    # During test discovery (e.g., pytest collect-only or Jenkins scan), frappe isn't loaded - define dummies to allow discovery
+    FRAPPE_AVAILABLE = False
+    def trigger_onboarding_flow(*args, **kwargs): pass
+    def _trigger_onboarding_flow_job(*args, **kwargs): pass
+    def trigger_group_flow(*args, **kwargs): pass
+    def trigger_individual_flows(*args, **kwargs): pass
+    def get_stage_flow_statuses(*args, **kwargs): pass
+    def get_students_from_onboarding(*args, **kwargs): pass
+    def update_student_stage_progress(*args, **kwargs): pass
+    def update_student_stage_progress_batch(*args, **kwargs): pass
+    def get_job_status(*args, **kwargs): pass
+    def get_onboarding_progress_report(*args, **kwargs): pass
+    def update_incomplete_stages(*args, **kwargs): pass
 
 class TestOnboardingFlowFunctions(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not FRAPPE_AVAILABLE:
+            raise unittest.SkipTest("Frappe not available - skipping tests (run via 'bench --site <site> test')")
+
     def setUp(self):
         self.mock_onboarding_set = "TEST_ONBOARDING_001"
         self.mock_onboarding_stage = "TEST_STAGE_001"
@@ -1300,7 +1324,37 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         mock_logger.warning.assert_called()
         mock_enqueue.assert_called_once()
 
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_doc')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.throw')
+    def test_get_stage_flow_statuses_new_structure(self, mock_throw, mock_get_doc):
+        mock_stage = MagicMock()
+        mock_stage.stage_flows = [
+            MagicMock(student_status="not_started"),
+            MagicMock(student_status="in_progress"),
+            MagicMock(student_status="completed")
+        ]
+        mock_get_doc.return_value = mock_stage
+
+        result = get_stage_flow_statuses("TEST_STAGE")
+        self.assertIn("statuses", result)
+        self.assertEqual(len(result["statuses"]), 3)
+        self.assertIn("not_started", result["statuses"])
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_doc')
+    def test_get_stage_flow_statuses_legacy_structure(self, mock_get_doc):
+        mock_stage = MagicMock(glific_flow_id="legacy_123")
+        mock_get_doc.return_value = mock_stage
+
+        result = get_stage_flow_statuses("TEST_STAGE")
+        self.assertIn("statuses", result)
+        self.assertEqual(result["statuses"], ["not_started", "assigned", "in_progress", "completed", "incomplete", "skipped"])
+
 class TestOnboardingFlowJobAndGroup(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not FRAPPE_AVAILABLE:
+            raise unittest.SkipTest("Frappe not available - skipping tests")
+
     def setUp(self):
         self.mock_onboarding_set = "TEST_ONBOARDING_001"
         self.mock_onboarding_stage = "TEST_STAGE_001"
@@ -1371,7 +1425,29 @@ class TestOnboardingFlowJobAndGroup(unittest.TestCase):
                 trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, self.mock_flow_id)
         mock_throw.assert_called_with(_("Could not find or create contact group for this onboarding set"))
 
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.requests.post')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_doc')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.throw')
+    def test_trigger_group_flow_graphql_error(self, mock_throw, mock_get_doc, mock_requests):
+        mock_onboarding = MagicMock()
+        mock_stage = MagicMock()
+        mock_contact_group = MagicMock(group_id="group_123")
+        mock_glific_settings = MagicMock(api_url="https://api.glific.org")
+        mock_get_doc.side_effect = [mock_contact_group, mock_glific_settings]
+        mock_response = MagicMock(status_code=200)
+        mock_response.json.return_value = {"data": {"startGroupFlow": {"success": False, "errors": [{"message": "GraphQL error"}]}}}
+        mock_requests.return_value = mock_response
+
+        with self.assertRaises(Exception):
+            trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, self.mock_flow_id)
+        mock_throw.assert_called_with(_("Failed to trigger group flow: GraphQL error"))
+
 class TestOnboardingIndividualAndStudents(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not FRAPPE_AVAILABLE:
+            raise unittest.SkipTest("Frappe not available - skipping tests")
+
     def setUp(self):
         self.mock_onboarding_set = "TEST_ONBOARDING_001"
         self.mock_onboarding_stage = "TEST_STAGE_001"
@@ -1494,10 +1570,21 @@ class TestOnboardingIndividualAndStudents(unittest.TestCase):
         mock_logger.error.assert_called()  # Second student error logged
         mock_commit.assert_called()
 
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_all')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.logger')
+    def test_update_student_stage_progress_batch_empty(self, mock_logger, mock_get_all):
+        update_student_stage_progress_batch([], MagicMock())
+        mock_logger.warning.assert_called_with("No students provided to update_student_stage_progress_batch")
+
 class TestOnboardingJobReportAndScheduled(unittest.TestCase):
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_job_status')  # From frappe.utils.background_jobs
+    @classmethod
+    def setUpClass(cls):
+        if not FRAPPE_AVAILABLE:
+            raise unittest.SkipTest("Frappe not available - skipping tests")
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.background_jobs.get_job_status')
     @patch('rq.job.Job.fetch')
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_redis_conn')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.background_jobs.get_redis_conn')
     def test_get_job_status_finished_with_results(self, mock_redis_conn, mock_job_fetch, mock_get_job_status):
         mock_get_job_status.return_value = "finished"
         mock_job = MagicMock(result={"key": "value"})
@@ -1508,11 +1595,19 @@ class TestOnboardingJobReportAndScheduled(unittest.TestCase):
         self.assertEqual(result["status"], "complete")
         self.assertIn("results", result)
 
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_job_status')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.background_jobs.get_job_status')
     def test_get_job_status_failed(self, mock_get_job_status):
         mock_get_job_status.return_value = "failed"
         result = get_job_status("failed_job")
         self.assertEqual(result["status"], "failed")
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.background_jobs.get_job_status')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.background_jobs.get_redis_conn')
+    def test_get_job_status_redis_error(self, mock_redis_conn, mock_get_job_status):
+        mock_get_job_status.return_value = "finished"
+        mock_redis_conn.return_value = None
+        result = get_job_status("error_job")
+        self.assertEqual(result["status"], "complete")
 
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_all')
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_doc')
@@ -1539,8 +1634,8 @@ class TestOnboardingJobReportAndScheduled(unittest.TestCase):
 
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_all')
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_doc')
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.add_to_date')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.now_datetime')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.utils.add_to_date')
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.db.commit')
     def test_update_incomplete_stages(self, mock_commit, mock_add_to_date, mock_now_datetime, mock_get_doc, mock_get_all):
         mock_now_datetime.return_value = datetime.now()
@@ -1553,7 +1648,17 @@ class TestOnboardingJobReportAndScheduled(unittest.TestCase):
         mock_progress.save.assert_called_once()
         mock_commit.assert_called()
 
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.get_all')
+    def test_update_incomplete_stages_no_records(self, mock_get_all):
+        mock_get_all.return_value = []
+        update_incomplete_stages()  # No error, just logs
+
 class TestOnboardingFlowEdgeCases(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not FRAPPE_AVAILABLE:
+            raise unittest.SkipTest("Frappe not available - skipping tests")
+
     def setUp(self):
         self.edge_case_data = {
             "malformed_stage": MagicMock(is_active=True, stage_flows=[], glific_flow_id=None),
@@ -1600,6 +1705,17 @@ class TestOnboardingFlowEdgeCases(unittest.TestCase):
         with self.assertRaises(Exception):
             trigger_group_flow(MagicMock(), MagicMock(), "Bearer token", "not_started", "flow_123")
 
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.log_error')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.traceback.format_exc')
+    def test_general_exception_handling(self, mock_format_exc, mock_log_error):
+        mock_format_exc.return_value = "traceback"
+        # Simulate exception in a function (e.g., in trigger_onboarding_flow)
+        with patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe.throw', side_effect=Exception("Test error")):
+            try:
+                trigger_onboarding_flow("TEST", "TEST", "not_started")
+            except Exception:
+                mock_log_error.assert_called_with(message="Error triggering onboarding flow: Test error\ntraceback", title="Onboarding Flow Trigger Error")
+
 class TestOnboardingFlowRunner:
     @staticmethod
     def run_all_tests(verbosity=2):
@@ -1621,7 +1737,7 @@ class TestOnboardingFlowRunner:
         print(f"Failures: {len(result.failures)}")
         print(f"Errors: {len(result.errors)}")
         print(f"Skipped: {len(result.skipped) if hasattr(result, 'skipped') else 0}")
-        success_rate = ((result.testsRun - len(result.failures) - len(result.errors)) / result.testsRun) * 100
+        success_rate = ((result.testsRun - len(result.failures) - len(result.errors)) / result.testsRun * 100) if result.testsRun > 0 else 0
         print(f"Success Rate: {success_rate:.1f}%")
         return result.wasSuccessful()
 
