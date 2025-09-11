@@ -1197,7 +1197,7 @@ import time
 import sys
 
 # Import the actual module to test (adjust path if needed based on your Frappe app structure)
-from tap_lms.tap_lms.page.onboarding_flow_trigger import (
+from tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger import (
     trigger_onboarding_flow,
     _trigger_onboarding_flow_job,
     trigger_group_flow,
