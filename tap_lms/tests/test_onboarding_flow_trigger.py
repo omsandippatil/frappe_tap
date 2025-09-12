@@ -514,9 +514,9 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
     #     self.assertEqual(len(result), 2)
     #     self.assertEqual(mock_frappe.get_doc.call_count, 2)
 
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
-    # def test_update_student_stage_progress_update_existing(self, mock_now, mock_frappe):
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
+    def test_update_student_stage_progress_update_existing(self, mock_now, mock_frappe):
         """Test update_student_stage_progress updating existing record"""
         mock_now.return_value = self.current_time
         mock_student = MagicMock()
