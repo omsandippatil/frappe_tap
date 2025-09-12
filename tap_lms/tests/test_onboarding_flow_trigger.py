@@ -347,60 +347,6 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         
         self.assertIn("error", result)
 
-    # Add these test methods to your existing TestOnboardingFlowFunctions class
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_glific_auth_headers')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.enqueue')
-    # def test_trigger_onboarding_flow_success(self, mock_enqueue, mock_auth, mock_frappe):
-    #     """Test successful onboarding flow trigger"""
-    #     mock_auth.return_value = {"Authorization": "Bearer token"}
-    #     mock_enqueue.return_value = "job_123"
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     result = self.trigger_onboarding_flow("set", "stage", "status", "flow", "type")
-        
-    #     self.assertEqual(result, "job_123")
-    #     mock_enqueue.assert_called_once()
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_glific_auth_headers')
-    # def test_trigger_onboarding_flow_no_auth(self, mock_auth, mock_frappe):
-    #     """Test onboarding flow trigger with no auth"""
-    #     mock_auth.return_value = None
-    #     mock_frappe.logger.return_value = MagicMock()
-    #     mock_frappe.throw = Mock(side_effect=Exception("No auth"))
-        
-    #     with self.assertRaises(Exception):
-    #         self.trigger_onboarding_flow("set", "stage", "status", "flow", "type")
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_glific_auth_headers')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.trigger_group_flow')
-    # def test_trigger_onboarding_flow_job_success_group(self, mock_group_flow, mock_auth, mock_frappe):
-    #     """Test successful group flow trigger job"""
-    #     mock_auth.return_value = {"Authorization": "Bearer token"}
-    #     mock_group_flow.return_value = {"group_count": 1}
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     result = self._trigger_onboarding_flow_job("set", "stage", "status", "flow", "group")
-        
-    #     self.assertEqual(result["group_count"], 1)
-    #     mock_group_flow.assert_called_once()
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_glific_auth_headers')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.trigger_individual_flows')
-    # def test_trigger_onboarding_flow_job_success_individual(self, mock_individual_flow, mock_auth, mock_frappe):
-    #     """Test successful individual flow trigger job"""
-    #     mock_auth.return_value = {"Authorization": "Bearer token"}
-    #     mock_individual_flow.return_value = {"individual_count": 5}
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     result = self._trigger_onboarding_flow_job("set", "stage", "status", "flow", "individual")
-        
-    #     self.assertEqual(result["individual_count"], 5)
-    #     mock_individual_flow.assert_called_once()
 
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.requests')
@@ -471,74 +417,7 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertEqual(mock_update_progress.call_count, 2)
         self.assertEqual(mock_start_flow.call_count, 2)
 
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # def test_get_stage_flow_statuses_success(self, mock_frappe):
-    #     """Test get_stage_flow_statuses successful retrieval"""
-    #     mock_frappe.get_all.return_value = [
-    #         {"name": "PROGRESS_001", "status": "in_progress"},
-    #         {"name": "PROGRESS_002", "status": "completed"}
-    #     ]
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     result = self.get_stage_flow_statuses("STAGE_001", "STUD_001")
-        
-    #     self.assertEqual(len(result), 2)
-    #     mock_frappe.get_all.assert_called_once()
 
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # def test_get_stage_flow_statuses_exception(self, mock_frappe):
-    #     """Test get_stage_flow_statuses exception handling"""
-    #     mock_frappe.get_all.side_effect = Exception("Database error")
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     result = self.get_stage_flow_statuses("STAGE_001", "STUD_001")
-        
-    #     self.assertEqual(result, [])
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # def test_get_students_from_onboarding_success(self, mock_frappe):
-    #     """Test get_students_from_onboarding successful retrieval"""
-    #     mock_onboarding = MagicMock()
-    #     mock_onboarding.name = "TEST_ONBOARDING"
-        
-    #     backend_students = [{"name": "BACKEND_001"}, {"name": "BACKEND_002"}]
-    #     mock_frappe.get_all.return_value = backend_students
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     mock_student1 = MagicMock()
-    #     mock_student2 = MagicMock()
-    #     mock_frappe.get_doc.side_effect = [mock_student1, mock_student2]
-        
-    #     result = self.get_students_from_onboarding(mock_onboarding)
-        
-    #     self.assertEqual(len(result), 2)
-    #     self.assertEqual(mock_frappe.get_doc.call_count, 2)
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
-    # def test_update_student_stage_progress_update_existing(self, mock_now, mock_frappe):
-    #     """Test update_student_stage_progress updating existing record"""
-    #     mock_now.return_value = self.current_time
-    #     mock_student = MagicMock()
-    #     mock_student.name = "STUD_001"
-    #     mock_stage = MagicMock()
-    #     mock_stage.name = "STAGE_001"
-        
-    #     existing = [{"name": "PROGRESS_001"}]
-    #     mock_frappe.get_all.return_value = existing
-        
-    #     mock_progress = MagicMock()
-    #     mock_progress.status = "in_progress"
-    #     mock_frappe.get_doc.return_value = mock_progress
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     self.update_student_stage_progress(mock_student, mock_stage)
-        
-    #     mock_progress.save.assert_called_once()
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
-    # def test_update_student_stage_progress_batch_with_existing(self, mock_now, mock_frappe):
     #     """Test update_student_stage_progress_batch with some existing records"""
     #     mock_now.return_value = self.current_time
         
@@ -670,30 +549,3 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertEqual(result["individual_count"], 1)  # Only STUD_001 succeeded
         self.assertEqual(mock_update_progress.call_count, 1)  # Only called for successful student
         self.assertEqual(mock_start_flow.call_count, 2)  # Called for students with glific_id
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_glific_auth_headers')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.trigger_group_flow')
-    # def test_trigger_onboarding_flow_job_invalid_flow_type(self, mock_group_flow, mock_auth, mock_frappe):
-    #     """Test _trigger_onboarding_flow_job with invalid flow type"""
-    #     mock_auth.return_value = {"Authorization": "Bearer token"}
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     result = self._trigger_onboarding_flow_job("set", "stage", "status", "flow", "invalid_type")
-        
-    #     self.assertIn("error", result)
-    #     self.assertIn("Invalid flow_type", result["error"])
-
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_glific_auth_headers')
-    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.trigger_group_flow')
-    # def test_trigger_onboarding_flow_job_exception_handling(self, mock_group_flow, mock_auth, mock_frappe):
-    #     """Test _trigger_onboarding_flow_job exception handling"""
-    #     mock_auth.return_value = {"Authorization": "Bearer token"}
-    #     mock_group_flow.side_effect = Exception("Unexpected error")
-    #     mock_frappe.logger.return_value = MagicMock()
-        
-    #     result = self._trigger_onboarding_flow_job("set", "stage", "status", "flow", "group")
-        
-    #     self.assertIn("error", result)
-    #     self.assertIn("Unexpected error", result["error"])
