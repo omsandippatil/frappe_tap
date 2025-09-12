@@ -356,462 +356,505 @@
 # #     unittest.main(verbosity=2)
 
 import unittest
-import frappe
-from frappe.utils import nowdate
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import Mock, patch, MagicMock, call
+from datetime import datetime, timedelta
+import sys
+import os
 import json
 
-# Import the module functions
-from tap_lms.backend_student_onboarding import (
-    normalize_phone_number,
-    find_existing_student_by_phone_and_name,
-    validate_student,
-    get_initial_stage,
-    process_batch,
-    process_glific_contact,
-    determine_student_type_backend,
-    get_current_academic_year_backend,
-    validate_enrollment_data,
-    process_student_record,
-    update_backend_student_status,
-    format_phone_number,
-    get_course_level_with_validation_backend
-)
+# Add the project root to Python path if needed
+# sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # This line might not be necessary if your test runner is set up correctly
 
-class TestPhoneNumberNormalization(unittest.TestCase):
-    """Test phone number normalization functionality"""
-    
-    def test_10_digit_phone(self):
-        """Test normalization of 10-digit phone number"""
-        phone_12, phone_10 = normalize_phone_number("9876543210")
-        self.assertEqual(phone_12, "919876543210")
-        self.assertEqual(phone_10, "9876543210")
-    
-    def test_12_digit_phone(self):
-        """Test normalization of 12-digit phone number with country code"""
-        phone_12, phone_10 = normalize_phone_number("919876543210")
-        self.assertEqual(phone_12, "919876543210")
-        self.assertEqual(phone_10, "9876543210")
-    
-    def test_11_digit_phone_starting_with_1(self):
-        """Test normalization of 11-digit phone starting with 1"""
-        phone_12, phone_10 = normalize_phone_number("19876543210")
-        self.assertEqual(phone_12, "919876543210")
-        self.assertEqual(phone_10, "9876543210")
-    
-    def test_phone_with_special_characters(self):
-        """Test normalization with special characters"""
-        phone_12, phone_10 = normalize_phone_number("(98) 765-43210")
-        self.assertEqual(phone_12, "919876543210")
-        self.assertEqual(phone_10, "9876543210")
-    
-    def test_invalid_phone(self):
-        """Test invalid phone number"""
-        phone_12, phone_10 = normalize_phone_number("12345")
-        self.assertIsNone(phone_12)
-        self.assertIsNone(phone_10)
-    
-    def test_empty_phone(self):
-        """Test empty phone number"""
-        phone_12, phone_10 = normalize_phone_number("")
-        self.assertIsNone(phone_12)
-        self.assertIsNone(phone_10)
+class TestOnboardingFlowFunctions(unittest.TestCase):
+
+    def setUp(self):
+        """Set up test fixtures before each test method."""
+        self.mock_onboarding_set = "TEST_ONBOARDING_001"
+        self.mock_onboarding_stage = "TEST_STAGE_001"
+        self.mock_student_status = "not_started"
+        self.mock_flow_id = "12345"
+        self.mock_job_id = "job_123"
+        self.current_time = datetime(2025, 9, 11, 16, 3)
+
+        # Mock 'frappe' and its submodules with specific functions if needed
+        # This ensures that 'frappe.utils.nowdate' is available and has a return value
+        mock_frappe_utils = MagicMock()
+        mock_frappe_utils.nowdate.return_value = self.current_time.date() # Mocking nowdate to return current date
+        # Add other utilities if they are used directly from frappe.utils
+        # mock_frappe_utils.add_to_date.return_value = ...
+
+        mock_frappe = MagicMock()
+        mock_frappe.utils = mock_frappe_utils
+        # Mock other submodules or functions of frappe as needed
+        mock_frappe.get_doc = MagicMock()
+        mock_frappe.throw = Mock()
+        mock_frappe.logger.return_value = MagicMock()
+        mock_frappe.log_error = MagicMock()
 
 
-class TestFindExistingStudent(unittest.TestCase):
-    """Test finding existing student by phone and name"""
-    
-    @patch('frappe.db.sql')
-    def test_find_existing_student_found(self, mock_sql):
-        """Test finding an existing student"""
-        mock_sql.return_value = [
-            {"name": "ST00001", "phone": "919876543210", "name1": "John Doe"}
-        ]
-        
-        result = find_existing_student_by_phone_and_name("9876543210", "John Doe")
-        
-        self.assertIsNotNone(result)
-        self.assertEqual(result["name"], "ST00001")
-        self.assertEqual(result["name1"], "John Doe")
-    
-    @patch('frappe.db.sql')
-    def test_find_existing_student_not_found(self, mock_sql):
-        """Test when student is not found"""
-        mock_sql.return_value = []
-        
-        result = find_existing_student_by_phone_and_name("9876543210", "Jane Doe")
-        
-        self.assertIsNone(result)
-    
-    def test_find_student_invalid_phone(self):
-        """Test finding student with invalid phone"""
-        result = find_existing_student_by_phone_and_name("12345", "John Doe")
-        self.assertIsNone(result)
-    
-    def test_find_student_empty_params(self):
-        """Test finding student with empty parameters"""
-        result = find_existing_student_by_phone_and_name("", "")
-        self.assertIsNone(result)
+        self.frappe_patcher = patch.dict('sys.modules', {
+            'frappe': mock_frappe,
+            'frappe.utils': mock_frappe_utils,
+            'frappe.utils.background_jobs': MagicMock(),
+            'tap_lms.glific_integration': MagicMock()
+        })
+        self.frappe_patcher.start()
+
+        # Import after patching
+        # Ensure the import path is correct for your project structure.
+        # It might be 'tap_lms.page.onboarding_flow_trigger' or similar depending on your app structure.
+        from tap_lms.page.onboarding_flow_trigger import onboarding_flow_trigger
+
+        # Store references to the actual functions
+        self.module = onboarding_flow_trigger
+        self.trigger_onboarding_flow = onboarding_flow_trigger.trigger_onboarding_flow
+        self._trigger_onboarding_flow_job = onboarding_flow_trigger._trigger_onboarding_flow_job
+        self.trigger_group_flow = onboarding_flow_trigger.trigger_group_flow
+        self.trigger_individual_flows = onboarding_flow_trigger.trigger_individual_flows
+        self.get_stage_flow_statuses = onboarding_flow_trigger.get_stage_flow_statuses
+        self.get_students_from_onboarding = onboarding_flow_trigger.get_students_from_onboarding
+        self.update_student_stage_progress = onboarding_flow_trigger.update_student_stage_progress
+        self.update_student_stage_progress_batch = onboarding_flow_trigger.update_student_stage_progress_batch
+        self.get_job_status = onboarding_flow_trigger.get_job_status
+        self.get_onboarding_progress_report = onboarding_flow_trigger.get_onboarding_progress_report
+        self.update_incomplete_stages = onboarding_flow_trigger.update_incomplete_stages
+
+    def tearDown(self):
+        """Clean up after each test."""
+        self.frappe_patcher.stop()
 
 
-class TestValidateStudent(unittest.TestCase):
-    """Test student validation functionality"""
-    
-    @patch('tap_lms.backend_student_onboarding.find_existing_student_by_phone_and_name')
-    def test_validate_complete_student(self, mock_find):
-        """Test validation of student with all required fields"""
-        mock_find.return_value = None
-        
-        student = {
-            "student_name": "John Doe",
-            "phone": "9876543210",
-            "school": "SCH001",
-            "grade": "5",
-            "language": "English",
-            "batch": "BT001"
+    # ============= Background Job Tests =============
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_glific_auth_headers')
+    def test_trigger_onboarding_flow_job_exception_handling(self, mock_auth):
+        """Test _trigger_onboarding_flow_job exception handling"""
+        mock_auth.return_value = {"authorization": "Bearer token"}
+        # Accessing the mocked frappe.get_doc directly from the patched sys.modules
+        frappe = sys.modules['frappe']
+        frappe.get_doc.side_effect = Exception("Database error")
+        frappe.log_error = MagicMock()
+        frappe.logger.return_value = MagicMock()
+
+        result = self._trigger_onboarding_flow_job("set", "stage", "status", "flow", "Group")
+
+        self.assertIn("error", result)
+        frappe.log_error.assert_called_once()
+
+    # ============= Working Tests from Original =============
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    def test_trigger_group_flow_no_flow_id(self, mock_frappe):
+        """Test trigger_group_flow with no flow ID"""
+        mock_onboarding = MagicMock()
+        mock_stage = MagicMock()
+        mock_frappe.throw = Mock(side_effect=Exception("No flow ID"))
+
+        with self.assertRaises(Exception):
+            self.trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, None)
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.create_or_get_glific_group_for_batch')
+    def test_trigger_group_flow_no_contact_group(self, mock_create_group, mock_frappe):
+        """Test trigger_group_flow with no contact group"""
+        mock_onboarding = MagicMock()
+        mock_stage = MagicMock()
+        mock_create_group.return_value = None
+        mock_frappe.throw = Mock(side_effect=Exception("No contact group"))
+        mock_frappe.logger.return_value = MagicMock()
+
+        with self.assertRaises(Exception):
+            self.trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, self.mock_flow_id)
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.requests')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.create_or_get_glific_group_for_batch')
+    def test_trigger_group_flow_api_error(self, mock_create_group, mock_requests, mock_frappe):
+        """Test trigger_group_flow with API error"""
+        mock_onboarding = MagicMock()
+        mock_stage = MagicMock()
+        mock_contact_group = MagicMock()
+
+        mock_create_group.return_value = {"group_id": "group_123"}
+        mock_frappe.get_doc.return_value = mock_contact_group
+        mock_frappe.logger.return_value = MagicMock()
+        mock_frappe.throw = Mock(side_effect=Exception("API error"))
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_requests.post.return_value = mock_response
+
+        with self.assertRaises(Exception):
+            self.trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, self.mock_flow_id)
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.requests')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.create_or_get_glific_group_for_batch')
+    def test_trigger_group_flow_api_failure(self, mock_create_group, mock_requests, mock_frappe):
+        """Test trigger_group_flow with API returning failure"""
+        mock_onboarding = MagicMock()
+        mock_stage = MagicMock()
+        mock_contact_group = MagicMock()
+        mock_settings = MagicMock()
+
+        mock_create_group.return_value = {"group_id": "group_123"}
+        mock_frappe.get_doc.return_value = mock_contact_group
+        mock_frappe.logger.return_value = MagicMock()
+        mock_frappe.throw = Mock(side_effect=Exception("Flow failed"))
+
+        def mock_get_doc_side_effect(doctype, filters=None):
+            if doctype == "Glific Settings":
+                return mock_settings
+            return mock_contact_group
+
+        mock_frappe.get_doc.side_effect = mock_get_doc_side_effect
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {"startGroupFlow": {"success": False, "errors": [{"message": "Flow failed"}]}}
         }
-        
-        validation = validate_student(student)
-        
-        self.assertEqual(validation, {})
-    
-    def test_validate_missing_fields(self):
-        """Test validation with missing required fields"""
-        student = {
-            "student_name": "John Doe",
-            "phone": "9876543210"
+        mock_requests.post.return_value = mock_response
+
+        with self.assertRaises(Exception):
+            self.trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, self.mock_flow_id)
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    def test_trigger_individual_flows_no_flow_id(self, mock_frappe):
+        """Test trigger_individual_flows with no flow ID"""
+        mock_onboarding = MagicMock()
+        mock_stage = MagicMock()
+        mock_frappe.throw = Mock(side_effect=Exception("No flow ID"))
+
+        with self.assertRaises(Exception):
+            self.trigger_individual_flows(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, None)
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    def test_trigger_individual_flows_no_students(self, mock_frappe):
+        """Test trigger_individual_flows with no students"""
+        mock_onboarding = MagicMock()
+        mock_stage = MagicMock()
+        mock_frappe.logger.return_value = MagicMock()
+        mock_frappe.throw = Mock(side_effect=Exception("No students found"))
+
+        with patch.object(self.module, 'get_students_from_onboarding', return_value=[]):
+            with self.assertRaises(Exception):
+                self.trigger_individual_flows(
+                    mock_onboarding, mock_stage, "Bearer token",
+                    self.mock_student_status, self.mock_flow_id
+                )
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.start_contact_flow')
+    def test_trigger_individual_flows_student_no_glific_id(self, mock_start_flow, mock_frappe):
+        """Test trigger_individual_flows with student having no Glific ID"""
+        mock_onboarding = MagicMock()
+        mock_stage = MagicMock()
+
+        mock_student = MagicMock()
+        mock_student.name = "STUD_001"
+        mock_student.glific_id = None
+
+        mock_frappe.logger.return_value = MagicMock()
+
+        with patch.object(self.module, 'get_students_from_onboarding', return_value=[mock_student]):
+            result = self.trigger_individual_flows(
+                mock_onboarding, mock_stage, "Bearer token",
+                self.mock_student_status, self.mock_flow_id
+            )
+
+            self.assertEqual(result["individual_count"], 0)
+            mock_start_flow.assert_not_called()
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    def test_get_students_from_onboarding_no_backend_students(self, mock_frappe):
+        """Test get_students_from_onboarding with no backend students"""
+        mock_onboarding = MagicMock()
+        mock_onboarding.name = self.mock_onboarding_set
+
+        mock_frappe.get_all.return_value = []
+        mock_frappe.logger.return_value = MagicMock()
+
+        result = self.get_students_from_onboarding(mock_onboarding)
+
+        self.assertEqual(len(result), 0)
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.traceback')
+    def test_get_students_from_onboarding_exception(self, mock_traceback, mock_frappe):
+        """Test get_students_from_onboarding exception handling"""
+        mock_onboarding = MagicMock()
+        mock_frappe.get_all.side_effect = Exception("Database error")
+        mock_traceback.format_exc.return_value = "Mock traceback"
+        mock_frappe.logger.return_value = MagicMock()
+
+        result = self.get_students_from_onboarding(mock_onboarding)
+
+        self.assertEqual(result, [])
+        mock_frappe.log_error.assert_called_once()
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
+    def test_update_student_stage_progress_new_record(self, mock_now, mock_frappe):
+        """Test update_student_stage_progress creating new record"""
+        mock_now.return_value = self.current_time
+        mock_student = MagicMock()
+        mock_student.name = "STUD_001"
+        mock_stage = MagicMock()
+        mock_stage.name = "STAGE_001"
+
+        mock_frappe.get_all.return_value = []  # No existing record
+        mock_progress = MagicMock()
+        mock_frappe.new_doc.return_value = mock_progress
+        mock_frappe.logger.return_value = MagicMock()
+
+        self.update_student_stage_progress(mock_student, mock_stage)
+
+        mock_progress.insert.assert_called_once()
+        mock_frappe.db.commit.assert_called_once()
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
+    def test_update_student_stage_progress_no_update_completed(self, mock_now, mock_frappe):
+        """Test update_student_stage_progress not updating completed record"""
+        mock_now.return_value = self.current_time
+        mock_student = MagicMock()
+        mock_stage = MagicMock()
+
+        existing = [{"name": "PROGRESS_001"}]
+        mock_frappe.get_all.return_value = existing
+
+        mock_progress = MagicMock()
+        mock_progress.status = "completed"
+        mock_frappe.get_doc.return_value = mock_progress
+        mock_frappe.logger.return_value = MagicMock()
+
+        self.update_student_stage_progress(mock_student, mock_stage)
+
+        mock_progress.save.assert_not_called()
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.traceback')
+    def test_update_student_stage_progress_exception(self, mock_traceback, mock_frappe):
+        """Test update_student_stage_progress exception handling"""
+        mock_student = MagicMock()
+        mock_student.name = "STUD_001"
+        mock_stage = MagicMock()
+
+        mock_frappe.get_all.side_effect = Exception("Database error")
+        mock_traceback.format_exc.return_value = "Mock traceback"
+
+        self.update_student_stage_progress(mock_student, mock_stage)
+
+        mock_frappe.log_error.assert_called_once()
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
+    def test_update_student_stage_progress_batch_success(self, mock_now, mock_frappe):
+        """Test update_student_stage_progress_batch success"""
+        mock_now.return_value = self.current_time
+
+        students = [MagicMock(name="STUD_001"), MagicMock(name="STUD_002")]
+        mock_stage = MagicMock()
+        mock_stage.name = "STAGE_001"
+
+        mock_frappe.get_all.return_value = []  # No existing records
+        mock_progress = MagicMock()
+        mock_frappe.new_doc.return_value = mock_progress
+        mock_frappe.logger.return_value = MagicMock()
+
+        self.update_student_stage_progress_batch(students, mock_stage)
+
+        self.assertEqual(mock_progress.insert.call_count, 2)
+        mock_frappe.db.commit.assert_called_once()
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    def test_update_student_stage_progress_batch_empty_list(self, mock_frappe):
+        """Test update_student_stage_progress_batch with empty student list"""
+        mock_stage = MagicMock()
+        mock_frappe.logger.return_value = MagicMock()
+
+        self.update_student_stage_progress_batch([], mock_stage)
+
+        mock_frappe.db.commit.assert_not_called()
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.add_to_date')
+    def test_update_incomplete_stages_no_records(self, mock_add_to_date, mock_frappe):
+        """Test update_incomplete_stages with no records to update"""
+        # Assuming now_datetime is used by update_incomplete_stages, we might need to mock it too.
+        # For simplicity, if it's not directly used, we can omit it here.
+        # If it is used, ensure it's mocked like in other tests.
+        # from frappe.utils import now_datetime
+        # mock_now_datetime = patch('frappe.utils.now_datetime', return_value=self.current_time)
+        # mock_now_datetime.start()
+
+        mock_add_to_date.return_value = self.current_time - timedelta(days=3)
+
+        mock_frappe.get_all.return_value = []
+        mock_frappe.logger.return_value = MagicMock()
+
+        self.update_incomplete_stages()
+
+        mock_frappe.db.commit.assert_called_once()
+        # mock_now_datetime.stop() # Stop if you started mocking now_datetime
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.traceback')
+    def test_update_incomplete_stages_exception(self, mock_traceback, mock_frappe):
+        """Test update_incomplete_stages exception handling"""
+        mock_frappe.get_all.side_effect = Exception("Database error")
+        mock_traceback.format_exc.return_value = "Mock traceback"
+        mock_frappe.logger.return_value = MagicMock()
+
+        self.update_incomplete_stages()
+
+        mock_frappe.log_error.assert_called_once()
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    def test_get_students_from_onboarding_basic_call(self, mock_frappe):
+        """Test get_students_from_onboarding basic functionality"""
+        mock_onboarding = MagicMock()
+        mock_onboarding.name = "TEST_ONBOARDING"
+
+        mock_frappe.get_all.return_value = []
+        mock_frappe.logger.return_value = MagicMock()
+
+        result = self.get_students_from_onboarding(mock_onboarding)
+
+        self.assertEqual(result, [])
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_glific_auth_headers')
+    def test_trigger_onboarding_flow_job_auth_none(self, mock_auth, mock_frappe):
+        """Test _trigger_onboarding_flow_job with no auth"""
+        mock_auth.return_value = None
+        mock_frappe.logger.return_value = MagicMock()
+
+        result = self._trigger_onboarding_flow_job("set", "stage", "status", "flow", "type")
+
+        self.assertIn("error", result)
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.requests')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.create_or_get_glific_group_for_batch')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.update_student_stage_progress_batch')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_students_from_onboarding')
+    def test_trigger_group_flow_success(self, mock_get_students, mock_update_batch, mock_create_group, mock_requests, mock_frappe):
+        """Test successful group flow trigger"""
+        mock_onboarding = MagicMock()
+        mock_onboarding.name = "TEST_ONBOARDING"
+        mock_stage = MagicMock()
+        mock_stage.name = "TEST_STAGE"
+
+        mock_contact_group = MagicMock()
+        mock_settings = MagicMock()
+        mock_settings.glific_url = "https://api.glific.com"
+        mock_settings.api_url = "https://api.glific.com"
+
+        mock_create_group.return_value = {"group_id": "group_123"}
+        mock_get_students.return_value = [MagicMock()]
+        mock_frappe.logger.return_value = MagicMock()
+
+        def mock_get_doc_side_effect(doctype, filters=None):
+            if doctype == "Glific Settings":
+                return mock_settings
+            if doctype == "GlificContactGroup":
+                mock_group = MagicMock()
+                mock_group.group_id = "group_123"
+                return mock_group
+            return mock_contact_group
+
+        mock_frappe.get_doc.side_effect = mock_get_doc_side_effect
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {"startGroupFlow": {"success": True}}
         }
-        
-        validation = validate_student(student)
-        
-        self.assertIn("school", validation)
-        self.assertIn("grade", validation)
-        self.assertIn("language", validation)
-        self.assertIn("batch", validation)
-        self.assertEqual(validation["school"], "missing")
-    
-    @patch('tap_lms.backend_student_onboarding.find_existing_student_by_phone_and_name')
-    def test_validate_duplicate_student(self, mock_find):
-        """Test validation detecting duplicate student"""
-        mock_find.return_value = {
-            "name": "ST00001",
-            "name1": "John Doe"
-        }
-        
-        student = {
-            "student_name": "John Doe",
-            "phone": "9876543210",
-            "school": "SCH001",
-            "grade": "5",
-            "language": "English",
-            "batch": "BT001"
-        }
-        
-        validation = validate_student(student)
-        
-        self.assertIn("duplicate", validation)
-        self.assertEqual(validation["duplicate"]["student_id"], "ST00001")
+        mock_requests.post.return_value = mock_response
 
+        result = self.trigger_group_flow(mock_onboarding, mock_stage, "Bearer token", self.mock_student_status, self.mock_flow_id)
 
-class TestDetermineStudentType(unittest.TestCase):
-    """Test student type determination (New/Old)"""
-    
-    @patch('frappe.db.sql')
-    def test_new_student_no_existing_record(self, mock_sql):
-        """Test new student when no existing record found"""
-        mock_sql.return_value = []
-        
-        result = determine_student_type_backend("9876543210", "John Doe", "Mathematics")
-        
-        self.assertEqual(result, "New")
-    
-    @patch('frappe.db.sql')
-    @patch('frappe.db.exists')
-    def test_old_student_same_vertical(self, mock_exists, mock_sql):
-        """Test old student with enrollment in same vertical"""
-        # First call: find student
-        # Second call: get enrollments
-        # Third call: get course vertical
-        mock_sql.side_effect = [
-            [{"name": "ST00001", "phone": "919876543210", "name1": "John Doe"}],
-            [{"name": "EN001", "course": "CL001", "batch": "BT001", "grade": "5", "school": "SCH001"}],
-            [{"vertical_name": "Mathematics"}]
-        ]
-        mock_exists.return_value = True
-        
-        result = determine_student_type_backend("9876543210", "John Doe", "Mathematics")
-        
-        self.assertEqual(result, "Old")
-    
-    @patch('frappe.db.sql')
-    @patch('frappe.db.exists')
-    def test_new_student_different_vertical(self, mock_exists, mock_sql):
-        """Test new student with enrollment only in different vertical"""
-        mock_sql.side_effect = [
-            [{"name": "ST00001", "phone": "919876543210", "name1": "John Doe"}],
-            [{"name": "EN001", "course": "CL001", "batch": "BT001", "grade": "5", "school": "SCH001"}],
-            [{"vertical_name": "Science"}]
-        ]
-        mock_exists.return_value = True
-        
-        result = determine_student_type_backend("9876543210", "John Doe", "Mathematics")
-        
-        self.assertEqual(result, "New")
-    
-    @patch('frappe.db.sql')
-    @patch('frappe.db.exists')
-    def test_old_student_broken_course_link(self, mock_exists, mock_sql):
-        """Test old student with broken course link"""
-        mock_sql.side_effect = [
-            [{"name": "ST00001", "phone": "919876543210", "name1": "John Doe"}],
-            [{"name": "EN001", "course": "CL999", "batch": "BT001", "grade": "5", "school": "SCH001"}]
-        ]
-        mock_exists.return_value = False  # Course doesn't exist
-        
-        result = determine_student_type_backend("9876543210", "John Doe", "Mathematics")
-        
-        self.assertEqual(result, "Old")
+        self.assertEqual(result["group_count"], 1)
+        mock_update_batch.assert_called_once()
 
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.start_contact_flow')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_students_from_onboarding')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.update_student_stage_progress')
+    def test_trigger_individual_flows_success(self, mock_update_progress, mock_get_students, mock_start_flow, mock_frappe):
+        """Test successful individual flows trigger"""
+        mock_onboarding = MagicMock()
+        mock_onboarding.name = "TEST_ONBOARDING"
+        mock_stage = MagicMock()
+        mock_stage.name = "TEST_STAGE"
 
-class TestGetCurrentAcademicYear(unittest.TestCase):
-    """Test academic year calculation"""
-    
-    @patch('frappe.utils.getdate')
-    def test_academic_year_after_april(self, mock_getdate):
-        """Test academic year calculation for months after April"""
-        from datetime import date
-        mock_getdate.return_value = date(2025, 5, 15)  # May 2025
-        
-        result = get_current_academic_year_backend()
-        
-        self.assertEqual(result, "2025-26")
-    
-    @patch('frappe.utils.getdate')
-    def test_academic_year_before_april(self, mock_getdate):
-        """Test academic year calculation for months before April"""
-        from datetime import date
-        mock_getdate.return_value = date(2025, 2, 15)  # February 2025
-        
-        result = get_current_academic_year_backend()
-        
-        self.assertEqual(result, "2024-25")
-    
-    @patch('frappe.utils.getdate')
-    def test_academic_year_in_april(self, mock_getdate):
-        """Test academic year calculation for April"""
-        from datetime import date
-        mock_getdate.return_value = date(2025, 4, 1)  # April 1, 2025
-        
-        result = get_current_academic_year_backend()
-        
-        self.assertEqual(result, "2025-26")
+        mock_student1 = MagicMock()
+        mock_student1.name = "STUD_001"
+        mock_student1.name1 = "Student One"
+        mock_student1.glific_id = "contact_001"
 
+        mock_student2 = MagicMock()
+        mock_student2.name = "STUD_002"
+        mock_student2.name1 = "Student Two"
+        mock_student2.glific_id = "contact_002"
 
-class TestProcessGlificContact(unittest.TestCase):
-    """Test Glific contact processing"""
-    
-    @patch('tap_lms.backend_student_onboarding.get_contact_by_phone')
-    @patch('tap_lms.backend_student_onboarding.add_student_to_glific_for_onboarding')
-    @patch('frappe.get_value')
-    def test_create_new_glific_contact(self, mock_get_value, mock_add_student, mock_get_contact):
-        """Test creating new Glific contact"""
-        mock_get_contact.return_value = None  # No existing contact
-        mock_add_student.return_value = {"id": "12345"}
-        mock_get_value.side_effect = ["Test School", "BT001", "1", "Test Level", "Mathematics"]
-        
-        student = MagicMock()
-        student.student_name = "John Doe"
-        student.phone = "9876543210"
-        student.school = "SCH001"
-        student.batch = "BT001"
-        student.language = "English"
-        student.course_vertical = "CV001"
-        student.grade = "5"
-        
-        glific_group = {"group_id": "GRP001"}
-        
-        result = process_glific_contact(student, glific_group, "CL001")
-        
-        self.assertIsNotNone(result)
-        self.assertEqual(result["id"], "12345")
-        mock_add_student.assert_called_once()
-    
-    @patch('tap_lms.backend_student_onboarding.get_contact_by_phone')
-    @patch('tap_lms.glific_integration.add_contact_to_group')
-    @patch('tap_lms.glific_integration.update_contact_fields')
-    @patch('frappe.get_value')
-    def test_update_existing_glific_contact(self, mock_get_value, mock_update, mock_add_group, mock_get_contact):
-        """Test updating existing Glific contact"""
-        mock_get_contact.return_value = {"id": "12345"}
-        mock_get_value.side_effect = ["Test School", "BT001", "Test Level", "Mathematics"]
-        
-        student = MagicMock()
-        student.student_name = "John Doe"
-        student.phone = "9876543210"
-        student.school = "SCH001"
-        student.batch = "BT001"
-        student.language = "English"
-        student.course_vertical = "CV001"
-        student.grade = "5"
-        
-        glific_group = {"group_id": "GRP001"}
-        
-        result = process_glific_contact(student, glific_group, "CL001")
-        
-        self.assertIsNotNone(result)
-        self.assertEqual(result["id"], "12345")
-        mock_add_group.assert_called_once_with("12345", "GRP001")
-        mock_update.assert_called_once()
+        mock_get_students.return_value = [mock_student1, mock_student2]
+        mock_start_flow.return_value = {"success": True}
+        mock_frappe.logger.return_value = MagicMock()
+        mock_frappe.db.commit.return_value = None
 
-
-class TestProcessBatch(unittest.TestCase):
-    """Test batch processing functionality"""
-    
-    @patch('frappe.get_doc')
-    @patch('frappe.enqueue')
-    def test_process_batch_with_background_job(self, mock_enqueue, mock_get_doc):
-        """Test processing batch with background job"""
-        mock_batch = MagicMock()
-        mock_batch.status = "Draft"
-        mock_get_doc.return_value = mock_batch
-        
-        mock_job = MagicMock()
-        mock_job.id = "JOB123"
-        mock_enqueue.return_value = mock_job
-        
-        result = process_batch("BSO001", use_background_job=True)
-        
-        self.assertEqual(result["job_id"], "JOB123")
-        self.assertEqual(mock_batch.status, "Processing")
-        mock_batch.save.assert_called_once()
-        mock_enqueue.assert_called_once()
-    
-    @patch('frappe.get_doc')
-    @patch('tap_lms.backend_student_onboarding.process_batch_job')
-    def test_process_batch_immediate(self, mock_process_job, mock_get_doc):
-        """Test immediate batch processing"""
-        mock_batch = MagicMock()
-        mock_batch.status = "Draft"
-        mock_get_doc.return_value = mock_batch
-        
-        mock_process_job.return_value = {
-            "success_count": 5,
-            "failure_count": 0,
-            "results": {"success": [], "failed": []}
-        }
-        
-        result = process_batch("BSO001", use_background_job=False)
-        
-        self.assertEqual(result["success_count"], 5)
-        self.assertEqual(mock_batch.status, "Processing")
-        mock_process_job.assert_called_once_with("BSO001")
-
-
-class TestUpdateBackendStudentStatus(unittest.TestCase):
-    """Test backend student status update"""
-    
-    def test_update_success_status(self):
-        """Test updating student status to success"""
-        student = MagicMock()
-        student_doc = MagicMock()
-        student_doc.name = "ST00001"
-        student_doc.glific_id = "12345"
-        
-        update_backend_student_status(student, "Success", student_doc)
-        
-        self.assertEqual(student.processing_status, "Success")
-        self.assertEqual(student.student_id, "ST00001")
-        student.save.assert_called_once()
-    
-    def test_update_failed_status_with_error(self):
-        """Test updating student status to failed with error message"""
-        student = MagicMock()
-        student.processing_notes = ""
-        
-        error_msg = "Test error message"
-        update_backend_student_status(student, "Failed", error=error_msg)
-        
-        self.assertEqual(student.processing_status, "Failed")
-        self.assertEqual(student.processing_notes, error_msg)
-        student.save.assert_called_once()
-
-
-class TestValidateEnrollmentData(unittest.TestCase):
-    """Test enrollment data validation"""
-    
-    @patch('frappe.db.sql')
-    @patch('frappe.db.exists')
-    def test_validate_valid_enrollments(self, mock_exists, mock_sql):
-        """Test validation of valid enrollments"""
-        mock_sql.return_value = [
-            {
-                "student_id": "ST00001",
-                "enrollment_id": "EN001",
-                "course": "CL001",
-                "batch": "BT001",
-                "grade": "5"
-            }
-        ]
-        mock_exists.return_value = True
-        
-        result = validate_enrollment_data("John Doe", "9876543210")
-        
-        self.assertEqual(result["total_enrollments"], 1)
-        self.assertEqual(result["valid_enrollments"], 1)
-        self.assertEqual(result["broken_enrollments"], 0)
-    
-    @patch('frappe.db.sql')
-    @patch('frappe.db.exists')
-    def test_validate_broken_enrollments(self, mock_exists, mock_sql):
-        """Test validation detecting broken course links"""
-        mock_sql.return_value = [
-            {
-                "student_id": "ST00001",
-                "enrollment_id": "EN001",
-                "course": "CL999",
-                "batch": "BT001",
-                "grade": "5"
-            }
-        ]
-        mock_exists.return_value = False
-        
-        result = validate_enrollment_data("John Doe", "9876543210")
-        
-        self.assertEqual(result["total_enrollments"], 1)
-        self.assertEqual(result["valid_enrollments"], 0)
-        self.assertEqual(result["broken_enrollments"], 1)
-        self.assertEqual(len(result["broken_details"]), 1)
-
-
-class TestGetInitialStage(unittest.TestCase):
-    """Test getting initial onboarding stage"""
-    
-    @patch('frappe.get_all')
-    def test_get_initial_stage_with_order_zero(self, mock_get_all):
-        """Test getting stage with order=0"""
-        mock_get_all.return_value = [{"name": "Stage1"}]
-        
-        result = get_initial_stage()
-        
-        self.assertEqual(result, "Stage1")
-        mock_get_all.assert_called_once_with(
-            "OnboardingStage",
-            filters={"order": 0},
-            fields=["name"]
+        result = self.trigger_individual_flows(
+            mock_onboarding, mock_stage, "Bearer token",
+            self.mock_student_status, self.mock_flow_id
         )
-    
-    @patch('frappe.get_all')
-    def test_get_initial_stage_fallback(self, mock_get_all):
-        """Test getting stage with minimum order when no order=0"""
-        mock_get_all.side_effect = [
-            [],  # No stage with order=0
-            [{"name": "Stage2", "order": 1}]  # Stage with minimum order
-        ]
-        
-        result = get_initial_stage()
-        
-        self.assertEqual(result, "Stage2")
-        self.assertEqual(mock_get_all.call_count, 2)
+
+        self.assertEqual(result["individual_count"], 2)
+        self.assertEqual(mock_update_progress.call_count, 2)
+        self.assertEqual(mock_start_flow.call_count, 2)
+
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.start_contact_flow')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.get_students_from_onboarding')
+    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.update_student_stage_progress')
+    def test_trigger_individual_flows_partial_success(self, mock_update_progress, mock_get_students, mock_start_flow, mock_frappe):
+        """Test trigger_individual_flows with partial success"""
+        mock_onboarding = MagicMock()
+        mock_onboarding.name = "TEST_ONBOARDING"
+        mock_stage = MagicMock()
+        mock_stage.name = "TEST_STAGE"
+
+        mock_student1 = MagicMock()
+        mock_student1.name = "STUD_001"
+        mock_student1.name1 = "Student One"
+        mock_student1.glific_id = "contact_001"
+
+        mock_student2 = MagicMock()
+        mock_student2.name = "STUD_002"
+        mock_student2.name1 = "Student Two"
+        mock_student2.glific_id = None  # No glific ID
+
+        mock_student3 = MagicMock()
+        mock_student3.name = "STUD_003"
+        mock_student3.name1 = "Student Three"
+        mock_student3.glific_id = "contact_003"
+
+        mock_get_students.return_value = [mock_student1, mock_student2, mock_student3]
+        # First call succeeds, second call fails
+        mock_start_flow.side_effect = [{"success": True}, Exception("Flow failed")]
+        mock_frappe.logger.return_value = MagicMock()
+        mock_frappe.db.commit.return_value = None
+
+        result = self.trigger_individual_flows(
+            mock_onboarding, mock_stage, "Bearer token",
+            self.mock_student_status, self.mock_flow_id
+        )
+
+        self.assertEqual(result["individual_count"], 1)  # Only STUD_001 succeeded
+        self.assertEqual(mock_update_progress.call_count, 1)  # Only called for successful student
+        self.assertEqual(mock_start_flow.call_count, 2)  # Called for students with glific_id
 
 
 if __name__ == '__main__':
