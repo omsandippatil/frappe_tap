@@ -1,46 +1,11 @@
-# import unittest
-# from tap_lms.page.backend_onboarding_process import backend_onboarding_process
-
-
-# class TestBackendOnboardingProcess(unittest.TestCase):
-
-#     def test_normalize_phone_number_valid_10_digit(self):
-#         phone_12, phone_10 = backend_onboarding_process.normalize_phone_number("9876543210")
-#         self.assertEqual(phone_12, "919876543210")
-#         self.assertEqual(phone_10, "9876543210")
-
-#     def test_normalize_phone_number_valid_12_digit(self):
-#         phone_12, phone_10 = backend_onboarding_process.normalize_phone_number("919876543210")
-#         self.assertEqual(phone_12, "919876543210")
-#         self.assertEqual(phone_10, "9876543210")
-
-#     def test_normalize_phone_number_invalid(self):
-#         phone_12, phone_10 = backend_onboarding_process.normalize_phone_number("123")
-#         self.assertIsNone(phone_12)
-#         self.assertIsNone(phone_10)
-
-#     def test_find_existing_student_by_phone_and_name_none(self):
-#         result = backend_onboarding_process.find_existing_student_by_phone_and_name(None, None)
-#         self.assertIsNone(result)
-
-
-# if __name__ == "__main__":
-#     unittest.main()
-
-
-
 import unittest
 from unittest.mock import Mock, patch, MagicMock, call
 from datetime import datetime, timedelta
 import sys
 import os
 
-# Instructions for running this test:
-# 1. Update the BACKEND_MODULE_PATH below to match your actual file location
-# 2. The backend_student_onboarding.py file should be in your app's directory structure
-
-# Based on your file structure: tap_lms/tap_lms/page/backend_onboarding_process/
-BACKEND_MODULE_PATH = 'tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process'
+# The correct import path based on your actual file structure
+BACKEND_MODULE_PATH = 'tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process'
 
 class TestBackendStudentOnboarding(unittest.TestCase):
 
@@ -63,7 +28,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
         })
         self.frappe_patcher.start()
 
-        # Import the module - this will need to be updated based on your file structure
+        # Import the module with correct path
         try:
             self.backend_module = __import__(BACKEND_MODULE_PATH, fromlist=[''])
         except ImportError as e:
@@ -112,7 +77,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
     # ============= Student Finding Tests =============
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_find_existing_student_by_phone_and_name_found(self, mock_frappe):
         """Test find_existing_student_by_phone_and_name when student exists"""
         mock_frappe.db.sql.return_value = [
@@ -124,7 +89,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["name"], "STUD_001")
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_find_existing_student_by_phone_and_name_not_found(self, mock_frappe):
         """Test find_existing_student_by_phone_and_name when student doesn't exist"""
         mock_frappe.db.sql.return_value = []
@@ -145,7 +110,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
     # ============= Batch Management Tests =============
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_get_onboarding_batches(self, mock_frappe):
         """Test get_onboarding_batches returns draft batches"""
         mock_frappe.get_all.return_value = [
@@ -165,9 +130,9 @@ class TestBackendStudentOnboarding(unittest.TestCase):
         self.assertEqual(result[0]["name"], "BSO_001")
         mock_frappe.get_all.assert_called_once()
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
-    @patch(f'{BACKEND_MODULE_PATH}.validate_student')
-    def test_get_batch_details(self, mock_validate, mock_frappe):
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.validate_student')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
+    def test_get_batch_details(self, mock_frappe, mock_validate):
         """Test get_batch_details returns batch and student data"""
         mock_batch = MagicMock()
         mock_frappe.get_doc.return_value = mock_batch
@@ -185,7 +150,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
     # ============= Student Validation Tests =============
 
-    @patch(f'{BACKEND_MODULE_PATH}.find_existing_student_by_phone_and_name')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.find_existing_student_by_phone_and_name')
     def test_validate_student_missing_required_fields(self, mock_find):
         """Test validate_student with missing required fields"""
         mock_find.return_value = None
@@ -205,7 +170,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
         self.assertEqual(result["student_name"], "missing")
         self.assertEqual(result["school"], "missing")
 
-    @patch(f'{BACKEND_MODULE_PATH}.find_existing_student_by_phone_and_name')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.find_existing_student_by_phone_and_name')
     def test_validate_student_duplicate_found(self, mock_find):
         """Test validate_student with duplicate student"""
         student = {
@@ -229,7 +194,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
     # ============= Student Type Determination Tests =============
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_determine_student_type_backend_new_student(self, mock_frappe):
         """Test determine_student_type_backend for new student"""
         mock_frappe.db.sql.return_value = []  # No existing student
@@ -241,7 +206,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
         self.assertEqual(result, "New")
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_determine_student_type_backend_old_student_same_vertical(self, mock_frappe):
         """Test determine_student_type_backend for old student with same vertical"""
         # Mock existing student
@@ -258,7 +223,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
         self.assertEqual(result, "Old")
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_determine_student_type_backend_invalid_phone(self, mock_frappe):
         """Test determine_student_type_backend with invalid phone"""
         mock_frappe.log_error = MagicMock()
@@ -271,7 +236,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
     # ============= Process Batch Tests =============
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_process_batch_background_job(self, mock_frappe):
         """Test process_batch with background job"""
         mock_batch = MagicMock()
@@ -286,9 +251,9 @@ class TestBackendStudentOnboarding(unittest.TestCase):
         self.assertEqual(result["job_id"], "job_123")
         mock_frappe.enqueue.assert_called_once()
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
-    @patch(f'{BACKEND_MODULE_PATH}.process_batch_job')
-    def test_process_batch_immediate(self, mock_process_job, mock_frappe):
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.process_batch_job')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
+    def test_process_batch_immediate(self, mock_frappe, mock_process_job):
         """Test process_batch with immediate processing"""
         mock_batch = MagicMock()
         mock_frappe.get_doc.return_value = mock_batch
@@ -301,7 +266,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
     # ============= Academic Year Tests =============
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_get_current_academic_year_backend_april_onwards(self, mock_frappe):
         """Test get_current_academic_year_backend for April onwards"""
         mock_date = MagicMock()
@@ -314,7 +279,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
         self.assertEqual(result, "2025-26")
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
     def test_get_current_academic_year_backend_before_april(self, mock_frappe):
         """Test get_current_academic_year_backend for before April"""
         mock_date = MagicMock()
@@ -327,7 +292,7 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
         self.assertEqual(result, "2024-25")
 
-    # ============= Error Handling Tests =============
+    # ============= Utility Function Tests =============
 
     def test_format_phone_number_valid(self):
         """Test format_phone_number with valid input"""
@@ -346,10 +311,10 @@ class TestBackendStudentOnboarding(unittest.TestCase):
 
     # ============= Job Status Tests =============
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
     @patch('rq.job.Job')
-    @patch(f'{BACKEND_MODULE_PATH}.get_redis_conn')
-    def test_get_job_status_completed(self, mock_redis, mock_job_class, mock_frappe):
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.get_redis_conn')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
+    def test_get_job_status_completed(self, mock_frappe, mock_redis, mock_job_class):
         """Test get_job_status for completed job"""
         mock_conn = MagicMock()
         mock_redis.return_value = mock_conn
@@ -365,10 +330,10 @@ class TestBackendStudentOnboarding(unittest.TestCase):
         self.assertEqual(result["status"], "Completed")
         self.assertEqual(result["result"], {"success": True})
 
-    @patch(f'{BACKEND_MODULE_PATH}.frappe')
     @patch('rq.job.Job')
-    @patch(f'{BACKEND_MODULE_PATH}.get_redis_conn')
-    def test_get_job_status_not_found(self, mock_redis, mock_job_class, mock_frappe):
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.get_redis_conn')
+    @patch('tap_lms.tap_lms.tap_lms.page.backend_onboarding_process.backend_onboarding_process.frappe')
+    def test_get_job_status_not_found(self, mock_frappe, mock_redis, mock_job_class):
         """Test get_job_status for non-existent job"""
         mock_conn = MagicMock()
         mock_redis.return_value = mock_conn
@@ -380,5 +345,4 @@ class TestBackendStudentOnboarding(unittest.TestCase):
         self.assertEqual(result["status"], "Not Found")
 
 # if __name__ == '__main__':
-#     # Run specific test methods or all tests
 #     unittest.main(verbosity=2)
