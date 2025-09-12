@@ -1,5 +1,5 @@
 import unittest
-from tap_lms import backend_onboarding_process
+from tap_lms.page.backend_onboarding_process import backend_onboarding_process
 
 
 class TestBackendOnboardingProcess(unittest.TestCase):
