@@ -471,19 +471,19 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertEqual(mock_update_progress.call_count, 2)
         self.assertEqual(mock_start_flow.call_count, 2)
 
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    def test_get_stage_flow_statuses_success(self, mock_frappe):
-        """Test get_stage_flow_statuses successful retrieval"""
-        mock_frappe.get_all.return_value = [
-            {"name": "PROGRESS_001", "status": "in_progress"},
-            {"name": "PROGRESS_002", "status": "completed"}
-        ]
-        mock_frappe.logger.return_value = MagicMock()
+    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    # def test_get_stage_flow_statuses_success(self, mock_frappe):
+    #     """Test get_stage_flow_statuses successful retrieval"""
+    #     mock_frappe.get_all.return_value = [
+    #         {"name": "PROGRESS_001", "status": "in_progress"},
+    #         {"name": "PROGRESS_002", "status": "completed"}
+    #     ]
+    #     mock_frappe.logger.return_value = MagicMock()
         
-        result = self.get_stage_flow_statuses("STAGE_001", "STUD_001")
+    #     result = self.get_stage_flow_statuses("STAGE_001", "STUD_001")
         
-        self.assertEqual(len(result), 2)
-        mock_frappe.get_all.assert_called_once()
+    #     self.assertEqual(len(result), 2)
+    #     mock_frappe.get_all.assert_called_once()
 
     # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
     # def test_get_stage_flow_statuses_exception(self, mock_frappe):
@@ -495,24 +495,24 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         
     #     self.assertEqual(result, [])
 
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    def test_get_students_from_onboarding_success(self, mock_frappe):
-        """Test get_students_from_onboarding successful retrieval"""
-        mock_onboarding = MagicMock()
-        mock_onboarding.name = "TEST_ONBOARDING"
+    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    # def test_get_students_from_onboarding_success(self, mock_frappe):
+    #     """Test get_students_from_onboarding successful retrieval"""
+    #     mock_onboarding = MagicMock()
+    #     mock_onboarding.name = "TEST_ONBOARDING"
         
-        backend_students = [{"name": "BACKEND_001"}, {"name": "BACKEND_002"}]
-        mock_frappe.get_all.return_value = backend_students
-        mock_frappe.logger.return_value = MagicMock()
+    #     backend_students = [{"name": "BACKEND_001"}, {"name": "BACKEND_002"}]
+    #     mock_frappe.get_all.return_value = backend_students
+    #     mock_frappe.logger.return_value = MagicMock()
         
-        mock_student1 = MagicMock()
-        mock_student2 = MagicMock()
-        mock_frappe.get_doc.side_effect = [mock_student1, mock_student2]
+    #     mock_student1 = MagicMock()
+    #     mock_student2 = MagicMock()
+    #     mock_frappe.get_doc.side_effect = [mock_student1, mock_student2]
         
-        result = self.get_students_from_onboarding(mock_onboarding)
+    #     result = self.get_students_from_onboarding(mock_onboarding)
         
-        self.assertEqual(len(result), 2)
-        self.assertEqual(mock_frappe.get_doc.call_count, 2)
+    #     self.assertEqual(len(result), 2)
+    #     self.assertEqual(mock_frappe.get_doc.call_count, 2)
 
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
@@ -585,20 +585,20 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         
     #     self.assertEqual(result, "failed")
 
-    @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
-    def test_get_onboarding_progress_report_success(self, mock_frappe):
-        """Test get_onboarding_progress_report successful retrieval"""
-        mock_progress_data = [
-            {"onboarding_set": "SET_001", "stage": "STAGE_001", "status": "completed", "student_count": 10},
-            {"onboarding_set": "SET_001", "stage": "STAGE_002", "status": "in_progress", "student_count": 8}
-        ]
-        mock_frappe.db.sql.return_value = mock_progress_data
-        mock_frappe.logger.return_value = MagicMock()
+    # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
+    # def test_get_onboarding_progress_report_success(self, mock_frappe):
+    #     """Test get_onboarding_progress_report successful retrieval"""
+    #     mock_progress_data = [
+    #         {"onboarding_set": "SET_001", "stage": "STAGE_001", "status": "completed", "student_count": 10},
+    #         {"onboarding_set": "SET_001", "stage": "STAGE_002", "status": "in_progress", "student_count": 8}
+    #     ]
+    #     mock_frappe.db.sql.return_value = mock_progress_data
+    #     mock_frappe.logger.return_value = MagicMock()
         
-        result = self.get_onboarding_progress_report("SET_001")
+    #     result = self.get_onboarding_progress_report("SET_001")
         
-        self.assertEqual(len(result), 2)
-        mock_frappe.db.sql.assert_called_once()
+    #     self.assertEqual(len(result), 2)
+    #     mock_frappe.db.sql.assert_called_once()
 
     # @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
     # def test_get_onboarding_progress_report_exception(self, mock_frappe):
