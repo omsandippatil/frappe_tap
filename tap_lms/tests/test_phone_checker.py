@@ -7,13 +7,8 @@ from unittest.mock import Mock, patch, MagicMock, call
 from pathlib import Path
 import sys
 
-# Add the module to path if needed
-# sys.path.insert(0, '/path/to/your/module')
-
-# Import the functions to test
-# Assuming they are in a module called phone_checker
-# Adjust this import based on your actual module name
-from phone_checker import norm_last10, check_missing_phones
+# Import the functions to test using relative import since we're inside tap_lms package
+from ..utils.phone_checker import norm_last10, check_missing_phones
 
 
 class TestNormLast10:
@@ -91,7 +86,7 @@ class TestCheckMissingPhones:
                     results.append(row[0])
         return results
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_basic_functionality(self, mock_frappe, temp_dir):
         """Test basic phone comparison functionality"""
         # Setup test data
@@ -128,7 +123,7 @@ class TestCheckMissingPhones:
         assert '8765432109' in missing
         assert '6543210987' in extras
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_with_glific_id(self, mock_frappe, temp_dir):
         """Test including glific_id in comparison"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -159,7 +154,7 @@ class TestCheckMissingPhones:
         assert '8765432109' in missing
         assert '7777777777' in extras
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_with_alt_phone(self, mock_frappe, temp_dir):
         """Test with alternative phone numbers"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -189,7 +184,7 @@ class TestCheckMissingPhones:
         assert '8765432109' in missing
         assert '5555555555' in extras
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_phone_normalization(self, mock_frappe, temp_dir):
         """Test phone number normalization in comparison"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -225,7 +220,7 @@ class TestCheckMissingPhones:
         assert '9876543210' not in missing
         assert '8765432109' not in missing
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_empty_csv(self, mock_frappe, temp_dir):
         """Test with empty CSV file"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -252,7 +247,7 @@ class TestCheckMissingPhones:
         assert len(missing) == 0
         assert '9876543210' in extras
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_no_students(self, mock_frappe, temp_dir):
         """Test when no students exist"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -277,7 +272,7 @@ class TestCheckMissingPhones:
         assert '8765432109' in missing
         assert len(extras) == 0
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_invalid_csv_no_phone_column(self, mock_frappe, temp_dir):
         """Test with CSV missing phone_number column"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -293,7 +288,7 @@ class TestCheckMissingPhones:
         
         assert "CSV must have a 'phone_number' column" in str(exc_info.value)
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_default_file_paths(self, mock_frappe, temp_dir):
         """Test with default file paths"""
         # Mock frappe.get_site_path to return temp paths
@@ -314,7 +309,7 @@ class TestCheckMissingPhones:
         assert os.path.exists(os.path.join(temp_dir, 'missing_phones_last10.csv'))
         assert os.path.exists(os.path.join(temp_dir, 'doctype_only_phones_last10.csv'))
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_relative_file_paths(self, mock_frappe, temp_dir):
         """Test with relative file paths"""
         def mock_site_path(*args):
@@ -338,7 +333,7 @@ class TestCheckMissingPhones:
         assert os.path.exists(os.path.join(temp_dir, 'test_missing.csv'))
         assert os.path.exists(os.path.join(temp_dir, 'test_extras.csv'))
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_duplicate_phones_in_csv(self, mock_frappe, temp_dir):
         """Test handling of duplicate phone numbers in CSV"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -368,7 +363,7 @@ class TestCheckMissingPhones:
         # Should only have one entry for missing number
         assert missing.count('8765432109') == 1
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_null_and_empty_phones(self, mock_frappe, temp_dir):
         """Test handling of null and empty phone values"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -403,7 +398,7 @@ class TestCheckMissingPhones:
         assert len(missing) == 0
         assert len(extras) == 0
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     def test_output_sorting(self, mock_frappe, temp_dir):
         """Test that output files have sorted phone numbers"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -440,7 +435,7 @@ class TestCheckMissingPhones:
         assert missing == ['1111111111', '2222222222', '3333333333']
         assert extras == ['7777777777', '8888888888', '9999999999']
     
-    @patch('phone_checker.frappe')
+    @patch('tap_lms.utils.phone_checker.frappe')
     @patch('builtins.print')
     def test_console_output(self, mock_print, mock_frappe, temp_dir):
         """Test console output messages"""
@@ -467,16 +462,3 @@ class TestCheckMissingPhones:
         assert any('CSV phones total' in str(call) for call in print_calls)
         assert any('Missing in Student: 2' in str(call) for call in print_calls)
         assert any('In Student only:   1' in str(call) for call in print_calls)
-
-
-# If you need to run tests with a real module that's in a different location
-# you can create a conftest.py file with:
-"""
-# conftest.py
-import sys
-import os
-
-# Add the tap_lms module to Python path if it's not already available
-# Adjust the path based on where you run the tests from
-sys.path.insert(0, os.path.abspath('.'))  # or '../' depending on your structure
-"""
