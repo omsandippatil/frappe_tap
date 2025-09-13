@@ -476,6 +476,7 @@ class TestCheckMissingPhones:
 import sys
 import os
 
-# Add the directory containing your module to Python path
-sys.path.insert(0, os.path.abspath('/path/to/your/module/directory'))
+# Add the tap_lms module to Python path if it's not already available
+# Adjust the path based on where you run the tests from
+sys.path.insert(0, os.path.abspath('.'))  # or '../' depending on your structure
 """
