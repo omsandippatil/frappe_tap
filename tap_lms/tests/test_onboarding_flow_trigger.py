@@ -950,7 +950,7 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertEqual(mock_start_flow.call_count, 2)  # Called for students with glific_id
 
     # ============= ADDITIONAL TESTS TO INCREASE COVERAGE =============
-    
+    # Replace the failing test with this corrected version
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
     def test_get_students_from_onboarding_with_successful_students(self, mock_frappe):
         """Test get_students_from_onboarding with successful backend students"""
@@ -958,8 +958,8 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         mock_onboarding.name = self.mock_onboarding_set
         
         backend_students = [
-            {"student_id": "STUD_001"},
-            {"student_id": "STUD_002"}
+            {"student_id": "STUD_001", "processing_status": "Success"},  # Added processing_status
+            {"student_id": "STUD_002", "processing_status": "Success"}   # Added processing_status
         ]
         
         mock_student1 = MagicMock()
@@ -976,7 +976,7 @@ class TestOnboardingFlowFunctions(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "STUD_001")
         self.assertEqual(result[1].name, "STUD_002")
-    
+        
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.frappe')
     @patch('tap_lms.tap_lms.page.onboarding_flow_trigger.onboarding_flow_trigger.now_datetime')
     def test_update_student_stage_progress_update_existing(self, mock_now, mock_frappe):
