@@ -3,12 +3,17 @@ import os
 import csv
 import tempfile
 import shutil
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, call
 from pathlib import Path
+import sys
 
-# Import the module containing the functions to test
-# Adjust this import based on your actual module structure
-# from your_module import norm_last10, check_missing_phones
+# Add the module to path if needed
+# sys.path.insert(0, '/path/to/your/module')
+
+# Import the functions to test
+# Assuming they are in a module called phone_checker
+# Adjust this import based on your actual module name
+from phone_checker import norm_last10, check_missing_phones
 
 
 class TestNormLast10:
@@ -67,16 +72,6 @@ class TestCheckMissingPhones:
         yield temp_dir
         shutil.rmtree(temp_dir)
     
-    @pytest.fixture
-    def mock_frappe(self):
-        """Mock frappe module"""
-        with patch('frappe.get_site_path') as mock_get_site_path, \
-             patch('frappe.get_all') as mock_get_all:
-            yield {
-                'get_site_path': mock_get_site_path,
-                'get_all': mock_get_all
-            }
-    
     def create_test_csv(self, filepath, phone_numbers):
         """Helper to create test CSV files"""
         with open(filepath, 'w', newline='', encoding='utf-8') as f:
@@ -96,7 +91,8 @@ class TestCheckMissingPhones:
                     results.append(row[0])
         return results
     
-    def test_basic_functionality(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_basic_functionality(self, mock_frappe, temp_dir):
         """Test basic phone comparison functionality"""
         # Setup test data
         input_csv = os.path.join(temp_dir, 'phones.csv')
@@ -111,7 +107,7 @@ class TestCheckMissingPhones:
         ])
         
         # Mock frappe.get_all to return Student data
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {'name': 'STU001', 'phone': '9876543210', 'alt_phone': None},
             {'name': 'STU002', 'phone': '6543210987', 'alt_phone': None}
         ]
@@ -132,7 +128,8 @@ class TestCheckMissingPhones:
         assert '8765432109' in missing
         assert '6543210987' in extras
     
-    def test_with_glific_id(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_with_glific_id(self, mock_frappe, temp_dir):
         """Test including glific_id in comparison"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -140,7 +137,7 @@ class TestCheckMissingPhones:
         
         self.create_test_csv(input_csv, ['9876543210', '8765432109'])
         
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {
                 'name': 'STU001',
                 'phone': '9876543210',
@@ -162,7 +159,8 @@ class TestCheckMissingPhones:
         assert '8765432109' in missing
         assert '7777777777' in extras
     
-    def test_with_alt_phone(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_with_alt_phone(self, mock_frappe, temp_dir):
         """Test with alternative phone numbers"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -170,7 +168,7 @@ class TestCheckMissingPhones:
         
         self.create_test_csv(input_csv, ['9876543210', '8765432109'])
         
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {
                 'name': 'STU001',
                 'phone': '9876543210',
@@ -191,7 +189,8 @@ class TestCheckMissingPhones:
         assert '8765432109' in missing
         assert '5555555555' in extras
     
-    def test_phone_normalization(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_phone_normalization(self, mock_frappe, temp_dir):
         """Test phone number normalization in comparison"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -205,7 +204,7 @@ class TestCheckMissingPhones:
         ])
         
         # Students have plain numbers
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {'name': 'STU001', 'phone': '9876543210', 'alt_phone': None},
             {'name': 'STU002', 'phone': '+918765432109', 'alt_phone': None}
         ]
@@ -226,7 +225,8 @@ class TestCheckMissingPhones:
         assert '9876543210' not in missing
         assert '8765432109' not in missing
     
-    def test_empty_csv(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_empty_csv(self, mock_frappe, temp_dir):
         """Test with empty CSV file"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -235,7 +235,7 @@ class TestCheckMissingPhones:
         # Create empty CSV (only header)
         self.create_test_csv(input_csv, [])
         
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {'name': 'STU001', 'phone': '9876543210', 'alt_phone': None}
         ]
         
@@ -252,7 +252,8 @@ class TestCheckMissingPhones:
         assert len(missing) == 0
         assert '9876543210' in extras
     
-    def test_no_students(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_no_students(self, mock_frappe, temp_dir):
         """Test when no students exist"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -260,7 +261,7 @@ class TestCheckMissingPhones:
         
         self.create_test_csv(input_csv, ['9876543210', '8765432109'])
         
-        mock_frappe['get_all'].return_value = []
+        mock_frappe.get_all.return_value = []
         
         check_missing_phones(
             input_csv=input_csv,
@@ -276,7 +277,8 @@ class TestCheckMissingPhones:
         assert '8765432109' in missing
         assert len(extras) == 0
     
-    def test_invalid_csv_no_phone_column(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_invalid_csv_no_phone_column(self, mock_frappe, temp_dir):
         """Test with CSV missing phone_number column"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         
@@ -291,14 +293,15 @@ class TestCheckMissingPhones:
         
         assert "CSV must have a 'phone_number' column" in str(exc_info.value)
     
-    def test_default_file_paths(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_default_file_paths(self, mock_frappe, temp_dir):
         """Test with default file paths"""
         # Mock frappe.get_site_path to return temp paths
         def mock_site_path(*args):
             return os.path.join(temp_dir, *args[2:])
         
-        mock_frappe['get_site_path'].side_effect = mock_site_path
-        mock_frappe['get_all'].return_value = []
+        mock_frappe.get_site_path.side_effect = mock_site_path
+        mock_frappe.get_all.return_value = []
         
         # Create default input file
         default_input = os.path.join(temp_dir, 'phones.csv')
@@ -311,13 +314,14 @@ class TestCheckMissingPhones:
         assert os.path.exists(os.path.join(temp_dir, 'missing_phones_last10.csv'))
         assert os.path.exists(os.path.join(temp_dir, 'doctype_only_phones_last10.csv'))
     
-    def test_relative_file_paths(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_relative_file_paths(self, mock_frappe, temp_dir):
         """Test with relative file paths"""
         def mock_site_path(*args):
             return os.path.join(temp_dir, *args[2:])
         
-        mock_frappe['get_site_path'].side_effect = mock_site_path
-        mock_frappe['get_all'].return_value = []
+        mock_frappe.get_site_path.side_effect = mock_site_path
+        mock_frappe.get_all.return_value = []
         
         # Create input file
         input_file = os.path.join(temp_dir, 'test_phones.csv')
@@ -334,7 +338,8 @@ class TestCheckMissingPhones:
         assert os.path.exists(os.path.join(temp_dir, 'test_missing.csv'))
         assert os.path.exists(os.path.join(temp_dir, 'test_extras.csv'))
     
-    def test_duplicate_phones_in_csv(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_duplicate_phones_in_csv(self, mock_frappe, temp_dir):
         """Test handling of duplicate phone numbers in CSV"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -347,7 +352,7 @@ class TestCheckMissingPhones:
             '8765432109'
         ])
         
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {'name': 'STU001', 'phone': '9876543210', 'alt_phone': None}
         ]
         
@@ -363,7 +368,8 @@ class TestCheckMissingPhones:
         # Should only have one entry for missing number
         assert missing.count('8765432109') == 1
     
-    def test_null_and_empty_phones(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_null_and_empty_phones(self, mock_frappe, temp_dir):
         """Test handling of null and empty phone values"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -378,7 +384,7 @@ class TestCheckMissingPhones:
             writer.writerow({'phone_number': None})  # None
             writer.writerow({'phone_number': '   '})  # Whitespace
         
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {'name': 'STU001', 'phone': None, 'alt_phone': ''},
             {'name': 'STU002', 'phone': '9876543210', 'alt_phone': '   '}
         ]
@@ -397,7 +403,8 @@ class TestCheckMissingPhones:
         assert len(missing) == 0
         assert len(extras) == 0
     
-    def test_output_sorting(self, temp_dir, mock_frappe):
+    @patch('phone_checker.frappe')
+    def test_output_sorting(self, mock_frappe, temp_dir):
         """Test that output files have sorted phone numbers"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -409,7 +416,7 @@ class TestCheckMissingPhones:
             '2222222222'
         ])
         
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {'name': 'STU001', 'phone': '9999999999', 'alt_phone': None},
             {'name': 'STU002', 'phone': '7777777777', 'alt_phone': None},
             {'name': 'STU003', 'phone': '8888888888', 'alt_phone': None}
@@ -433,8 +440,9 @@ class TestCheckMissingPhones:
         assert missing == ['1111111111', '2222222222', '3333333333']
         assert extras == ['7777777777', '8888888888', '9999999999']
     
+    @patch('phone_checker.frappe')
     @patch('builtins.print')
-    def test_console_output(self, mock_print, temp_dir, mock_frappe):
+    def test_console_output(self, mock_print, mock_frappe, temp_dir):
         """Test console output messages"""
         input_csv = os.path.join(temp_dir, 'phones.csv')
         out_missing = os.path.join(temp_dir, 'missing.csv')
@@ -442,7 +450,7 @@ class TestCheckMissingPhones:
         
         self.create_test_csv(input_csv, ['9876543210', '8765432109'])
         
-        mock_frappe['get_all'].return_value = [
+        mock_frappe.get_all.return_value = [
             {'name': 'STU001', 'phone': '7654321098', 'alt_phone': None}
         ]
         
@@ -459,3 +467,15 @@ class TestCheckMissingPhones:
         assert any('CSV phones total' in str(call) for call in print_calls)
         assert any('Missing in Student: 2' in str(call) for call in print_calls)
         assert any('In Student only:   1' in str(call) for call in print_calls)
+
+
+# If you need to run tests with a real module that's in a different location
+# you can create a conftest.py file with:
+"""
+# conftest.py
+import sys
+import os
+
+# Add the directory containing your module to Python path
+sys.path.insert(0, os.path.abspath('/path/to/your/module/directory'))
+"""
