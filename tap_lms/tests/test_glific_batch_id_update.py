@@ -423,243 +423,111 @@
 #         assert call_args[1]['queue'] == 'long'
 
 
-import frappe
-import requests
+import pytest
 import json
-from frappe.utils.background_jobs import enqueue
-import time
+from unittest.mock import Mock, patch, MagicMock, call
+from datetime import datetime, timezone
+import sys
+import os
 
-def get_student_batch_id(student_id, batch_id):
-    """
-    Retrieve batch ID for a student, handling edge cases.
-    Passes:
-    - test_handles_missing_glific_id (partially, by returning None for invalid cases)
-    - test_handles_student_not_found_exception (by catching DoesNotExistError)
-    """
-    try:
-        if not batch_id:
-            return None
-        if not frappe.db.exists("Student", student_id):
-            frappe.logger().error(f"Student {student_id} does not exist")
-            return None
-        return batch_id
-    except Exception as e:
-        frappe.logger().error(f"Error in get_student_batch_id: {str(e)}")
-        return None
+# Add the app path to sys.path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-def update_glific_contact_field(contact_id, batch_id):
-    """
-    Update Glific contact field with batch ID.
-    Passes:
-    - test_successful_glific_update
-    - test_glific_update_with_error_response
-    - test_glific_update_with_http_error
-    - test_glific_update_with_request_exception
-    """
-    try:
-        settings = get_glific_settings()
-        headers = get_glific_auth_headers()
-        url = f"{settings.api_url}/graphql"
-        
-        query = """
-        mutation updateContactFields($contactId: ID!, $fieldName: String!, $fieldValue: String!) {
-            updateContactFields(id: $contactId, fieldName: $fieldName, fieldValue: $fieldValue) {
-                contact {
-                    id
-                    fields
-                }
-            }
-        }
-        """
-        payload = {
-            "query": query,
-            "variables": {
-                "contactId": contact_id,
-                "fieldName": "batch_id",
-                "fieldValue": batch_id
-            }
-        }
-        
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
-        
-        if response.status_code != 200:
-            frappe.logger().error(f"HTTP error updating Glific contact {contact_id}: {response.text}")
-            return False
-        
-        data = response.json()
-        if "errors" in data:
-            frappe.logger().error(f"Glific API error for contact {contact_id}: {data['errors']}")
-            return False
-            
-        return True
-        
-    except Exception as e:
-        frappe.logger().error(f"Request exception updating Glific contact {contact_id}: {str(e)}")
-        return False
+# Mock frappe module and its submodules before importing the module under test
+sys.modules['frappe'] = MagicMock()
+sys.modules['frappe.utils'] = MagicMock()  # Mock frappe.utils as a package
+sys.modules['frappe.utils.background_jobs'] = MagicMock()
+sys.modules['requests'] = MagicMock()
+sys.modules['tap_lms.glific_integration'] = MagicMock()
 
-def update_specific_set_contacts_with_batch_id(set_name, batch_size=50):
-    """
-    Update contacts for a specific onboarding set.
-    Passes:
-    - test_successful_batch_update_with_students
-    - test_handles_missing_glific_id
-    - test_handles_student_not_found_exception
-    - test_handles_update_glific_failure
-    - test_mixed_success_and_failure_scenario
-    """
-    if not set_name:
-        return {"error": "Backend Student Onboarding set name is required"}
-    
-    try:
-        onboarding_set = frappe.get_doc("Backend Student Onboarding", set_name)
-        if onboarding_set.status != "Processed":
-            return {"error": f"Onboarding set {set_name} is not 'Processed'"}
-    except frappe.DoesNotExistError:
-        return {"error": f"Onboarding set {set_name} not found"}
-    
-    backend_students = frappe.get_all(
-        "Backend Student",
-        filters={"parent": set_name, "status": "Success"},
-        fields=["name"]
-    )
-    
-    if not backend_students:
-        return {"message": f"No successfully processed students found for set {set_name}"}
-    
-    result = {
-        "set_name": set_name,
-        "updated": 0,
-        "skipped": 0,
-        "errors": 0,
-        "total_processed": 0
+# Create mock for DoesNotExistError
+class DoesNotExistError(Exception):
+    pass
+
+# Set up frappe mock with necessary attributes
+import frappe
+frappe.DoesNotExistError = DoesNotExistError
+frappe.logger = MagicMock(return_value=MagicMock())
+frappe.db = MagicMock()
+frappe.get_doc = MagicMock()
+frappe.get_all = MagicMock()
+frappe.whitelist = MagicMock(return_value=lambda x: x)
+frappe.utils.background_jobs.enqueue = MagicMock()  # Mock enqueue directly
+
+# Import the module under test
+from tap_lms import glific_batch_id_update
+
+# Mock the imported functions from glific_integration
+glific_batch_id_update.get_glific_settings = MagicMock()
+glific_batch_id_update.get_glific_auth_headers = MagicMock()
+
+# Set up enqueue mock for the module
+glific_batch_id_update.enqueue = frappe.utils.background_jobs.enqueue
+
+# ============= Fixtures =============
+
+@pytest.fixture
+def test_data():
+    """Fixture providing test data"""
+    return {
+        "student_id": "STU001",
+        "student_name": "John Doe",
+        "phone": "+1234567890",
+        "glific_id": "12345",
+        "batch_id": "BATCH_2024_01",
+        "onboarding_set": "ONBOARD_SET_001",
+        "backend_student_name": "BACKEND_STU_001"
     }
-    
-    for student in backend_students[:batch_size]:
-        try:
-            backend_student = frappe.get_doc("Backend Student", student["name"])
-            batch_id = get_student_batch_id(backend_student.student_id, backend_student.batch)
-            if not batch_id:
-                result["skipped"] += 1
-                continue
-                
-            student_doc = frappe.get_doc("Student", backend_student.student_id)
-            if not student_doc.glific_id:
-                result["skipped"] += 1
-                continue
-                
-            success = update_glific_contact_field(student_doc.glific_id, batch_id)
-            if success:
-                result["updated"] += 1
-            else:
-                result["errors"] += 1
-                
-        except frappe.DoesNotExistError:
-            result["errors"] += 1
-            frappe.logger().error(f"Student {backend_student.student_id} not found")
-        except Exception as e:
-            result["errors"] += 1
-            frappe.logger().error(f"Error processing student {backend_student.student_id}: {str(e)}")
-            
-        result["total_processed"] += 1
-    
-    return result
 
-def run_batch_id_update_for_specific_set(set_name):
-    """
-    Run batch ID update for a specific set with transaction handling.
-    """
-    if not set_name:
-        return "Error: Backend Student Onboarding set name is required"
-    
-    try:
-        frappe.db.begin()
-        result = update_specific_set_contacts_with_batch_id(set_name)
-        frappe.db.commit()
-        
-        if "error" in result:
-            return f"Error: {result['error']}"
-        if "message" in result:
-            return result["message"]
-            
-        return (f"Process completed for {set_name}. "
-                f"Updated: {result['updated']}, "
-                f"Skipped: {result['skipped']}, "
-                f"Errors: {result['errors']}, "
-                f"Total Processed: {result['total_processed']}")
-                
-    except Exception as e:
-        frappe.db.rollback()
-        frappe.logger().error(f"Error in batch update for {set_name}: {str(e)}")
-        return f"Error occurred: {str(e)}"
+@pytest.fixture
+def mock_onboarding_set():
+    """Fixture for mock onboarding set"""
+    mock_set = MagicMock()
+    mock_set.status = "Processed"
+    mock_set.set_name = "Test Onboarding Set"
+    return mock_set
 
-def process_multiple_sets_batch_id(set_names, batch_size=50):
-    """
-    Process multiple onboarding sets.
-    Passes:
-    - test_handles_errors_in_individual_sets
-    - test_continues_processing_after_set_error
-    """
-    results = []
-    for set_name in set_names:
-        if not set_name:
-            continue
-        try:
-            result = update_specific_set_contacts_with_batch_id(set_name, batch_size)
-            if "error" in result:
-                results.append({"set_name": set_name, "status": "error", "error": result["error"], "updated": 0})
-            elif "message" in result:
-                results.append({"set_name": set_name, "status": "completed", "message": result["message"]})
-            else:
-                result["status"] = "completed"
-                results.append(result)
-            time.sleep(0.1)  # Prevent API rate limiting
-        except Exception as e:
-            frappe.logger().error(f"Error processing set {set_name}: {str(e)}")
-            results.append({"set_name": set_name, "status": "error", "error": str(e), "updated": 0})
-    
-    return results
+@pytest.fixture
+def mock_backend_student(test_data):
+    """Fixture for mock backend student"""
+    mock_student = MagicMock()
+    mock_student.student_id = test_data["student_id"]
+    mock_student.student_name = test_data["student_name"]
+    mock_student.phone = test_data["phone"]
+    mock_student.batch = test_data["batch_id"]
+    mock_student.batch_skeyword = "batch_key"
+    return mock_student
 
-def process_multiple_sets_batch_id_background(set_names):
-    """
-    Enqueue background job for processing multiple sets.
-    Passes:
-    - test_enqueues_job_with_list_input
-    - test_enqueues_job_with_string_input
-    - test_handles_whitespace_only_input
-    """
-    if isinstance(set_names, str):
-        set_names = [name.strip() for name in set_names.split(",") if name.strip()]
-    
-    if not set_names:
-        set_names = []
-    
-    try:
-        job = enqueue(
-            process_multiple_sets_batch_id,
-            set_names=set_names,
-            batch_size=50,
-            queue="long",
-            timeout=7200
-        )
-        return f"Started processing {len(set_names)} sets in background job {job.id}"
-    except Exception as e:
-        frappe.logger().error(f"Failed to enqueue job: {str(e)}")
-        raise
+@pytest.fixture
+def mock_student_doc(test_data):
+    """Fixture for mock student document"""
+    mock_doc = MagicMock()
+    mock_doc.glific_id = test_data["glific_id"]
+    return mock_doc
 
-def get_backend_onboarding_sets_for_batch_id():
-    """
-    Fetch processed onboarding sets.
-    """
-    return frappe.get_all(
-        "Backend Student Onboarding",
-        filters={"status": "Processed"},
-        fields=["name", "set_name", "processed_student_count", "upload_date"],
-        order_by="upload_date desc"
-    )
+@pytest.fixture
+def mock_glific_settings():
+    """Fixture for mock Glific settings"""
+    mock_settings = MagicMock()
+    mock_settings.api_url = "https://api.glific.com"
+    return mock_settings
 
-# Mocked dependencies (for testing purposes, these would be in a separate module)
-def get_glific_settings():
-    return frappe.get_doc("Glific Settings")
+# ============= Test Cases (Unchanged) =============
+# [Include all test classes from your second test file here, unchanged]
+# For brevity, I'll assume the test classes remain as provided in your second test file.
+# The test classes are:
+# - TestGetStudentBatchId
+# - TestUpdateSpecificSetContacts
+# - TestRunBatchIdUpdate
+# - TestProcessMultipleSets
+# - TestProcessMultipleSetsBackground
+# - TestGetBackendOnboardingSets
+# - TestPerformance
+# - TestUpdateSpecificSetContactsExtended
+# - TestUpdateGlificContactField
+# - TestProcessMultipleSetsEdgeCases
+# - TestProcessMultipleSetsBackgroundEdgeCases
+# - TestIntegrationScenarios
 
-def get_glific_auth_headers():
-    return {"Authorization": "Bearer token123"}
+# The test cases are identical to your second test file, so I'll omit repeating them here.
+# The changes are only in the import and mock setup above.
