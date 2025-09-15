@@ -189,152 +189,7 @@ class TestUpdateSpecificSetContacts:
         assert "message" in result
         assert "No successfully processed students" in result["message"]
     
-    # @patch('requests.post')
-    # @patch('tap_lms.glific_batch_id_update.frappe.logger')
-    # @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_all')
-    # def test_successfully_adds_batch_id_to_contact(self, mock_get_all, mock_get_doc, mock_exists,
-    #                                                mock_logger, mock_requests, test_data,
-    #                                                mock_onboarding_set, mock_backend_student,
-    #                                                mock_student_doc, mock_glific_settings):
-    #     """Test successful addition of batch_id to Glific contact"""
-    #     import requests
-        
-    #     # Setup mocks
-    #     mock_get_doc.side_effect = [mock_onboarding_set, mock_backend_student, mock_student_doc]
-    #     mock_exists.return_value = True
-    #     mock_get_all.return_value = [{
-    #         "name": test_data["backend_student_name"],
-    #         "student_name": test_data["student_name"],
-    #         "phone": test_data["phone"],
-    #         "student_id": test_data["student_id"],
-    #         "batch": test_data["batch_id"],
-    #         "batch_skeyword": "batch_key"
-    #     }]
-        
-    #     # Mock glific settings and headers
-    #     glific_batch_id_update.get_glific_settings.return_value = mock_glific_settings
-    #     glific_batch_id_update.get_glific_auth_headers.return_value = {"Authorization": "Bearer token"}
-        
-    #     # Mock Glific API responses
-    #     fetch_response = Mock()
-    #     fetch_response.status_code = 200
-    #     fetch_response.json.return_value = {
-    #         "data": {
-    #             "contact": {
-    #                 "contact": {
-    #                     "id": test_data["glific_id"],
-    #                     "name": test_data["student_name"],
-    #                     "phone": test_data["phone"],
-    #                     "fields": "{}"
-    #                 }
-    #             }
-    #         }
-    #     }
-        
-    #     update_response = Mock()
-    #     update_response.status_code = 200
-    #     update_response.json.return_value = {
-    #         "data": {
-    #             "updateContact": {
-    #                 "contact": {
-    #                     "id": test_data["glific_id"],
-    #                     "name": test_data["student_name"],
-    #                     "fields": json.dumps({"batch_id": {"value": test_data["batch_id"]}})
-    #                 }
-    #             }
-    #         }
-    #     }
-        
-    #     mock_requests.side_effect = [fetch_response, update_response]
-    #     requests.post = mock_requests
-        
-    #     result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
-        
-    #     assert result["updated"] == 1
-    #     assert result["skipped"] == 0
-    #     assert result["errors"] == 0
-    #     assert result["total_processed"] == 1
-    
-    # @patch('requests.post')
-    # @patch('tap_lms.glific_batch_id_update.frappe.logger')
-    # @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_all')
-    # def test_updates_existing_batch_id_field(self, mock_get_all, mock_get_doc, mock_exists,
-    #                                          mock_logger, mock_requests, test_data,
-    #                                          mock_onboarding_set, mock_backend_student,
-    #                                          mock_student_doc, mock_glific_settings):
-    #     """Test updating existing batch_id field with new value"""
-    #     import requests
-        
-    #     new_batch = "NEW_BATCH_2024"
-    #     mock_backend_student.batch = new_batch
-        
-    #     mock_get_doc.side_effect = [mock_onboarding_set, mock_backend_student, mock_student_doc]
-    #     mock_exists.return_value = True
-    #     mock_get_all.return_value = [{
-    #         "name": test_data["backend_student_name"],
-    #         "student_name": test_data["student_name"],
-    #         "phone": test_data["phone"],
-    #         "student_id": test_data["student_id"],
-    #         "batch": new_batch,
-    #         "batch_skeyword": "batch_key"
-    #     }]
-        
-    #     # Mock glific settings and headers
-    #     glific_batch_id_update.get_glific_settings.return_value = mock_glific_settings
-    #     glific_batch_id_update.get_glific_auth_headers.return_value = {"Authorization": "Bearer token"}
-        
-    #     # Contact already has batch_id
-    #     existing_fields = {
-    #         "batch_id": {
-    #             "value": "OLD_BATCH_2023",
-    #             "type": "string",
-    #             "inserted_at": "2023-01-01T00:00:00Z"
-    #         }
-    #     }
-        
-    #     fetch_response = Mock()
-    #     fetch_response.status_code = 200
-    #     fetch_response.json.return_value = {
-    #         "data": {
-    #             "contact": {
-    #                 "contact": {
-    #                     "id": test_data["glific_id"],
-    #                     "name": test_data["student_name"],
-    #                     "phone": test_data["phone"],
-    #                     "fields": json.dumps(existing_fields)
-    #                 }
-    #             }
-    #         }
-    #     }
-        
-    #     update_response = Mock()
-    #     update_response.status_code = 200
-    #     update_response.json.return_value = {
-    #         "data": {
-    #             "updateContact": {
-    #                 "contact": {
-    #                     "id": test_data["glific_id"],
-    #                     "name": test_data["student_name"],
-    #                     "fields": json.dumps({"batch_id": {"value": new_batch}})
-    #                 }
-    #             }
-    #         }
-    #     }
-        
-    #     mock_requests.side_effect = [fetch_response, update_response]
-    #     requests.post = mock_requests
-        
-    #     result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
-        
-    #     assert result["updated"] == 1
-    #     assert result["errors"] == 0
-
-
-# ============= Test run_batch_id_update_for_specific_set =============
+ 
 
 class TestRunBatchIdUpdate:
     """Test cases for run_batch_id_update_for_specific_set function"""
@@ -532,115 +387,6 @@ class TestGetBackendOnboardingSets:
 class TestIntegration:
     """Integration tests for complete workflows"""
     
-    # @patch('requests.post')
-    # @patch('tap_lms.glific_batch_id_update.frappe.logger')
-    # @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_all')
-    # def test_complete_batch_id_update_workflow(self, mock_get_all, mock_get_doc, mock_exists,
-    #                                            mock_logger, mock_requests):
-    #     """Test complete batch_id update workflow with multiple students"""
-    #     import requests
-        
-    #     # Setup mock onboarding set
-    #     mock_set = MagicMock()
-    #     mock_set.status = "Processed"
-    #     mock_set.set_name = "Integration Test Set"
-        
-    #     # Create test students with different scenarios
-    #     students_data = [
-    #         {"id": "STU001", "name": "Student 1", "batch": "BATCH_A", "glific": "1001"},
-    #         {"id": "STU002", "name": "Student 2", "batch": "BATCH_B", "glific": "1002"},
-    #         {"id": "STU003", "name": "Student 3", "batch": None, "glific": "1003"},  # No batch
-    #         {"id": "STU004", "name": "Student 4", "batch": "BATCH_A", "glific": None},  # No glific_id
-    #     ]
-        
-    #     mock_get_all.return_value = [
-    #         {
-    #             "name": f"BACKEND_{s['id']}",
-    #             "student_name": s['name'],
-    #             "phone": f"+123456789{i}",
-    #             "student_id": s['id'],
-    #             "batch": s['batch'],
-    #             "batch_skeyword": "key"
-    #         }
-    #         for i, s in enumerate(students_data)
-    #     ]
-        
-    #     # Setup get_doc returns
-    #     get_doc_returns = [mock_set]
-    #     for s in students_data:
-    #         backend_student = MagicMock()
-    #         backend_student.student_id = s['id']
-    #         backend_student.student_name = s['name']
-    #         backend_student.batch = s['batch']
-    #         get_doc_returns.append(backend_student)
-            
-    #         student_doc = MagicMock()
-    #         student_doc.glific_id = s['glific']
-    #         get_doc_returns.append(student_doc)
-        
-    #     mock_get_doc.side_effect = get_doc_returns
-    #     mock_exists.return_value = True
-        
-    #     # Mock Glific settings
-    #     mock_settings = MagicMock()
-    #     mock_settings.api_url = "https://api.glific.com"
-    #     glific_batch_id_update.get_glific_settings.return_value = mock_settings
-    #     glific_batch_id_update.get_glific_auth_headers.return_value = {"Authorization": "Bearer token"}
-        
-    #     # Mock API responses
-    #     api_responses = []
-    #     for s in students_data:
-    #         if s['glific']:
-    #             # Fetch response
-    #             fetch_resp = Mock()
-    #             fetch_resp.status_code = 200
-    #             fetch_resp.json.return_value = {
-    #                 "data": {
-    #                     "contact": {
-    #                         "contact": {
-    #                             "id": s['glific'],
-    #                             "name": s['name'],
-    #                             "fields": "{}"
-    #                         }
-    #                     }
-    #                 }
-    #             }
-    #             api_responses.append(fetch_resp)
-                
-    #             # Update response (only if batch exists)
-    #             if s['batch']:
-    #                 update_resp = Mock()
-    #                 update_resp.status_code = 200
-    #                 update_resp.json.return_value = {
-    #                     "data": {
-    #                         "updateContact": {
-    #                             "contact": {
-    #                                 "id": s['glific'],
-    #                                 "name": s['name'],
-    #                                 "fields": json.dumps({"batch_id": {"value": s['batch']}})
-    #                             }
-    #                         }
-    #                     }
-    #                 }
-    #                 api_responses.append(update_resp)
-        
-    #     mock_requests.side_effect = api_responses
-    #     requests.post = mock_requests
-        
-    #     # Execute
-    #     result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("Integration Test Set")
-        
-    #     # Verify results
-    #     assert result["set_name"] == "Integration Test Set"
-    #     assert result["updated"] == 2  # STU001 and STU002
-    #     assert result["skipped"] == 1  # STU003 (no batch)
-    #     assert result["errors"] == 1  # STU004 (no glific_id)
-    #     assert result["total_processed"] == 4
-
-
-# ============= Performance Tests =============
 
 class TestPerformance:
     """Performance-related test cases"""
@@ -681,92 +427,717 @@ class TestPerformance:
         assert call_args[1]['timeout'] == 7200  # 2 hours
         assert call_args[1]['queue'] == 'long'
 
+# Additional test cases to improve coverage for glific_batch_id_update.py
+# Add these to your existing test file
 
-# ============= Edge Case Tests =============
+# ============= Test update_specific_set_contacts_with_batch_id - Additional Cases =============
 
-class TestEdgeCases:
-    """Test edge cases and boundary conditions"""
+class TestUpdateSpecificSetContactsAdvanced:
+    """Advanced test cases for update_specific_set_contacts_with_batch_id function"""
     
-    # @patch('tap_lms.glific_batch_id_update.frappe.logger')
-    # @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_all')
-    # def test_handles_student_without_glific_id(self, mock_get_all, mock_get_doc,
-    #                                            mock_exists, mock_logger):
-    #     """Test handling of student without Glific ID"""
-    #     mock_set = MagicMock()
-    #     mock_set.status = "Processed"
-    #     mock_set.set_name = "Test Set"
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_successful_batch_id_update_new_field(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                                  mock_settings, mock_headers, mock_post,
+                                                  mock_onboarding_set, mock_backend_student,
+                                                  mock_student_doc, mock_glific_settings):
+        """Test successful update when batch_id field doesn't exist"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
         
-    #     mock_backend_student = MagicMock()
-    #     mock_backend_student.student_id = "STU001"
-    #     mock_backend_student.batch = "BATCH_001"
+        # Mock onboarding set
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,  # First call for onboarding set
+            mock_backend_student,  # Second call for backend student
+            mock_student_doc      # Third call for student doc
+        ]
         
-    #     mock_student_doc = MagicMock()
-    #     mock_student_doc.glific_id = None  # No Glific ID
+        # Mock backend students list
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
         
-    #     mock_get_doc.side_effect = [mock_set, mock_backend_student, mock_student_doc]
-    #     mock_exists.return_value = True
+        # Mock Glific API responses
+        fetch_response = MagicMock()
+        fetch_response.status_code = 200
+        fetch_response.json.return_value = {
+            "data": {
+                "contact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "phone": "+1234567890",
+                        "fields": "{}"  # No existing fields
+                    }
+                }
+            }
+        }
         
-    #     mock_get_all.return_value = [{
-    #         "name": "BACKEND_STU_001",
-    #         "student_name": "Test Student",
-    #         "phone": "+1234567890",
-    #         "student_id": "STU001",
-    #         "batch": "BATCH_001",
-    #         "batch_skeyword": "key"
-    #     }]
+        update_response = MagicMock()
+        update_response.status_code = 200
+        update_response.json.return_value = {
+            "data": {
+                "updateContact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "fields": '{"batch_id": {"value": "BATCH_2024_01", "type": "string"}}'
+                    }
+                }
+            }
+        }
         
-    #     result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("Test Set")
+        mock_post.side_effect = [fetch_response, update_response]
         
-    #     assert result["errors"] == 1
-    #     assert result["updated"] == 0
-    #     mock_logger().warning.assert_called_once()
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001", batch_size=10)
+        
+        # Assert
+        assert result["updated"] == 1
+        assert result["errors"] == 0
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+        assert mock_post.call_count == 2
     
-    # @patch('tap_lms.glific_batch_id_update.frappe.logger')
-    # @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
-    # @patch('tap_lms.glific_batch_id_update.frappe.get_all')
-    # def test_skips_student_without_batch(self, mock_get_all, mock_get_doc,
-    #                                      mock_exists, mock_logger):
-    #     """Test skipping of student without batch"""
-    #     mock_set = MagicMock()
-    #     mock_set.status = "Processed"
-    #     mock_set.set_name = "Test Set"
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_update_existing_batch_id_field(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                           mock_settings, mock_headers, mock_post,
+                                           mock_onboarding_set, mock_backend_student,
+                                           mock_student_doc, mock_glific_settings):
+        """Test updating when batch_id field already exists with different value"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
         
-    #     mock_backend_student = MagicMock()
-    #     mock_backend_student.student_id = "STU001"
-    #     mock_backend_student.batch = None  # No batch
+        # Mock onboarding set and students
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student,
+            mock_student_doc
+        ]
         
-    #     mock_student_doc = MagicMock()
-    #     mock_student_doc.glific_id = "12345"
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_02",  # New batch
+            "batch_skeyword": "batch_key"
+        }]
         
-    #     mock_get_doc.side_effect = [mock_set, mock_backend_student, mock_student_doc]
-    #     mock_exists.return_value = True
+        # Mock Glific API responses with existing batch_id
+        fetch_response = MagicMock()
+        fetch_response.status_code = 200
+        fetch_response.json.return_value = {
+            "data": {
+                "contact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "phone": "+1234567890",
+                        "fields": '{"batch_id": {"value": "BATCH_2024_01", "type": "string"}}'  # Old batch
+                    }
+                }
+            }
+        }
         
-    #     mock_get_all.return_value = [{
-    #         "name": "BACKEND_STU_001",
-    #         "student_name": "Test Student",
-    #         "phone": "+1234567890",
-    #         "student_id": "STU001",
-    #         "batch": None,
-    #         "batch_skeyword": "key"
-    #     }]
+        update_response = MagicMock()
+        update_response.status_code = 200
+        update_response.json.return_value = {
+            "data": {
+                "updateContact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "fields": '{"batch_id": {"value": "BATCH_2024_02", "type": "string"}}'
+                    }
+                }
+            }
+        }
         
-    #     # Mock glific settings and headers (needed when glific_id exists)
-    #     mock_settings = MagicMock()
-    #     mock_settings.api_url = "https://api.glific.com"
-    #     glific_batch_id_update.get_glific_settings.return_value = mock_settings
-    #     glific_batch_id_update.get_glific_auth_headers.return_value = {"Authorization": "Bearer token"}
+        mock_post.side_effect = [fetch_response, update_response]
         
-    #     result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("Test Set")
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
         
-    #     assert result["skipped"] == 1
-    #     assert result["updated"] == 0
-    #     mock_logger().warning.assert_called()
+        # Assert
+        assert result["updated"] == 1
+        assert result["errors"] == 0
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+    
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_skip_student_without_glific_id(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                           mock_settings, mock_headers, mock_post,
+                                           mock_onboarding_set, mock_glific_settings):
+        """Test skipping student without glific_id"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        
+        # Mock backend student without glific_id
+        mock_backend_student = MagicMock()
+        mock_backend_student.student_id = "STU001"
+        mock_backend_student.student_name = "John Doe"
+        mock_backend_student.phone = "+1234567890"
+        mock_backend_student.batch = "BATCH_2024_01"
+        
+        # Mock student doc without glific_id
+        mock_student_doc_no_glific = MagicMock()
+        mock_student_doc_no_glific.glific_id = None
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student,
+            mock_student_doc_no_glific
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert
+        assert result["updated"] == 0
+        assert result["errors"] == 1  # Counted as error when no glific_id
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+        assert mock_post.call_count == 0  # No API calls made
+    
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_handle_glific_fetch_error(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                      mock_settings, mock_headers, mock_post,
+                                      mock_onboarding_set, mock_backend_student,
+                                      mock_student_doc, mock_glific_settings):
+        """Test handling Glific API error during fetch"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student,
+            mock_student_doc
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Mock Glific API error response
+        fetch_response = MagicMock()
+        fetch_response.status_code = 200
+        fetch_response.json.return_value = {
+            "errors": [{"message": "Contact not found"}]
+        }
+        
+        mock_post.return_value = fetch_response
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert
+        assert result["updated"] == 0
+        assert result["errors"] == 1
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+    
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_handle_glific_update_error(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                       mock_settings, mock_headers, mock_post,
+                                       mock_onboarding_set, mock_backend_student,
+                                       mock_student_doc, mock_glific_settings):
+        """Test handling Glific API error during update"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student,
+            mock_student_doc
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Mock successful fetch but failed update
+        fetch_response = MagicMock()
+        fetch_response.status_code = 200
+        fetch_response.json.return_value = {
+            "data": {
+                "contact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "phone": "+1234567890",
+                        "fields": "{}"
+                    }
+                }
+            }
+        }
+        
+        update_response = MagicMock()
+        update_response.status_code = 500  # Server error
+        
+        mock_post.side_effect = [fetch_response, update_response]
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert
+        assert result["updated"] == 0
+        assert result["errors"] == 1
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+    
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_skip_student_without_batch(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                       mock_settings, mock_headers, mock_post,
+                                       mock_onboarding_set, mock_glific_settings):
+        """Test skipping student without batch_id"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        
+        # Mock backend student without batch
+        mock_backend_student_no_batch = MagicMock()
+        mock_backend_student_no_batch.student_id = "STU001"
+        mock_backend_student_no_batch.student_name = "John Doe"
+        mock_backend_student_no_batch.phone = "+1234567890"
+        mock_backend_student_no_batch.batch = None  # No batch
+        
+        mock_student_doc = MagicMock()
+        mock_student_doc.glific_id = "12345"
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student_no_batch,
+            mock_student_doc
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": None,
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert
+        assert result["updated"] == 0
+        assert result["errors"] == 0
+        assert result["skipped"] == 1  # Skipped due to no batch
+        assert result["total_processed"] == 1
+        assert mock_post.call_count == 0  # No API calls made
+    
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_handle_invalid_json_fields(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                       mock_settings, mock_headers, mock_post,
+                                       mock_onboarding_set, mock_backend_student,
+                                       mock_student_doc, mock_glific_settings):
+        """Test handling invalid JSON in contact fields"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student,
+            mock_student_doc
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Mock Glific response with invalid JSON in fields
+        fetch_response = MagicMock()
+        fetch_response.status_code = 200
+        fetch_response.json.return_value = {
+            "data": {
+                "contact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "phone": "+1234567890",
+                        "fields": "invalid json {{"  # Invalid JSON
+                    }
+                }
+            }
+        }
+        
+        update_response = MagicMock()
+        update_response.status_code = 200
+        update_response.json.return_value = {
+            "data": {
+                "updateContact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "fields": '{"batch_id": {"value": "BATCH_2024_01", "type": "string"}}'
+                    }
+                }
+            }
+        }
+        
+        mock_post.side_effect = [fetch_response, update_response]
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert - Should handle invalid JSON gracefully and continue
+        assert result["updated"] == 1
+        assert result["errors"] == 0
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+    
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_refresh_same_batch_id_value(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                        mock_settings, mock_headers, mock_post,
+                                        mock_onboarding_set, mock_backend_student,
+                                        mock_student_doc, mock_glific_settings):
+        """Test refreshing when batch_id already has the same value"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student,
+            mock_student_doc
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Mock Glific response with same batch_id value
+        fetch_response = MagicMock()
+        fetch_response.status_code = 200
+        fetch_response.json.return_value = {
+            "data": {
+                "contact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "phone": "+1234567890",
+                        "fields": '{"batch_id": {"value": "BATCH_2024_01", "type": "string"}}'  # Same value
+                    }
+                }
+            }
+        }
+        
+        update_response = MagicMock()
+        update_response.status_code = 200
+        update_response.json.return_value = {
+            "data": {
+                "updateContact": {
+                    "contact": {
+                        "id": "12345",
+                        "name": "John Doe",
+                        "fields": '{"batch_id": {"value": "BATCH_2024_01", "type": "string"}}'
+                    }
+                }
+            }
+        }
+        
+        mock_post.side_effect = [fetch_response, update_response]
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert - Should count as updated even if value unchanged
+        assert result["updated"] == 1
+        assert result["errors"] == 0
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+    
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_handle_http_error_on_fetch(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                       mock_settings, mock_headers, mock_post,
+                                       mock_onboarding_set, mock_backend_student,
+                                       mock_student_doc, mock_glific_settings):
+        """Test handling HTTP error status on fetch"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student,
+            mock_student_doc
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Mock HTTP error on fetch
+        fetch_response = MagicMock()
+        fetch_response.status_code = 401  # Unauthorized
+        
+        mock_post.return_value = fetch_response
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert
+        assert result["updated"] == 0
+        assert result["errors"] == 1
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+    
+    @patch('tap_lms.glific_batch_id_update.requests.post')
+    @patch('tap_lms.glific_batch_id_update.get_glific_auth_headers')
+    @patch('tap_lms.glific_batch_id_update.get_glific_settings')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_handle_missing_contact_data(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                        mock_settings, mock_headers, mock_post,
+                                        mock_onboarding_set, mock_backend_student,
+                                        mock_student_doc, mock_glific_settings):
+        """Test handling missing contact data in response"""
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_settings.return_value = mock_glific_settings
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student,
+            mock_student_doc
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Mock response with no contact data
+        fetch_response = MagicMock()
+        fetch_response.status_code = 200
+        fetch_response.json.return_value = {
+            "data": {
+                "contact": {
+                    "contact": None  # No contact data
+                }
+            }
+        }
+        
+        mock_post.return_value = fetch_response
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert
+        assert result["updated"] == 0
+        assert result["errors"] == 1
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+    
+    @patch('tap_lms.glific_batch_id_update.frappe.logger')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    def test_handle_student_not_exists(self, mock_exists, mock_get_all, mock_get_doc_main,
+                                      mock_logger, mock_onboarding_set):
+        """Test handling when student document doesn't exist"""
+        # Setup mocks
+        mock_exists.return_value = False  # Student doesn't exist
+        
+        mock_backend_student = MagicMock()
+        mock_backend_student.student_id = "STU001"
+        mock_backend_student.student_name = "John Doe"
+        mock_backend_student.phone = "+1234567890"
+        mock_backend_student.batch = "BATCH_2024_01"
+        
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            mock_backend_student
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert
+        assert result["updated"] == 0
+        assert result["errors"] == 1
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+        mock_logger().error.assert_called()
+    
+    @patch('tap_lms.glific_batch_id_update.frappe.logger')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    def test_handle_backend_student_exception(self, mock_get_all, mock_get_doc_main,
+                                             mock_logger, mock_onboarding_set):
+        """Test handling exception when getting backend student"""
+        # Setup mocks
+        mock_get_doc_main.side_effect = [
+            mock_onboarding_set,
+            Exception("Database error")  # Exception on backend student fetch
+        ]
+        
+        mock_get_all.return_value = [{
+            "name": "BACKEND_STU_001",
+            "student_name": "John Doe",
+            "phone": "+1234567890",
+            "student_id": "STU001",
+            "batch": "BATCH_2024_01",
+            "batch_skeyword": "batch_key"
+        }]
+        
+        # Execute
+        result = glific_batch_id_update.update_specific_set_contacts_with_batch_id("ONBOARD_SET_001")
+        
+        # Assert
+        assert result["updated"] == 0
+        assert result["errors"] == 1
+        assert result["skipped"] == 0
+        assert result["total_processed"] == 1
+        mock_logger().error.assert_called()
 
 
-# ============= Run Tests =============
+# ============= Test process_multiple_sets_batch_id - Additional Cases =============
 
-# if __name__ == "__main__":
-#     pytest.main([__file__, "-v", "--tb=short"])
+class TestProcessMultipleSetsAdvanced:
+    """Advanced test cases for process_multiple_sets_batch_id function"""
+    
+    @patch('tap_lms.glific_batch_id_update.frappe.logger')
+    @patch('time.sleep')
+    @patch('tap_lms.glific_batch_id_update.update_specific_set_contacts_with_batch_id')
+    def test_processes_set_with_error_response(self, mock_update, mock_sleep, mock_logger):
+        """Test processing when update returns error"""
+        mock_update.return_value = {"error": "Set not found"}
+        
+        set_names = ["INVALID_SET"]
+        results = glific_batch_id_update.process_multiple_sets_batch_id(set_names, batch_size=5)
+        
+        assert len(results) == 1
+        assert results[0]["set_name"] == "INVALID_SET"
+        assert results[0]["status"] == "completed"
+        assert results[0]["updated"] == 0
+        assert results[0]["errors"] == 0
+        assert results[0]["skipped"] == 0
+    
+    @patch('tap_lms.glific_batch_id_update.frappe.logger')
+    @patch('time.sleep')
+    @patch('tap_lms.glific_batch_id_update.update_specific_set_contacts_with_batch_id')
+    def test_processes_empty_set_list(self, mock_update, mock_sleep, mock_logger):
+        """Test processing empty set list"""
+        set_names = []
+        results = glific_batch_id_update.process_multiple_sets_batch_id(set_names, batch_size=5)
+        
+        assert len(results) == 0
+        mock_update.assert_not_called()
