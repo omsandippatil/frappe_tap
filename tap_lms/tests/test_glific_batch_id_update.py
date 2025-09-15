@@ -422,6 +422,7 @@
 #         assert call_args[1]['timeout'] == 7200  # 2 hours
 #         assert call_args[1]['queue'] == 'long'
 
+
 import frappe
 import requests
 import json
@@ -467,7 +468,7 @@ def update_glific_contact_field(contact_id, batch_id):
         payload = {
             "query": query,
             "variables": {
-                "contactId": str(contact_id),  # Ensure contact_id is string
+                "contactId": str(contact_id),
                 "fieldName": "batch_id",
                 "fieldValue": batch_id
             }
@@ -517,7 +518,12 @@ def update_specific_set_contacts_with_batch_id(set_name, batch_size=50):
         for student in students:
             try:
                 backend_student = frappe.get_doc("Backend Student", student.name)
-                student_doc = frappe.get_doc("Student", backend_student.student_id)
+                try:
+                    student_doc = frappe.get_doc("Student", backend_student.student_id)
+                except frappe.DoesNotExistError as e:
+                    result["errors"] += 1
+                    frappe.logger().error(f"Student not found for {student.name}: {str(e)}")
+                    continue
                 
                 if not student_doc.glific_id:
                     result["skipped"] += 1
@@ -535,9 +541,6 @@ def update_specific_set_contacts_with_batch_id(set_name, batch_size=50):
                 else:
                     result["errors"] += 1
                     frappe.logger().error(f"Failed to update Glific contact for student {backend_student.student_id}")
-            except frappe.DoesNotExistError as e:
-                result["errors"] += 1
-                frappe.logger().error(f"Student not found for {student.name}: {str(e)}")
             except Exception as e:
                 result["errors"] += 1
                 frappe.logger().error(f"Error processing student {student.name}: {str(e)}")
@@ -608,8 +611,7 @@ def process_multiple_sets_batch_id(set_names, batch_size=50):
             result["status"] = "completed"
             results.append(result)
             
-            # Break if no more students to process
-            if result.get("total_processed", 0) == 0 or result.get("total_processed", 0) < batch_size:
+            if result.get("total_processed", 0) <= 0 or result.get("total_processed", 0) < batch_size:
                 break
             
             batch_count += 1
@@ -626,7 +628,6 @@ def process_multiple_sets_batch_id(set_names, batch_size=50):
                 "errors": 0,
                 "total_processed": 0
             })
-            break
     
     return results
 
