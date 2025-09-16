@@ -1,13 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:{question_name}-{question_number}",
  "creation": "2024-10-17 16:27:42.303797",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "question",
-  "question_number",
+  "quiz_id",
+  "question_name",
   "question_type",
   "options",
   "points",
@@ -18,11 +19,6 @@
  ],
  "fields": [
   {
-   "fieldname": "question",
-   "fieldtype": "Text Editor",
-   "label": "Question"
-  },
-  {
    "fieldname": "question_type",
    "fieldtype": "Select",
    "label": "Question Type",
@@ -32,7 +28,7 @@
    "fieldname": "options",
    "fieldtype": "Table",
    "label": "Options",
-   "options": "QuizOption"
+   "options": "QuizOptionList"
   },
   {
    "fieldname": "points",
@@ -43,11 +39,6 @@
    "fieldname": "correct_option",
    "fieldtype": "Int",
    "label": "Correct Option"
-  },
-  {
-   "fieldname": "question_number",
-   "fieldtype": "Int",
-   "label": "Question Number"
   },
   {
    "fieldname": "explanation",
@@ -64,17 +55,41 @@
    "fieldtype": "Table",
    "label": "Question Translations",
    "options": "QuizQuestionTranslation"
+  },
+  {
+   "fieldname": "question_name",
+   "fieldtype": "Text Editor",
+   "label": "Question"
+  },
+  {
+   "fieldname": "quiz_id",
+   "fieldtype": "Link",
+   "label": "Quiz",
+   "options": "Quiz"
   }
  ],
  "index_web_pages_for_search": 1,
- "istable": 1,
  "links": [],
- "modified": "2025-08-09 14:34:22.759483",
+ "modified": "2025-09-15 17:14:20.491383",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "QuizQuestion",
+ "naming_rule": "Expression",
  "owner": "Administrator",
- "permissions": [],
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
