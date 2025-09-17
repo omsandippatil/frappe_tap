@@ -3895,622 +3895,352 @@
 #         obj2["ref"] = obj1
 #         return obj1
 
-#!/usr/bin/env python3
-"""
-Direct execution tests for glific_webhook.py to achieve 50% coverage.
-This file directly executes the code paths in the module.
-"""
-
 import unittest
-import sys
-import os
-from unittest.mock import Mock, patch, MagicMock, mock_open
-import importlib.util
-import types
-
-# Add all possible paths where the module might be
-sys.path.insert(0, '/home/frappe/frappe-bench/apps/tap_lms')
-sys.path.insert(0, '/home/frappe/frappe-bench/apps/tap_lms/tap_lms')
-sys.path.insert(0, '/home/frappe/frappe-bench/apps/tap_lms/tap_lms/integrations')
+from unittest.mock import Mock, patch, MagicMock, call
+import json
+import frappe
+from frappe.utils import now_datetime
 
 
-class TestGlificWebhookDirect(unittest.TestCase):
-    """Direct execution tests to achieve 50% coverage"""
+class TestGlificContactUpdate(unittest.TestCase):
+    """Test suite for Glific contact update functionality"""
     
     def setUp(self):
-        """Setup that ensures we can execute the actual code"""
-        # Create comprehensive mocks for frappe
-        self.frappe_mock = MagicMock()
-        self.frappe_mock.__name__ = 'frappe'
+        """Set up test fixtures"""
+        self.teacher_doc = Mock()
+        self.teacher_doc.doctype = "Teacher"
+        self.teacher_doc.name = "test_teacher"
+        self.teacher_doc.glific_id = "123"
+        self.teacher_doc.language = "English"
+        self.teacher_doc.get = Mock(side_effect=self._mock_get)
         
-        # Mock all frappe attributes that might be used
-        self.frappe_mock.db = MagicMock()
-        self.frappe_mock.get_doc = MagicMock()
-        self.frappe_mock.get_site_config = MagicMock(return_value={
-            'glific_api_key': 'test_key_123',
-            'glific_api_url': 'https://api.glific.test/api',
-            'glific_org_id': '1'
-        })
-        self.frappe_mock.throw = MagicMock(side_effect=Exception)
-        self.frappe_mock.msgprint = MagicMock()
-        self.frappe_mock.logger = MagicMock()
-        self.frappe_mock.log_error = MagicMock()
-        self.frappe_mock.enqueue = MagicMock()
-        self.frappe_mock.flags = MagicMock()
-        self.frappe_mock.ValidationError = Exception
-        self.frappe_mock.DoesNotExistError = Exception
-        
-        # Create proper requests mock with exceptions module
-        self.requests_mock = MagicMock()
-        self.requests_mock.__name__ = 'requests'
-        
-        # Create exceptions as classes
-        class ConnectionError(Exception):
-            pass
-        
-        class Timeout(Exception):
-            pass
-        
-        class RequestException(Exception):
-            pass
-        
-        class HTTPError(Exception):
-            pass
-        
-        # Create exceptions module mock
-        exceptions_mock = MagicMock()
-        exceptions_mock.ConnectionError = ConnectionError
-        exceptions_mock.Timeout = Timeout
-        exceptions_mock.RequestException = RequestException
-        exceptions_mock.HTTPError = HTTPError
-        
-        # Attach exceptions to requests mock
-        self.requests_mock.exceptions = exceptions_mock
-        
-        # Store exception classes for later use
-        self.ConnectionError = ConnectionError
-        self.Timeout = Timeout
-        self.RequestException = RequestException
-        self.HTTPError = HTTPError
-        
-        # Apply patches BEFORE importing the module
-        sys.modules['frappe'] = self.frappe_mock
-        sys.modules['requests'] = self.requests_mock
-        sys.modules['requests.exceptions'] = exceptions_mock
-        
-        # Now we need to execute the actual module code
-        self.module = None
-        self.execute_module_code()
+        # Mock teacher field values
+        self.teacher_fields = {
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "phone": "+1234567890",
+            "language": "English"
+        }
     
-    def execute_module_code(self):
-        """Execute the actual glific_webhook.py code with our mocks"""
-        possible_paths = [
-            '/home/frappe/frappe-bench/apps/tap_lms/tap_lms/integrations/glific_webhook.py',
-            '/home/frappe/frappe-bench/apps/tap_lms/tap_lms/glific_webhook.py',
-            'tap_lms/integrations/glific_webhook.py',
-            'tap_lms/glific_webhook.py',
-            'glific_webhook.py'
-        ]
-        
-        module_code = None
-        module_path = None
-        
-        # Try to read the actual file
-        for path in possible_paths:
-            try:
-                with open(path, 'r') as f:
-                    module_code = f.read()
-                    module_path = path
-                    break
-            except FileNotFoundError:
-                continue
-        
-        if module_code:
-            # Create a module and execute the code in it
-            self.module = types.ModuleType('glific_webhook')
-            self.module.__file__ = module_path
-            
-            # Execute the module code with our mocked dependencies
-            try:
-                exec(module_code, self.module.__dict__)
-            except Exception as e:
-                print(f"Error executing module code: {e}")
-                # Even if there's an error, we've covered the import lines
-        else:
-            # If we can't read the file, try importing it
-            try:
-                import glific_webhook
-                self.module = glific_webhook
-            except ImportError:
-                print("Could not import or read glific_webhook.py")
+    def _mock_get(self, field):
+        """Helper to mock doc.get() method"""
+        return self.teacher_fields.get(field)
     
-    def tearDown(self):
-        """Clean up after tests"""
-        # Remove from sys.modules to ensure fresh import next time
-        for key in list(sys.modules.keys()):
-            if 'glific' in key.lower():
-                del sys.modules[key]
+    @patch('your_module.get_glific_contact')
+    @patch('your_module.prepare_update_payload')
+    @patch('your_module.send_glific_update')
+    @patch('frappe.logger')
+    def test_update_glific_contact_success(self, mock_logger, mock_send, mock_prepare, mock_get_contact):
+        """Test successful update of Glific contact"""
+        # Arrange
+        mock_contact = {
+            "id": "123",
+            "name": "John Doe",
+            "language": {"id": "1", "label": "English"},
+            "fields": "{}"
+        }
+        mock_get_contact.return_value = mock_contact
+        mock_prepare.return_value = {"fields": '{"first_name": {"value": "John"}}'}
+        mock_send.return_value = True
+        
+        # Act
+        from your_module import update_glific_contact
+        update_glific_contact(self.teacher_doc, None)
+        
+        # Assert
+        mock_get_contact.assert_called_once_with("123")
+        mock_prepare.assert_called_once_with(self.teacher_doc, mock_contact)
+        mock_send.assert_called_once_with("123", {"fields": '{"first_name": {"value": "John"}}'})
+        mock_logger().info.assert_called_with("Successfully updated Glific contact for teacher test_teacher")
     
-    def test_module_initialization_and_imports(self):
-        """Test module initialization and import statements"""
-        if not self.module:
-            self.skipTest("Module not loaded")
+    @patch('your_module.get_glific_contact')
+    @patch('frappe.logger')
+    def test_update_glific_contact_not_found(self, mock_logger, mock_get_contact):
+        """Test when Glific contact is not found"""
+        # Arrange
+        mock_get_contact.return_value = None
         
-        # The module should have been initialized with our mocks
-        # Check if the module has the expected functions
-        expected_functions = [
-            'update_glific_contact',
-            'get_glific_contact', 
-            'prepare_update_payload',
-            'send_glific_update'
-        ]
+        # Act
+        from your_module import update_glific_contact
+        update_glific_contact(self.teacher_doc, None)
         
-        for func_name in expected_functions:
-            if hasattr(self.module, func_name):
-                print(f"✓ Function {func_name} found")
-                # Just having the function defined covers those lines
+        # Assert
+        mock_get_contact.assert_called_once_with("123")
+        mock_logger().error.assert_called_with("Glific contact not found for teacher test_teacher")
     
-    def test_update_glific_contact_all_paths(self):
-        """Execute all paths in update_glific_contact"""
-        if not self.module or not hasattr(self.module, 'update_glific_contact'):
-            self.skipTest("update_glific_contact not available")
+    @patch('your_module.get_glific_contact')
+    @patch('your_module.prepare_update_payload')
+    @patch('frappe.logger')
+    def test_update_glific_contact_no_updates(self, mock_logger, mock_prepare, mock_get_contact):
+        """Test when no updates are needed"""
+        # Arrange
+        mock_contact = {"id": "123", "fields": "{}"}
+        mock_get_contact.return_value = mock_contact
+        mock_prepare.return_value = None
         
-        # Test 1: Non-Teacher doctype (early return)
+        # Act
+        from your_module import update_glific_contact
+        update_glific_contact(self.teacher_doc, None)
+        
+        # Assert
+        mock_logger().info.assert_called_with("No updates needed for Glific contact 123")
+    
+    def test_update_glific_contact_wrong_doctype(self):
+        """Test that function returns early for non-Teacher doctypes"""
+        # Arrange
         doc = Mock()
         doc.doctype = "Student"
-        doc.name = "STUDENT-001"
         
-        try:
-            result = self.module.update_glific_contact(doc, "on_update")
-            # This should return early, covering the doctype check
-        except:
-            pass
+        # Act
+        from your_module import update_glific_contact
+        result = update_glific_contact(doc, None)
         
-        # Test 2: Teacher without glific_id (create new contact)
-        teacher_new = Mock()
-        teacher_new.doctype = "Teacher"
-        teacher_new.name = "TEACHER-NEW"
-        teacher_new.glific_id = None
-        teacher_new.full_name = "New Teacher"
-        teacher_new.mobile_no = "9876543210"
-        teacher_new.email = "new@example.com"
-        teacher_new.save = Mock()
-        teacher_new.db_set = Mock()
-        teacher_new.reload = Mock()
-        
-        # Mock successful API response for creation
-        response_mock = Mock()
-        response_mock.status_code = 200
-        response_mock.json.return_value = {
-            "contact": {"id": "new_123"},
-            "data": {"createContact": {"contact": {"id": "new_123"}}}
-        }
-        response_mock.raise_for_status = Mock()
-        self.requests_mock.post.return_value = response_mock
-        
-        try:
-            result = self.module.update_glific_contact(teacher_new, "on_insert")
-            # This covers the creation path
-        except Exception as e:
-            print(f"Creation path exception (expected): {e}")
-        
-        # Test 3: Teacher with glific_id (update existing)
-        teacher_existing = Mock()
-        teacher_existing.doctype = "Teacher"
-        teacher_existing.name = "TEACHER-EXISTING"
-        teacher_existing.glific_id = "existing_456"
-        teacher_existing.full_name = "Existing Teacher"
-        teacher_existing.mobile_no = "9876543211"
-        teacher_existing.email = "existing@example.com"
-        teacher_existing.save = Mock()
-        
-        # Mock successful API response for update
-        response_mock.json.return_value = {
-            "contact": {"id": "existing_456", "name": "Updated"},
-            "data": {"updateContact": {"contact": {"id": "existing_456"}}}
-        }
-        self.requests_mock.put.return_value = response_mock
-        
-        try:
-            result = self.module.update_glific_contact(teacher_existing, "on_update")
-            # This covers the update path
-        except Exception as e:
-            print(f"Update path exception (expected): {e}")
-        
-        # Test 4: API error handling
-        teacher_error = Mock()
-        teacher_error.doctype = "Teacher"
-        teacher_error.name = "TEACHER-ERROR"
-        teacher_error.glific_id = None
-        teacher_error.full_name = "Error Teacher"
-        teacher_error.mobile_no = "9876543212"
-        
-        # Mock API error
-        self.requests_mock.post.side_effect = Exception("API Error")
-        
-        try:
-            result = self.module.update_glific_contact(teacher_error, "on_update")
-        except Exception:
-            # This covers the error handling path
-            pass
-        
-        # Reset side_effect for next tests
-        self.requests_mock.post.side_effect = None
-        
-        # Test 5: Missing required fields
-        teacher_invalid = Mock()
-        teacher_invalid.doctype = "Teacher"
-        teacher_invalid.name = "TEACHER-INVALID"
-        teacher_invalid.glific_id = None
-        teacher_invalid.full_name = None  # Missing name
-        teacher_invalid.mobile_no = None  # Missing phone
-        
-        try:
-            result = self.module.update_glific_contact(teacher_invalid, "on_update")
-        except Exception:
-            # This covers validation error paths
-            pass
+        # Assert
+        self.assertIsNone(result)
     
-    def test_get_glific_contact_function(self):
-        """Execute get_glific_contact if it exists"""
-        if not self.module or not hasattr(self.module, 'get_glific_contact'):
-            # Try to define it if it doesn't exist
-            def get_glific_contact(contact_id):
-                """Get contact from Glific API"""
-                if not contact_id:
-                    return None
-                
-                # This would normally make an API call
-                import requests
-                response = requests.get(f"https://api.glific.test/contacts/{contact_id}")
-                if response.status_code == 200:
-                    return response.json().get('contact')
-                return None
-            
-            self.module.get_glific_contact = get_glific_contact
+    @patch('your_module.get_glific_contact')
+    @patch('frappe.logger')
+    def test_update_glific_contact_exception_handling(self, mock_logger, mock_get_contact):
+        """Test exception handling in update_glific_contact"""
+        # Arrange
+        mock_get_contact.side_effect = Exception("API Error")
         
-        # Test the function
-        response_mock = Mock()
-        response_mock.status_code = 200
-        response_mock.json.return_value = {"contact": {"id": "test_123", "name": "Test"}}
-        self.requests_mock.get.return_value = response_mock
+        # Act
+        from your_module import update_glific_contact
+        update_glific_contact(self.teacher_doc, None)
         
-        try:
-            # Test with valid ID
-            result = self.module.get_glific_contact("test_123")
-            
-            # Test with None
-            result = self.module.get_glific_contact(None)
-            
-            # Test with 404
-            response_mock.status_code = 404
-            result = self.module.get_glific_contact("not_found")
-        except:
-            pass
+        # Assert
+        mock_logger().error.assert_called_with("Error updating Glific contact for teacher test_teacher: API Error")
     
-    def test_prepare_update_payload_function(self):
-        """Execute prepare_update_payload if it exists"""
-        if not self.module or not hasattr(self.module, 'prepare_update_payload'):
-            # Define it if it doesn't exist
-            def prepare_update_payload(data):
-                """Prepare payload for Glific API"""
-                if not data:
-                    raise ValueError("Data is required")
-                
-                payload = {
-                    "input": {
-                        "name": data.get('full_name', ''),
-                        "phone": data.get('mobile_no', ''),
-                        "fields": {}
+    @patch('your_module.get_glific_settings')
+    @patch('your_module.get_glific_auth_headers')
+    @patch('requests.post')
+    def test_get_glific_contact_success(self, mock_post, mock_headers, mock_settings):
+        """Test successful retrieval of Glific contact"""
+        # Arrange
+        mock_settings.return_value = Mock(api_url="https://api.glific.com")
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "contact": {
+                    "contact": {
+                        "id": "123",
+                        "name": "John Doe",
+                        "fields": "{}"
                     }
                 }
-                
-                if data.get('email'):
-                    payload['input']['fields']['email'] = data['email']
-                
-                return payload
-            
-            self.module.prepare_update_payload = prepare_update_payload
-        
-        try:
-            # Test with valid data
-            test_data = {
-                'full_name': 'Test Name',
-                'mobile_no': '1234567890',
-                'email': 'test@example.com'
             }
-            result = self.module.prepare_update_payload(test_data)
-            
-            # Test with empty data
-            result = self.module.prepare_update_payload({})
-            
-            # Test with None
-            result = self.module.prepare_update_payload(None)
-        except:
-            pass
-    
-    def test_send_glific_update_function(self):
-        """Execute send_glific_update if it exists"""
-        if not self.module or not hasattr(self.module, 'send_glific_update'):
-            # Define it if it doesn't exist
-            def send_glific_update(payload):
-                """Send update to Glific API"""
-                import requests
-                
-                headers = {
-                    "Authorization": f"Bearer test_key",
-                    "Content-Type": "application/json"
-                }
-                
-                response = requests.post(
-                    "https://api.glific.test/graphql",
-                    json=payload,
-                    headers=headers
-                )
-                
-                response.raise_for_status()
-                return response.json()
-            
-            self.module.send_glific_update = send_glific_update
-        
-        # Mock the response
-        response_mock = Mock()
-        response_mock.status_code = 200
-        response_mock.json.return_value = {"data": {"success": True}}
-        response_mock.raise_for_status = Mock()
-        self.requests_mock.post.return_value = response_mock
-        
-        try:
-            # Test successful send
-            payload = {"query": "mutation { test }"}
-            result = self.module.send_glific_update(payload)
-            
-            # Test with error
-            response_mock.status_code = 500
-            response_mock.raise_for_status.side_effect = Exception("Server Error")
-            result = self.module.send_glific_update(payload)
-        except:
-            pass
-    
-    def test_helper_and_utility_functions(self):
-        """Test any helper functions in the module"""
-        if not self.module:
-            self.skipTest("Module not loaded")
-        
-        # Look for any other functions in the module
-        for attr_name in dir(self.module):
-            if not attr_name.startswith('_') and callable(getattr(self.module, attr_name, None)):
-                func = getattr(self.module, attr_name)
-                
-                # Skip main functions we already tested
-                if attr_name in ['update_glific_contact', 'get_glific_contact',
-                               'prepare_update_payload', 'send_glific_update']:
-                    continue
-                
-                print(f"Testing helper function: {attr_name}")
-                
-                # Try to execute with various arguments
-                try:
-                    func()
-                except TypeError:
-                    try:
-                        func(None)
-                    except:
-                        try:
-                            func("test")
-                        except:
-                            pass
-                except:
-                    pass
-    
-    def test_error_handling_blocks(self):
-        """Specifically test error handling code blocks"""
-        if not self.module:
-            self.skipTest("Module not loaded")
-        
-        # Force various exceptions to trigger error handling
-        doc = Mock()
-        doc.doctype = "Teacher"
-        doc.name = "ERROR-TEST"
-        doc.glific_id = None
-        doc.full_name = "Error Test"
-        doc.mobile_no = "1234567890"
-        
-        # Test 1: Connection error (using our custom exception class)
-        self.requests_mock.post.side_effect = self.ConnectionError("Network unreachable")
-        try:
-            if hasattr(self.module, 'update_glific_contact'):
-                self.module.update_glific_contact(doc, "on_update")
-        except:
-            pass
-        
-        # Test 2: Timeout error
-        self.requests_mock.post.side_effect = self.Timeout("Request timed out")
-        try:
-            if hasattr(self.module, 'update_glific_contact'):
-                self.module.update_glific_contact(doc, "on_update")
-        except:
-            pass
-        
-        # Test 3: Generic request exception
-        self.requests_mock.post.side_effect = self.RequestException("Generic error")
-        try:
-            if hasattr(self.module, 'update_glific_contact'):
-                self.module.update_glific_contact(doc, "on_update")
-        except:
-            pass
-        
-        # Test 4: HTTP error
-        self.requests_mock.post.side_effect = self.HTTPError("HTTP 500 Internal Server Error")
-        try:
-            if hasattr(self.module, 'update_glific_contact'):
-                self.module.update_glific_contact(doc, "on_update")
-        except:
-            pass
-        
-        # Reset for next tests
-        self.requests_mock.post.side_effect = None
-    
-    def test_configuration_and_settings(self):
-        """Test configuration-related code paths"""
-        if not self.module:
-            self.skipTest("Module not loaded")
-        
-        doc = Mock()
-        doc.doctype = "Teacher"
-        doc.name = "CONFIG-TEST"
-        doc.full_name = "Config Test"
-        doc.mobile_no = "1234567890"
-        
-        # Test with missing configuration
-        self.frappe_mock.get_site_config.return_value = {}
-        try:
-            if hasattr(self.module, 'update_glific_contact'):
-                self.module.update_glific_contact(doc, "on_update")
-        except:
-            pass
-        
-        # Test with partial configuration
-        self.frappe_mock.get_site_config.return_value = {'glific_api_key': 'key_only'}
-        try:
-            if hasattr(self.module, 'update_glific_contact'):
-                self.module.update_glific_contact(doc, "on_update")
-        except:
-            pass
-        
-        # Test with complete configuration
-        self.frappe_mock.get_site_config.return_value = {
-            'glific_api_key': 'complete_key',
-            'glific_api_url': 'https://api.complete.test',
-            'glific_org_id': '123',
-            'glific_timeout': 30,
-            'glific_retry': 3
         }
-        try:
-            if hasattr(self.module, 'update_glific_contact'):
-                self.module.update_glific_contact(doc, "on_update")
-        except:
-            pass
-    
-    def test_graphql_queries_and_mutations(self):
-        """Test GraphQL query/mutation building if present"""
-        if not self.module:
-            self.skipTest("Module not loaded")
+        mock_post.return_value = mock_response
         
-        # Look for GraphQL-related constants or functions
-        graphql_items = []
-        for attr_name in dir(self.module):
-            attr = getattr(self.module, attr_name, None)
-            if attr and ('mutation' in str(attr).lower() or 'query' in str(attr).lower() or
-                        'graphql' in attr_name.lower()):
-                graphql_items.append(attr_name)
-                print(f"Found GraphQL item: {attr_name}")
+        # Act
+        from your_module import get_glific_contact
+        result = get_glific_contact("123")
         
-        # If there are GraphQL queries/mutations, they're now covered by being accessed
+        # Assert
+        self.assertEqual(result["id"], "123")
+        self.assertEqual(result["name"], "John Doe")
+        mock_post.assert_called_once()
     
-    def test_constants_and_module_variables(self):
-        """Access all module-level constants and variables for coverage"""
-        if not self.module:
-            self.skipTest("Module not loaded")
+    @patch('your_module.get_glific_settings')
+    @patch('your_module.get_glific_auth_headers')
+    @patch('requests.post')
+    def test_get_glific_contact_failure(self, mock_post, mock_headers, mock_settings):
+        """Test failed retrieval of Glific contact"""
+        # Arrange
+        mock_settings.return_value = Mock(api_url="https://api.glific.com")
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_post.return_value = mock_response
         
-        # Access all module attributes to ensure they're covered
-        for attr_name in dir(self.module):
-            try:
-                attr = getattr(self.module, attr_name)
-                
-                # If it's a string constant (like API endpoints or GraphQL queries)
-                if isinstance(attr, str):
-                    print(f"String constant {attr_name}: {attr[:50]}...")
-                
-                # If it's a dict (like default configs)
-                elif isinstance(attr, dict):
-                    print(f"Dict constant {attr_name}: {len(attr)} items")
-                
-                # If it's a list/tuple
-                elif isinstance(attr, (list, tuple)):
-                    print(f"List/tuple constant {attr_name}: {len(attr)} items")
-                
-            except:
-                pass
-
-
-def run_all_coverage_tests():
-    """Run all tests and force execution of as much code as possible"""
+        # Act
+        from your_module import get_glific_contact
+        result = get_glific_contact("123")
+        
+        # Assert
+        self.assertIsNone(result)
     
-    # Create a test suite
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
+    @patch('frappe.get_all')
+    @patch('frappe.utils.now_datetime')
+    @patch('frappe.db.get_value')
+    def test_prepare_update_payload_with_changes(self, mock_get_value, mock_now, mock_get_all):
+        """Test preparing update payload when changes exist"""
+        # Arrange
+        mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_get_all.return_value = [
+            {"frappe_field": "first_name", "glific_field": "firstName"},
+            {"frappe_field": "email", "glific_field": "email"}
+        ]
+        mock_get_value.return_value = "2"  # Different language ID
+        
+        glific_contact = {
+            "fields": '{"firstName": {"value": "Jane"}, "email": {"value": "john.doe@example.com"}}',
+            "language": {"id": "1", "label": "Hindi"}
+        }
+        
+        # Act
+        from your_module import prepare_update_payload
+        result = prepare_update_payload(self.teacher_doc, glific_contact)
+        
+        # Assert
+        self.assertIn("fields", result)
+        self.assertEqual(result["languageId"], 2)
+        fields = json.loads(result["fields"])
+        self.assertEqual(fields["firstName"]["value"], "John")
+        self.assertEqual(fields["email"]["value"], "john.doe@example.com")
     
-    # Add our test class
-    suite.addTests(loader.loadTestsFromTestCase(TestGlificWebhookDirect))
+    @patch('frappe.get_all')
+    @patch('frappe.db.get_value')
+    def test_prepare_update_payload_no_changes(self, mock_get_value, mock_get_all):
+        """Test preparing update payload when no changes exist"""
+        # Arrange
+        mock_get_all.return_value = [
+            {"frappe_field": "first_name", "glific_field": "firstName"}
+        ]
+        mock_get_value.return_value = "1"  # Same language ID
+        
+        self.teacher_fields["first_name"] = "John"
+        glific_contact = {
+            "fields": '{"firstName": {"value": "John"}}',
+            "language": {"id": "1", "label": "English"}
+        }
+        
+        # Act
+        from your_module import prepare_update_payload
+        result = prepare_update_payload(self.teacher_doc, glific_contact)
+        
+        # Assert
+        self.assertIsNone(result)
     
-    # Run with high verbosity
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
+    @patch('frappe.get_all')
+    @patch('frappe.utils.now_datetime')
+    @patch('frappe.db.get_value')
+    def test_prepare_update_payload_new_fields(self, mock_get_value, mock_now, mock_get_all):
+        """Test adding new fields to Glific contact"""
+        # Arrange
+        mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_get_all.return_value = [
+            {"frappe_field": "phone", "glific_field": "phoneNumber"}
+        ]
+        mock_get_value.return_value = None
+        
+        self.teacher_fields["phone"] = "+1234567890"
+        glific_contact = {
+            "fields": '{}',
+            "language": {"id": "1", "label": "English"}
+        }
+        
+        # Act
+        from your_module import prepare_update_payload
+        result = prepare_update_payload(self.teacher_doc, glific_contact)
+        
+        # Assert
+        self.assertIn("fields", result)
+        fields = json.loads(result["fields"])
+        self.assertEqual(fields["phoneNumber"]["value"], "+1234567890")
+        self.assertEqual(fields["phoneNumber"]["type"], "string")
     
-    return result.wasSuccessful()
+    @patch('your_module.get_glific_settings')
+    @patch('your_module.get_glific_auth_headers')
+    @patch('requests.post')
+    @patch('frappe.logger')
+    def test_send_glific_update_success(self, mock_logger, mock_post, mock_headers, mock_settings):
+        """Test successful sending of update to Glific"""
+        # Arrange
+        mock_settings.return_value = Mock(api_url="https://api.glific.com")
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "updateContact": {
+                    "contact": {"id": "123"},
+                    "errors": None
+                }
+            }
+        }
+        mock_post.return_value = mock_response
+        
+        # Act
+        from your_module import send_glific_update
+        result = send_glific_update("123", {"fields": "{}"})
+        
+        # Assert
+        self.assertTrue(result)
+        mock_post.assert_called_once()
+    
+    @patch('your_module.get_glific_settings')
+    @patch('your_module.get_glific_auth_headers')
+    @patch('requests.post')
+    @patch('frappe.logger')
+    def test_send_glific_update_with_errors(self, mock_logger, mock_post, mock_headers, mock_settings):
+        """Test handling of Glific API errors"""
+        # Arrange
+        mock_settings.return_value = Mock(api_url="https://api.glific.com")
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "errors": [{"message": "Invalid input"}]
+        }
+        mock_post.return_value = mock_response
+        
+        # Act
+        from your_module import send_glific_update
+        result = send_glific_update("123", {"fields": "{}"})
+        
+        # Assert
+        self.assertFalse(result)
+        mock_logger().error.assert_called_with("Glific API Error: [{'message': 'Invalid input'}]")
+    
+    @patch('your_module.get_glific_settings')
+    @patch('your_module.get_glific_auth_headers')
+    @patch('requests.post')
+    def test_send_glific_update_http_error(self, mock_post, mock_headers, mock_settings):
+        """Test handling of HTTP errors"""
+        # Arrange
+        mock_settings.return_value = Mock(api_url="https://api.glific.com")
+        mock_headers.return_value = {"Authorization": "Bearer token"}
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_post.return_value = mock_response
+        
+        # Act
+        from your_module import send_glific_update
+        result = send_glific_update("123", {"fields": "{}"})
+        
+        # Assert
+        self.assertFalse(result)
+    
+    @patch('frappe.get_all')
+    @patch('frappe.utils.now_datetime')
+    def test_prepare_update_payload_preserves_existing_fields(self, mock_now, mock_get_all):
+        """Test that prepare_update_payload preserves existing fields not in mappings"""
+        # Arrange
+        mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_get_all.return_value = [
+            {"frappe_field": "first_name", "glific_field": "firstName"}
+        ]
+        
+        glific_contact = {
+            "fields": '{"firstName": {"value": "Jane"}, "customField": {"value": "keepme"}}',
+            "language": {"id": "1", "label": "English"}
+        }
+        
+        # Act
+        from your_module import prepare_update_payload
+        result = prepare_update_payload(self.teacher_doc, glific_contact)
+        
+        # Assert
+        fields = json.loads(result["fields"])
+        self.assertIn("customField", fields)
+        self.assertEqual(fields["customField"]["value"], "keepme")
+        self.assertEqual(fields["firstName"]["value"], "John")
 
 
 if __name__ == '__main__':
-    # First, try to directly execute parts of the module
-    print("=" * 70)
-    print("DIRECT MODULE EXECUTION FOR COVERAGE")
-    print("=" * 70)
-    
-    # Try to read and execute the module directly
-    possible_paths = [
-        '/home/frappe/frappe-bench/apps/tap_lms/tap_lms/integrations/glific_webhook.py',
-        '/home/frappe/frappe-bench/apps/tap_lms/tap_lms/glific_webhook.py',
-    ]
-    
-    for path in possible_paths:
-        if os.path.exists(path):
-            print(f"\nFound module at: {path}")
-            print("Executing module code directly...")
-            
-            # Mock dependencies before execution
-            sys.modules['frappe'] = MagicMock()
-            sys.modules['requests'] = MagicMock()
-            
-            try:
-                # Read and execute the module
-                with open(path, 'r') as f:
-                    code = compile(f.read(), path, 'exec')
-                    namespace = {'__name__': '__main__', '__file__': path}
-                    exec(code, namespace)
-                    
-                print("✓ Module code executed successfully")
-                
-                # Try to call main functions if they exist
-                if 'update_glific_contact' in namespace:
-                    try:
-                        doc = Mock(doctype="Teacher", name="TEST")
-                        namespace['update_glific_contact'](doc, "test")
-                    except:
-                        pass
-                    print("✓ update_glific_contact function called")
-                
-                if 'get_glific_contact' in namespace:
-                    try:
-                        namespace['get_glific_contact']("test_id")
-                    except:
-                        pass
-                    print("✓ get_glific_contact function called")
-                    
-            except Exception as e:
-                print(f"Module execution completed with: {e}")
-            
-            break
-    
-    print("\n" + "=" * 70)
-    print("RUNNING UNIT TESTS")
-    print("=" * 70 + "\n")
-    
-    # Run the unit tests
-    success = run_all_coverage_tests()
-    
-    print("\n" + "=" * 70)
-    print("COVERAGE TEST EXECUTION COMPLETE")
-    print("=" * 70)
-    
-    sys.exit(0 if success else 1)
+    unittest.main()
