@@ -1,4 +1,5 @@
 
+
 # """
 # Test suite for video_api module with proper Frappe mocking
 # File location: tap_lms/tests/test_video_api.py
@@ -448,6 +449,247 @@
 #         assert result['status'] == 'error'
 #         assert 'API test failed' in result['message']
 #         assert 'Connection failed' in result['message']
+        
+#         # Reset side_effect
+#         mock_frappe.db.sql.side_effect = None
+
+
+# # Additional edge case tests for 100% coverage
+# class TestVideoAPIEdgeCases:
+#     """Edge case tests for complete coverage"""
+    
+#     def test_get_file_url_with_https(self):
+#         """Test get_file_url with https URL"""
+#         result = video_api.get_file_url('https://external.com/video.mp4')
+#         assert result == 'https://external.com/video.mp4'
+    
+#     def test_get_file_url_empty_string(self):
+#         """Test get_file_url with empty string"""
+#         result = video_api.get_file_url('')
+#         assert result is None
+    
+#     def test_get_video_urls_with_plio_source(self):
+#         """Test filtering by plio source"""
+#         mock_video = MockDict({
+#             'video_id': 'VID001',
+#             'video_name': 'Video 1',
+#             'video_youtube_url': None,
+#             'video_plio_url': 'https://plio.com/1',
+#             'video_file': None,
+#             'duration': '10:30',
+#             'description': 'Description 1',
+#             'difficulty_tier': 'Beginner',
+#             'estimated_duration': '15 min',
+#             'unit_name': 'Unit 1',
+#             'unit_order': 1,
+#             'course_level_id': 'CL001',
+#             'course_level_name': 'Basic Course',
+#             'week_no': 1,
+#             'vertical_name': 'Math'
+#         })
+        
+#         mock_frappe.db.sql.return_value = [mock_video]
+        
+#         result = video_api.get_video_urls(video_source='plio')
+        
+#         assert 'plio' in result
+#         assert 'youtube' not in result
+#         assert 'file' not in result
+    
+#     def test_get_video_urls_with_file_source(self):
+#         """Test filtering by file source"""
+#         mock_video = MockDict({
+#             'video_id': 'VID001',
+#             'video_name': 'Video 1',
+#             'video_youtube_url': None,
+#             'video_plio_url': None,
+#             'video_file': '/files/video1.mp4',
+#             'duration': '10:30',
+#             'description': 'Description 1',
+#             'difficulty_tier': 'Beginner',
+#             'estimated_duration': '15 min',
+#             'unit_name': 'Unit 1',
+#             'unit_order': 1,
+#             'course_level_id': 'CL001',
+#             'course_level_name': 'Basic Course',
+#             'week_no': 1,
+#             'vertical_name': 'Math'
+#         })
+        
+#         mock_frappe.db.sql.return_value = [mock_video]
+#         mock_frappe.utils.get_url.return_value = 'http://example.com'
+        
+#         result = video_api.get_video_urls(video_source='file')
+        
+#         assert 'file' in result
+#         assert result['file'] == 'http://example.com/files/video1.mp4'
+#         assert 'youtube' not in result
+#         assert 'plio' not in result
+    
+#     def test_get_video_urls_aggregated_exception(self):
+#         """Test get_video_urls_aggregated exception handling"""
+#         mock_frappe.db.sql.side_effect = Exception("Aggregation error")
+        
+#         result = video_api.get_video_urls_aggregated()
+        
+#         assert result['status'] == 'error'
+#         assert 'Aggregation error' in result['message']
+        
+#         # Reset side_effect
+#         mock_frappe.db.sql.side_effect = None
+    
+#     def test_get_available_filters_partial_data(self):
+#         """Test get_available_filters with some empty results"""
+#         mock_frappe.db.sql.side_effect = [
+#             # Course levels - empty
+#             [],
+#             # Weeks
+#             [MockDict({'week_no': 1})],
+#             # Languages - empty
+#             [],
+#             # Verticals
+#             [MockDict({'name': 'V001', 'display_name': 'Math'})]
+#         ]
+        
+#         result = video_api.get_available_filters()
+        
+#         assert result['status'] == 'success'
+#         assert result['course_levels'] == []
+#         assert result['weeks'] == [1]
+#         assert result['languages'] == []
+#         assert len(result['verticals']) == 1
+        
+#         # Reset side_effect
+#         mock_frappe.db.sql.side_effect = None
+    
+#     def test_get_video_statistics_empty_results(self):
+#         """Test get_video_statistics with empty results"""
+#         mock_frappe.db.sql.side_effect = [[], [], []]
+        
+#         result = video_api.get_video_statistics()
+        
+#         assert result['status'] == 'success'
+#         # Should handle empty results gracefully
+        
+#         # Reset side_effect
+#         mock_frappe.db.sql.side_effect = None
+    
+#     def test_get_video_urls_with_video_file(self):
+#         """Test video with file that needs URL construction"""
+#         mock_video = MockDict({
+#             'video_id': 'VID001',
+#             'video_name': 'Test Video',
+#             'video_youtube_url': None,
+#             'video_plio_url': None,
+#             'video_file': 'video.mp4',  # Relative path without /files/
+#             'duration': '10:30',
+#             'description': 'Test description',
+#             'difficulty_tier': 'Beginner',
+#             'estimated_duration': '15 min',
+#             'unit_name': 'Unit 1',
+#             'unit_order': 1,
+#             'course_level_id': 'CL001',
+#             'course_level_name': 'Basic Course',
+#             'week_no': 1,
+#             'vertical_name': 'Math'
+#         })
+        
+#         mock_frappe.db.sql.return_value = [mock_video]
+#         mock_frappe.utils.get_url.return_value = 'http://example.com'
+        
+#         result = video_api.get_video_urls()
+        
+#         assert result['status'] == 'success'
+#         assert 'file' in result
+#         assert result['file'] == 'http://example.com/files/video.mp4'
+    
+#     def test_get_video_urls_with_all_video_sources(self):
+#         """Test video with all three video sources populated"""
+#         mock_video = MockDict({
+#             'video_id': 'VID001',
+#             'video_name': 'Multi-source Video',
+#             'video_youtube_url': 'https://youtube.com/multi',
+#             'video_plio_url': 'https://plio.com/multi',
+#             'video_file': 'multi.mp4',
+#             'duration': '10:30',
+#             'description': 'Multi-source description',
+#             'difficulty_tier': 'Advanced',
+#             'estimated_duration': '15 min',
+#             'unit_name': 'Unit 1',
+#             'unit_order': 1,
+#             'course_level_id': 'CL001',
+#             'course_level_name': 'Advanced Course',
+#             'week_no': 2,
+#             'vertical_name': 'Physics'
+#         })
+        
+#         mock_frappe.db.sql.return_value = [mock_video]
+#         mock_frappe.utils.get_url.return_value = 'http://example.com'
+        
+#         # Test without video_source filter - should return all sources
+#         result = video_api.get_video_urls()
+        
+#         assert 'youtube' in result
+#         assert 'plio' in result
+#         assert 'file' in result
+#         assert result['youtube'] == 'https://youtube.com/multi'
+#         assert result['plio'] == 'https://plio.com/multi'
+#         assert result['file'] == 'http://example.com/files/multi.mp4'
+
+
+# class TestVideoAPICompleteCoverage:
+#     """Additional tests to achieve 100% code coverage"""
+    
+#     def test_get_video_statistics_partial_results(self):
+#         """Test statistics with partial/incomplete results"""
+#         mock_frappe.db.sql.side_effect = [
+#             # Video stats - missing some fields
+#             [MockDict({'total_videos': 50})],  # Missing youtube_videos, plio_videos, file_videos
+#             # Course stats - empty result
+#             [],
+#             # Language stats
+#             [MockDict({'available_languages': 3})]
+#         ]
+        
+#         result = video_api.get_video_statistics()
+        
+#         assert result['status'] == 'success'
+#         assert result['statistics']['total_videos'] == 50
+#         assert result['statistics']['available_languages'] == 3
+        
+#         # Reset side_effect
+#         mock_frappe.db.sql.side_effect = None
+    
+#     def test_test_connection_with_no_videos(self):
+#         """Test connection when no videos exist in database"""
+#         mock_frappe.db.sql.return_value = [MockDict({'video_count': 0})]
+        
+#         result = video_api.test_connection()
+        
+#         assert result['status'] == 'success'
+#         assert result['message'] == 'API is working correctly'
+#         assert result['video_count'] == 0
+    
+#     def test_get_available_filters_with_duplicates(self):
+#         """Test filters handling duplicate values"""
+#         mock_frappe.db.sql.side_effect = [
+#             # Course levels with duplicates
+#             [MockDict({'name': 'CL001', 'display_name': 'Basic'}), 
+#              MockDict({'name': 'CL001', 'display_name': 'Basic'}),  # Duplicate
+#              MockDict({'name': 'CL002', 'display_name': 'Advanced'})],
+#             # Weeks with duplicates
+#             [MockDict({'week_no': 1}), MockDict({'week_no': 1}), MockDict({'week_no': 2})],
+#             # Languages
+#             [MockDict({'language': 'English'}), MockDict({'language': 'English'})],  # Duplicate
+#             # Verticals
+#             [MockDict({'name': 'V001', 'display_name': 'Math'})]
+#         ]
+        
+#         result = video_api.get_available_filters()
+        
+#         # Should handle duplicates gracefully
+#         assert result['status'] == 'success'
+#         # Exact count depends on how the function handles duplicates
         
 #         # Reset side_effect
 #         mock_frappe.db.sql.side_effect = None
@@ -1168,6 +1410,628 @@ class TestVideoAPICompleteCoverage:
         # Should handle duplicates gracefully
         assert result['status'] == 'success'
         # Exact count depends on how the function handles duplicates
+        
+        # Reset side_effect
+        mock_frappe.db.sql.side_effect = None
+    
+    def test_get_video_urls_with_difficulty_filter(self):
+        """Test filtering videos by difficulty tier"""
+        mock_video = MockDict({
+            'video_id': 'VID_ADV',
+            'video_name': 'Advanced Video',
+            'video_youtube_url': 'https://youtube.com/advanced',
+            'video_plio_url': None,
+            'video_file': None,
+            'duration': '45:00',
+            'description': 'Advanced concepts',
+            'difficulty_tier': 'Advanced',
+            'estimated_duration': '60 min',
+            'unit_name': 'Advanced Unit',
+            'unit_order': 10,
+            'course_level_id': 'CL_ADV',
+            'course_level_name': 'Advanced Course',
+            'week_no': 8,
+            'vertical_name': 'Advanced Physics'
+        })
+        
+        mock_frappe.db.sql.return_value = [mock_video]
+        
+        # Test with difficulty filter
+        result = video_api.get_video_urls(difficulty='Advanced')
+        
+        assert result['status'] == 'success'
+        assert result['difficulty_tier'] == 'Advanced'
+        assert result['video_id'] == 'VID_ADV'
+    
+    def test_get_video_urls_with_vertical_filter(self):
+        """Test filtering videos by vertical"""
+        mock_video = MockDict({
+            'video_id': 'VID_CHEM',
+            'video_name': 'Chemistry Video',
+            'video_youtube_url': 'https://youtube.com/chemistry',
+            'video_plio_url': None,
+            'video_file': None,
+            'duration': '25:00',
+            'description': 'Chemistry fundamentals',
+            'difficulty_tier': 'Intermediate',
+            'estimated_duration': '30 min',
+            'unit_name': 'Chemistry Unit',
+            'unit_order': 5,
+            'course_level_id': 'CL_SCI',
+            'course_level_name': 'Science Course',
+            'week_no': 3,
+            'vertical_name': 'Chemistry'
+        })
+        
+        mock_frappe.db.sql.return_value = [mock_video]
+        
+        # Test with vertical filter
+        result = video_api.get_video_urls(vertical='Chemistry')
+        
+        assert result['status'] == 'success'
+        assert result['vertical_name'] == 'Chemistry'
+        assert result['video_id'] == 'VID_CHEM'
+    
+    def test_get_video_urls_all_filters_combined(self):
+        """Test with all possible filters at once"""
+        mock_video = MockDict({
+            'video_id': 'VID_COMPLEX',
+            'video_name': 'Complex Filter Test',
+            'video_youtube_url': 'https://youtube.com/complex',
+            'video_plio_url': 'https://plio.com/complex',
+            'video_file': 'complex.mp4',
+            'duration': '60:00',
+            'description': 'Testing all filters together',
+            'difficulty_tier': 'Expert',
+            'estimated_duration': '75 min',
+            'unit_name': 'Expert Unit',
+            'unit_order': 20,
+            'course_level_id': 'CL_EXPERT',
+            'course_level_name': 'Expert Program',
+            'week_no': 12,
+            'vertical_name': 'Quantum Computing'
+        })
+        
+        mock_frappe.db.sql.return_value = [mock_video]
+        mock_frappe.utils.get_url.return_value = 'http://example.com'
+        
+        # Use all filters
+        result = video_api.get_video_urls(
+            course_level='CL_EXPERT',
+            week_no=12,
+            vertical='Quantum Computing',
+            difficulty='Expert',
+            video_source='plio'
+        )
+        
+        assert result['status'] == 'success'
+        assert result['video_id'] == 'VID_COMPLEX'
+        assert 'plio' in result
+        assert 'youtube' not in result  # Filtered out by video_source
+        assert 'file' not in result  # Filtered out by video_source
+    
+    def test_get_video_urls_no_translation_fallback(self):
+        """Test when translation is requested but not found"""
+        mock_video = MockDict({
+            'video_id': 'VID_NO_TRANS',
+            'video_name': 'English Only Video',
+            'video_youtube_url': 'https://youtube.com/english',
+            'video_plio_url': None,
+            'video_file': None,
+            'duration': '20:00',
+            'description': 'English only description',
+            'difficulty_tier': 'Beginner',
+            'estimated_duration': '25 min',
+            'unit_name': 'Unit 1',
+            'unit_order': 1,
+            'course_level_id': 'CL001',
+            'course_level_name': 'Basic Course',
+            'week_no': 1,
+            'vertical_name': 'Math'
+        })
+        
+        # First call returns video, second returns empty (no translation)
+        mock_frappe.db.sql.side_effect = [[mock_video], []]
+        
+        result = video_api.get_video_urls(language='German')
+        
+        # Should fallback to original content
+        assert result['status'] == 'success'
+        assert result['video_name'] == 'English Only Video'
+        assert result['description'] == 'English only description'
+        
+        # Reset side_effect
+        mock_frappe.db.sql.side_effect = None
+    
+    def test_get_video_urls_partial_translation(self):
+        """Test with partial translation data"""
+        mock_video = MockDict({
+            'video_id': 'VID_PARTIAL',
+            'video_name': 'Original Video',
+            'video_youtube_url': 'https://youtube.com/original',
+            'video_plio_url': 'https://plio.com/original',
+            'video_file': 'original.mp4',
+            'duration': '30:00',
+            'description': 'Original description',
+            'difficulty_tier': 'Intermediate',
+            'estimated_duration': '35 min',
+            'unit_name': 'Unit 2',
+            'unit_order': 2,
+            'course_level_id': 'CL002',
+            'course_level_name': 'Intermediate Course',
+            'week_no': 2,
+            'vertical_name': 'Science'
+        })
+        
+        # Partial translation - only name and YouTube translated
+        mock_translation = MockDict({
+            'video_id': 'VID_PARTIAL',
+            'language': 'French',
+            'translated_name': 'Vidéo Française',
+            'translated_description': None,  # No description translation
+            'translated_youtube_url': 'https://youtube.com/french',
+            'translated_plio_url': None,  # No plio translation
+            'translated_video_file': None  # No file translation
+        })
+        
+        mock_frappe.db.sql.side_effect = [[mock_video], [mock_translation]]
+        mock_frappe.utils.get_url.return_value = 'http://example.com'
+        
+        result = video_api.get_video_urls(language='French')
+        
+        # Check mixed translation/original content
+        assert result['video_name'] == 'Vidéo Française'  # Translated
+        assert result['description'] == 'Original description'  # Original (no translation)
+        assert result['youtube'] == 'https://youtube.com/french'  # Translated
+        assert result['plio'] == 'https://plio.com/original'  # Original (no translation)
+        assert result['file'] == 'http://example.com/files/original.mp4'  # Original
+        
+        # Reset side_effect
+        mock_frappe.db.sql.side_effect = None
+    
+    def test_get_video_urls_with_translated_file(self):
+        """Test with translated video file"""
+        mock_video = MockDict({
+            'video_id': 'VID_FILE_TRANS',
+            'video_name': 'File Video',
+            'video_youtube_url': None,
+            'video_plio_url': None,
+            'video_file': 'english.mp4',
+            'duration': '15:00',
+            'description': 'English file video',
+            'difficulty_tier': 'Beginner',
+            'estimated_duration': '20 min',
+            'unit_name': 'Unit 1',
+            'unit_order': 1,
+            'course_level_id': 'CL001',
+            'course_level_name': 'Basic Course',
+            'week_no': 1,
+            'vertical_name': 'Math'
+        })
+        
+        mock_translation = MockDict({
+            'video_id': 'VID_FILE_TRANS',
+            'language': 'Spanish',
+            'translated_name': 'Video Archivo',
+            'translated_description': 'Video archivo español',
+            'translated_youtube_url': None,
+            'translated_plio_url': None,
+            'translated_video_file': 'spanish.mp4'  # Translated file
+        })
+        
+        mock_frappe.db.sql.side_effect = [[mock_video], [mock_translation]]
+        mock_frappe.utils.get_url.return_value = 'http://example.com'
+        
+        result = video_api.get_video_urls(language='Spanish')
+        
+        assert result['video_name'] == 'Video Archivo'
+        assert result['file'] == 'http://example.com/files/spanish.mp4'
+        
+        # Reset side_effect
+        mock_frappe.db.sql.side_effect = None
+
+
+class TestVideoAPIAggregated:
+    """Test cases for aggregated video functions"""
+    
+    def test_get_video_urls_aggregated_with_filters(self):
+        """Test aggregated URLs with various filters"""
+        mock_videos = [
+            MockDict({
+                'video_id': 'VID001',
+                'video_name': 'Aggregated Video 1',
+                'video_youtube_url': 'https://youtube.com/agg1',
+                'video_plio_url': None,
+                'video_file': None,
+                'duration': '10:00',
+                'description': 'First aggregated',
+                'difficulty_tier': 'Beginner',
+                'estimated_duration': '12 min',
+                'unit_name': 'Unit 1',
+                'unit_order': 1,
+                'course_level_id': 'CL001',
+                'course_level_name': 'Basic Course',
+                'week_no': 1,
+                'vertical_name': 'Math'
+            }),
+            MockDict({
+                'video_id': 'VID002',
+                'video_name': 'Aggregated Video 2',
+                'video_youtube_url': 'https://youtube.com/agg2',
+                'video_plio_url': None,
+                'video_file': None,
+                'duration': '15:00',
+                'description': 'Second aggregated',
+                'difficulty_tier': 'Beginner',
+                'estimated_duration': '18 min',
+                'unit_name': 'Unit 2',
+                'unit_order': 2,
+                'course_level_id': 'CL001',
+                'course_level_name': 'Basic Course',
+                'week_no': 1,
+                'vertical_name': 'Math'
+            })
+        ]
+        
+        mock_frappe.db.sql.return_value = mock_videos
+        
+        result = video_api.get_video_urls_aggregated(
+            course_level='CL001',
+            week_no=1,
+            vertical='Math',
+            difficulty='Beginner'
+        )
+        
+        assert result['status'] == 'success'
+        assert result['count'] == 2
+        assert 'Aggregated Video 1' in result['video_name']
+        assert 'Aggregated Video 2' in result['video_name']
+        assert result['video_id'] == 'week-1-videos'
+    
+    def test_get_video_urls_aggregated_with_language(self):
+        """Test aggregated URLs with language translation"""
+        mock_video = MockDict({
+            'video_id': 'VID_LANG',
+            'video_name': 'Language Video',
+            'video_youtube_url': 'https://youtube.com/lang',
+            'video_plio_url': None,
+            'video_file': None,
+            'duration': '20:00',
+            'description': 'Language test',
+            'difficulty_tier': 'Intermediate',
+            'estimated_duration': '25 min',
+            'unit_name': 'Language Unit',
+            'unit_order': 3,
+            'course_level_id': 'CL002',
+            'course_level_name': 'Language Course',
+            'week_no': 2,
+            'vertical_name': 'Languages'
+        })
+        
+        mock_translation = MockDict({
+            'video_id': 'VID_LANG',
+            'language': 'Japanese',
+            'translated_name': '言語ビデオ',
+            'translated_description': '言語テスト',
+            'translated_youtube_url': 'https://youtube.com/jp',
+            'translated_plio_url': None,
+            'translated_video_file': None
+        })
+        
+        mock_frappe.db.sql.side_effect = [[mock_video], [mock_translation]]
+        
+        result = video_api.get_video_urls_aggregated(language='Japanese')
+        
+        assert result['status'] == 'success'
+        assert '言語ビデオ' in result['video_name']
+        assert result['language'] == 'Japanese'
+        
+        # Reset side_effect
+        mock_frappe.db.sql.side_effect = None
+    
+    def test_get_video_urls_aggregated_multi_week(self):
+        """Test aggregating videos from multiple weeks"""
+        mock_videos = [
+            MockDict({
+                'video_id': 'VID_W1',
+                'video_name': 'Week 1 Video',
+                'video_youtube_url': 'https://youtube.com/w1',
+                'video_plio_url': None,
+                'video_file': None,
+                'duration': '10:00',
+                'description': 'Week 1',
+                'difficulty_tier': 'Beginner',
+                'estimated_duration': '12 min',
+                'unit_name': 'Unit 1',
+                'unit_order': 1,
+                'course_level_id': 'CL001',
+                'course_level_name': 'Multi-week Course',
+                'week_no': 1,
+                'vertical_name': 'Math'
+            }),
+            MockDict({
+                'video_id': 'VID_W2',
+                'video_name': 'Week 2 Video',
+                'video_youtube_url': 'https://youtube.com/w2',
+                'video_plio_url': None,
+                'video_file': None,
+                'duration': '15:00',
+                'description': 'Week 2',
+                'difficulty_tier': 'Intermediate',
+                'estimated_duration': '18 min',
+                'unit_name': 'Unit 2',
+                'unit_order': 2,
+                'course_level_id': 'CL001',
+                'course_level_name': 'Multi-week Course',
+                'week_no': 2,
+                'vertical_name': 'Science'
+            }),
+            MockDict({
+                'video_id': 'VID_W3',
+                'video_name': 'Week 3 Video',
+                'video_youtube_url': 'https://youtube.com/w3',
+                'video_plio_url': None,
+                'video_file': None,
+                'duration': '20:00',
+                'description': 'Week 3',
+                'difficulty_tier': 'Advanced',
+                'estimated_duration': '25 min',
+                'unit_name': 'Unit 3',
+                'unit_order': 3,
+                'course_level_id': 'CL001',
+                'course_level_name': 'Multi-week Course',
+                'week_no': 3,
+                'vertical_name': 'Physics'
+            })
+        ]
+        
+        mock_frappe.db.sql.return_value = mock_videos
+        
+        # Get all videos without week filter
+        result = video_api.get_video_urls_aggregated(course_level='CL001')
+        
+        assert result['status'] == 'success'
+        assert result['count'] == 3
+        assert 'Week 1 Video' in result['video_name']
+        assert 'Week 2 Video' in result['video_name']
+        assert 'Week 3 Video' in result['video_name']
+    
+    def test_get_video_urls_aggregated_video_source(self):
+        """Test aggregated with video source filtering"""
+        mock_videos = [
+            MockDict({
+                'video_id': 'VID_YT',
+                'video_name': 'YouTube Video',
+                'video_youtube_url': 'https://youtube.com/yt',
+                'video_plio_url': None,
+                'video_file': None,
+                'duration': '10:00',
+                'description': 'YouTube only',
+                'difficulty_tier': 'Beginner',
+                'estimated_duration': '12 min',
+                'unit_name': 'Unit 1',
+                'unit_order': 1,
+                'course_level_id': 'CL001',
+                'course_level_name': 'Mixed Source Course',
+                'week_no': 1,
+                'vertical_name': 'Math'
+            }),
+            MockDict({
+                'video_id': 'VID_PLIO',
+                'video_name': 'Plio Video',
+                'video_youtube_url': None,
+                'video_plio_url': 'https://plio.com/plio',
+                'video_file': None,
+                'duration': '15:00',
+                'description': 'Plio only',
+                'difficulty_tier': 'Intermediate',
+                'estimated_duration': '18 min',
+                'unit_name': 'Unit 2',
+                'unit_order': 2,
+                'course_level_id': 'CL001',
+                'course_level_name': 'Mixed Source Course',
+                'week_no': 1,
+                'vertical_name': 'Science'
+            }),
+            MockDict({
+                'video_id': 'VID_FILE',
+                'video_name': 'File Video',
+                'video_youtube_url': None,
+                'video_plio_url': None,
+                'video_file': 'video.mp4',
+                'duration': '20:00',
+                'description': 'File only',
+                'difficulty_tier': 'Advanced',
+                'estimated_duration': '25 min',
+                'unit_name': 'Unit 3',
+                'unit_order': 3,
+                'course_level_id': 'CL001',
+                'course_level_name': 'Mixed Source Course',
+                'week_no': 1,
+                'vertical_name': 'Physics'
+            })
+        ]
+        
+        mock_frappe.db.sql.return_value = mock_videos
+        mock_frappe.utils.get_url.return_value = 'http://example.com'
+        
+        # Test aggregation with plio source filter
+        result = video_api.get_video_urls_aggregated(video_source='plio')
+        
+        assert result['status'] == 'success'
+        assert 'plio' in result
+        assert 'youtube' not in result
+        assert 'file' not in result
+
+
+class TestVideoAPIExtendedCoverage:
+    """Extended test cases for comprehensive coverage"""
+    
+    def test_get_video_urls_with_none_fields(self):
+        """Test handling of None values in all fields"""
+        mock_video = MockDict({
+            'video_id': 'VID_NONE',
+            'video_name': None,
+            'video_youtube_url': None,
+            'video_plio_url': None,
+            'video_file': None,
+            'duration': None,
+            'description': None,
+            'difficulty_tier': None,
+            'estimated_duration': None,
+            'unit_name': None,
+            'unit_order': None,
+            'course_level_id': None,
+            'course_level_name': None,
+            'week_no': None,
+            'vertical_name': None
+        })
+        
+        mock_frappe.db.sql.return_value = [mock_video]
+        
+        result = video_api.get_video_urls()
+        
+        assert result['status'] == 'success'
+        assert result['video_id'] == 'VID_NONE'
+    
+    def test_get_video_urls_empty_strings(self):
+        """Test handling of empty strings"""
+        mock_video = MockDict({
+            'video_id': '',
+            'video_name': '',
+            'video_youtube_url': '',
+            'video_plio_url': '',
+            'video_file': '',
+            'duration': '',
+            'description': '',
+            'difficulty_tier': '',
+            'estimated_duration': '',
+            'unit_name': '',
+            'unit_order': 0,
+            'course_level_id': '',
+            'course_level_name': '',
+            'week_no': 0,
+            'vertical_name': ''
+        })
+        
+        mock_frappe.db.sql.return_value = [mock_video]
+        
+        result = video_api.get_video_urls()
+        
+        assert result['status'] == 'success'
+    
+    def test_get_video_statistics_with_null_values(self):
+        """Test statistics with null/None values"""
+        mock_frappe.db.sql.side_effect = [
+            # Video stats with nulls
+            [MockDict({
+                'total_videos': None, 
+                'youtube_videos': None, 
+                'plio_videos': None, 
+                'file_videos': None
+            })],
+            # Course stats with nulls
+            [MockDict({
+                'total_courses': None, 
+                'total_weeks': None, 
+                'total_verticals': None
+            })],
+            # Language stats with nulls
+            [MockDict({'available_languages': None})]
+        ]
+        
+        result = video_api.get_video_statistics()
+        
+        assert result['status'] == 'success'
+        # Function should handle null values gracefully
+        
+        # Reset side_effect
+        mock_frappe.db.sql.side_effect = None
+    
+    def test_get_video_urls_sql_conditions(self):
+        """Test various SQL condition combinations"""
+        mock_video = MockDict({
+            'video_id': 'VID_SQL',
+            'video_name': 'SQL Test Video',
+            'video_youtube_url': 'https://youtube.com/sql',
+            'video_plio_url': 'https://plio.com/sql',
+            'video_file': 'sql.mp4',
+            'duration': '30:00',
+            'description': 'Testing SQL conditions',
+            'difficulty_tier': 'Expert',
+            'estimated_duration': '40 min',
+            'unit_name': 'SQL Unit',
+            'unit_order': 15,
+            'course_level_id': 'CL_SQL',
+            'course_level_name': 'SQL Course',
+            'week_no': 10,
+            'vertical_name': 'Database'
+        })
+        
+        mock_frappe.db.sql.return_value = [mock_video]
+        mock_frappe.utils.get_url.return_value = 'http://example.com'
+        
+        # Test with integer week_no parameter
+        result = video_api.get_video_urls(week_no=10)
+        assert result['status'] == 'success'
+        assert result['week_no'] == 10
+        
+        # Test with string week_no parameter (should be converted)
+        result = video_api.get_video_urls(week_no='10')
+        assert result['status'] == 'success'
+        
+        # Test with special characters in filters (SQL injection prevention)
+        result = video_api.get_video_urls(
+            course_level="'; DROP TABLE--",
+            vertical="<script>alert('test')</script>"
+        )
+        # Should handle safely without error
+        assert 'status' in result
+    
+    def test_get_file_url_edge_cases(self):
+        """Test edge cases for get_file_url"""
+        # Test with whitespace
+        result = video_api.get_file_url('  ')
+        assert result is None
+        
+        # Test with https URL
+        result = video_api.get_file_url('https://secure.com/video.mp4')
+        assert result == 'https://secure.com/video.mp4'
+        
+        # Test with ftp URL
+        result = video_api.get_file_url('ftp://server.com/video.mp4')
+        assert result == 'ftp://server.com/video.mp4'
+        
+        # Test with /private/files path
+        mock_frappe.utils.get_url.return_value = 'http://example.com'
+        result = video_api.get_file_url('/private/files/video.mp4')
+        assert result == 'http://example.com/private/files/video.mp4'
+        
+        # Test with absolute file path
+        result = video_api.get_file_url('/absolute/path/video.mp4')
+        assert result == 'http://example.com/absolute/path/video.mp4'
+    
+    def test_test_connection_empty_result(self):
+        """Test connection with empty result"""
+        mock_frappe.db.sql.return_value = []
+        
+        result = video_api.test_connection()
+        
+        # Should handle empty result gracefully
+        assert result['status'] in ['success', 'error']
+    
+    def test_get_available_filters_all_empty(self):
+        """Test filters when all queries return empty"""
+        mock_frappe.db.sql.side_effect = [[], [], [], []]
+        
+        result = video_api.get_available_filters()
+        
+        assert result['status'] == 'success'
+        assert result['course_levels'] == []
+        assert result['weeks'] == []
+        assert result['languages'] == []
+        assert result['verticals'] == []
+        assert result['video_sources'] == ['youtube', 'plio', 'file']  # Static list
         
         # Reset side_effect
         mock_frappe.db.sql.side_effect = None
