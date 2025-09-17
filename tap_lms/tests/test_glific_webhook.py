@@ -3922,18 +3922,24 @@ class TestGlificContactUpdate(unittest.TestCase):
             "phone": "+1234567890",
             "language": "English"
         }
+        
+        # Module path - adjust this based on your actual module structure
+        self.module_path = 'tap.tap.api.glific_webhook'
     
     def _mock_get(self, field):
         """Helper to mock doc.get() method"""
         return self.teacher_fields.get(field)
     
-    @patch('your_module.get_glific_contact')
-    @patch('your_module.prepare_update_payload')
-    @patch('your_module.send_glific_update')
-    @patch('frappe.logger')
+    @patch('tap.tap.api.glific_webhook.get_glific_contact')
+    @patch('tap.tap.api.glific_webhook.prepare_update_payload')
+    @patch('tap.tap.api.glific_webhook.send_glific_update')
+    @patch('tap.tap.api.glific_webhook.frappe.logger')
     def test_update_glific_contact_success(self, mock_logger, mock_send, mock_prepare, mock_get_contact):
         """Test successful update of Glific contact"""
         # Arrange
+        mock_logger_instance = Mock()
+        mock_logger.return_value = mock_logger_instance
+        
         mock_contact = {
             "id": "123",
             "name": "John Doe",
@@ -3945,46 +3951,50 @@ class TestGlificContactUpdate(unittest.TestCase):
         mock_send.return_value = True
         
         # Act
-        from your_module import update_glific_contact
+        from tap.tap.api.glific_webhook import update_glific_contact
         update_glific_contact(self.teacher_doc, None)
         
         # Assert
         mock_get_contact.assert_called_once_with("123")
         mock_prepare.assert_called_once_with(self.teacher_doc, mock_contact)
         mock_send.assert_called_once_with("123", {"fields": '{"first_name": {"value": "John"}}'})
-        mock_logger().info.assert_called_with("Successfully updated Glific contact for teacher test_teacher")
+        mock_logger_instance.info.assert_called_with("Successfully updated Glific contact for teacher test_teacher")
     
-    @patch('your_module.get_glific_contact')
-    @patch('frappe.logger')
+    @patch('tap.tap.api.glific_webhook.get_glific_contact')
+    @patch('tap.tap.api.glific_webhook.frappe.logger')
     def test_update_glific_contact_not_found(self, mock_logger, mock_get_contact):
         """Test when Glific contact is not found"""
         # Arrange
+        mock_logger_instance = Mock()
+        mock_logger.return_value = mock_logger_instance
         mock_get_contact.return_value = None
         
         # Act
-        from your_module import update_glific_contact
+        from tap.tap.api.glific_webhook import update_glific_contact
         update_glific_contact(self.teacher_doc, None)
         
         # Assert
         mock_get_contact.assert_called_once_with("123")
-        mock_logger().error.assert_called_with("Glific contact not found for teacher test_teacher")
+        mock_logger_instance.error.assert_called_with("Glific contact not found for teacher test_teacher")
     
-    @patch('your_module.get_glific_contact')
-    @patch('your_module.prepare_update_payload')
-    @patch('frappe.logger')
+    @patch('tap.tap.api.glific_webhook.get_glific_contact')
+    @patch('tap.tap.api.glific_webhook.prepare_update_payload')
+    @patch('tap.tap.api.glific_webhook.frappe.logger')
     def test_update_glific_contact_no_updates(self, mock_logger, mock_prepare, mock_get_contact):
         """Test when no updates are needed"""
         # Arrange
+        mock_logger_instance = Mock()
+        mock_logger.return_value = mock_logger_instance
         mock_contact = {"id": "123", "fields": "{}"}
         mock_get_contact.return_value = mock_contact
         mock_prepare.return_value = None
         
         # Act
-        from your_module import update_glific_contact
+        from tap.tap.api.glific_webhook import update_glific_contact
         update_glific_contact(self.teacher_doc, None)
         
         # Assert
-        mock_logger().info.assert_called_with("No updates needed for Glific contact 123")
+        mock_logger_instance.info.assert_called_with("No updates needed for Glific contact 123")
     
     def test_update_glific_contact_wrong_doctype(self):
         """Test that function returns early for non-Teacher doctypes"""
@@ -3993,29 +4003,31 @@ class TestGlificContactUpdate(unittest.TestCase):
         doc.doctype = "Student"
         
         # Act
-        from your_module import update_glific_contact
+        from tap.tap.api.glific_webhook import update_glific_contact
         result = update_glific_contact(doc, None)
         
         # Assert
         self.assertIsNone(result)
     
-    @patch('your_module.get_glific_contact')
-    @patch('frappe.logger')
+    @patch('tap.tap.api.glific_webhook.get_glific_contact')
+    @patch('tap.tap.api.glific_webhook.frappe.logger')
     def test_update_glific_contact_exception_handling(self, mock_logger, mock_get_contact):
         """Test exception handling in update_glific_contact"""
         # Arrange
+        mock_logger_instance = Mock()
+        mock_logger.return_value = mock_logger_instance
         mock_get_contact.side_effect = Exception("API Error")
         
         # Act
-        from your_module import update_glific_contact
+        from tap.tap.api.glific_webhook import update_glific_contact
         update_glific_contact(self.teacher_doc, None)
         
         # Assert
-        mock_logger().error.assert_called_with("Error updating Glific contact for teacher test_teacher: API Error")
+        mock_logger_instance.error.assert_called_with("Error updating Glific contact for teacher test_teacher: API Error")
     
-    @patch('your_module.get_glific_settings')
-    @patch('your_module.get_glific_auth_headers')
-    @patch('requests.post')
+    @patch('tap.tap.api.glific_webhook.get_glific_settings')
+    @patch('tap.tap.api.glific_webhook.get_glific_auth_headers')
+    @patch('tap.tap.api.glific_webhook.requests.post')
     def test_get_glific_contact_success(self, mock_post, mock_headers, mock_settings):
         """Test successful retrieval of Glific contact"""
         # Arrange
@@ -4037,7 +4049,7 @@ class TestGlificContactUpdate(unittest.TestCase):
         mock_post.return_value = mock_response
         
         # Act
-        from your_module import get_glific_contact
+        from tap.tap.api.glific_webhook import get_glific_contact
         result = get_glific_contact("123")
         
         # Assert
@@ -4045,9 +4057,9 @@ class TestGlificContactUpdate(unittest.TestCase):
         self.assertEqual(result["name"], "John Doe")
         mock_post.assert_called_once()
     
-    @patch('your_module.get_glific_settings')
-    @patch('your_module.get_glific_auth_headers')
-    @patch('requests.post')
+    @patch('tap.tap.api.glific_webhook.get_glific_settings')
+    @patch('tap.tap.api.glific_webhook.get_glific_auth_headers')
+    @patch('tap.tap.api.glific_webhook.requests.post')
     def test_get_glific_contact_failure(self, mock_post, mock_headers, mock_settings):
         """Test failed retrieval of Glific contact"""
         # Arrange
@@ -4058,19 +4070,22 @@ class TestGlificContactUpdate(unittest.TestCase):
         mock_post.return_value = mock_response
         
         # Act
-        from your_module import get_glific_contact
+        from tap.tap.api.glific_webhook import get_glific_contact
         result = get_glific_contact("123")
         
         # Assert
         self.assertIsNone(result)
     
-    @patch('frappe.get_all')
-    @patch('frappe.utils.now_datetime')
-    @patch('frappe.db.get_value')
+    @patch('tap.tap.api.glific_webhook.frappe.get_all')
+    @patch('tap.tap.api.glific_webhook.frappe.utils.now_datetime')
+    @patch('tap.tap.api.glific_webhook.frappe.db.get_value')
     def test_prepare_update_payload_with_changes(self, mock_get_value, mock_now, mock_get_all):
         """Test preparing update payload when changes exist"""
         # Arrange
-        mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_datetime = Mock()
+        mock_datetime.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_now.return_value = mock_datetime
+        
         mock_get_all.return_value = [
             {"frappe_field": "first_name", "glific_field": "firstName"},
             {"frappe_field": "email", "glific_field": "email"}
@@ -4083,7 +4098,7 @@ class TestGlificContactUpdate(unittest.TestCase):
         }
         
         # Act
-        from your_module import prepare_update_payload
+        from tap.tap.api.glific_webhook import prepare_update_payload
         result = prepare_update_payload(self.teacher_doc, glific_contact)
         
         # Assert
@@ -4093,8 +4108,8 @@ class TestGlificContactUpdate(unittest.TestCase):
         self.assertEqual(fields["firstName"]["value"], "John")
         self.assertEqual(fields["email"]["value"], "john.doe@example.com")
     
-    @patch('frappe.get_all')
-    @patch('frappe.db.get_value')
+    @patch('tap.tap.api.glific_webhook.frappe.get_all')
+    @patch('tap.tap.api.glific_webhook.frappe.db.get_value')
     def test_prepare_update_payload_no_changes(self, mock_get_value, mock_get_all):
         """Test preparing update payload when no changes exist"""
         # Arrange
@@ -4110,19 +4125,22 @@ class TestGlificContactUpdate(unittest.TestCase):
         }
         
         # Act
-        from your_module import prepare_update_payload
+        from tap.tap.api.glific_webhook import prepare_update_payload
         result = prepare_update_payload(self.teacher_doc, glific_contact)
         
         # Assert
         self.assertIsNone(result)
     
-    @patch('frappe.get_all')
-    @patch('frappe.utils.now_datetime')
-    @patch('frappe.db.get_value')
+    @patch('tap.tap.api.glific_webhook.frappe.get_all')
+    @patch('tap.tap.api.glific_webhook.frappe.utils.now_datetime')
+    @patch('tap.tap.api.glific_webhook.frappe.db.get_value')
     def test_prepare_update_payload_new_fields(self, mock_get_value, mock_now, mock_get_all):
         """Test adding new fields to Glific contact"""
         # Arrange
-        mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_datetime = Mock()
+        mock_datetime.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_now.return_value = mock_datetime
+        
         mock_get_all.return_value = [
             {"frappe_field": "phone", "glific_field": "phoneNumber"}
         ]
@@ -4135,7 +4153,7 @@ class TestGlificContactUpdate(unittest.TestCase):
         }
         
         # Act
-        from your_module import prepare_update_payload
+        from tap.tap.api.glific_webhook import prepare_update_payload
         result = prepare_update_payload(self.teacher_doc, glific_contact)
         
         # Assert
@@ -4144,13 +4162,16 @@ class TestGlificContactUpdate(unittest.TestCase):
         self.assertEqual(fields["phoneNumber"]["value"], "+1234567890")
         self.assertEqual(fields["phoneNumber"]["type"], "string")
     
-    @patch('your_module.get_glific_settings')
-    @patch('your_module.get_glific_auth_headers')
-    @patch('requests.post')
-    @patch('frappe.logger')
+    @patch('tap.tap.api.glific_webhook.get_glific_settings')
+    @patch('tap.tap.api.glific_webhook.get_glific_auth_headers')
+    @patch('tap.tap.api.glific_webhook.requests.post')
+    @patch('tap.tap.api.glific_webhook.frappe.logger')
     def test_send_glific_update_success(self, mock_logger, mock_post, mock_headers, mock_settings):
         """Test successful sending of update to Glific"""
         # Arrange
+        mock_logger_instance = Mock()
+        mock_logger.return_value = mock_logger_instance
+        
         mock_settings.return_value = Mock(api_url="https://api.glific.com")
         mock_headers.return_value = {"Authorization": "Bearer token"}
         mock_response = Mock()
@@ -4166,20 +4187,23 @@ class TestGlificContactUpdate(unittest.TestCase):
         mock_post.return_value = mock_response
         
         # Act
-        from your_module import send_glific_update
+        from tap.tap.api.glific_webhook import send_glific_update
         result = send_glific_update("123", {"fields": "{}"})
         
         # Assert
         self.assertTrue(result)
         mock_post.assert_called_once()
     
-    @patch('your_module.get_glific_settings')
-    @patch('your_module.get_glific_auth_headers')
-    @patch('requests.post')
-    @patch('frappe.logger')
+    @patch('tap.tap.api.glific_webhook.get_glific_settings')
+    @patch('tap.tap.api.glific_webhook.get_glific_auth_headers')
+    @patch('tap.tap.api.glific_webhook.requests.post')
+    @patch('tap.tap.api.glific_webhook.frappe.logger')
     def test_send_glific_update_with_errors(self, mock_logger, mock_post, mock_headers, mock_settings):
         """Test handling of Glific API errors"""
         # Arrange
+        mock_logger_instance = Mock()
+        mock_logger.return_value = mock_logger_instance
+        
         mock_settings.return_value = Mock(api_url="https://api.glific.com")
         mock_headers.return_value = {"Authorization": "Bearer token"}
         mock_response = Mock()
@@ -4190,16 +4214,16 @@ class TestGlificContactUpdate(unittest.TestCase):
         mock_post.return_value = mock_response
         
         # Act
-        from your_module import send_glific_update
+        from tap.tap.api.glific_webhook import send_glific_update
         result = send_glific_update("123", {"fields": "{}"})
         
         # Assert
         self.assertFalse(result)
-        mock_logger().error.assert_called_with("Glific API Error: [{'message': 'Invalid input'}]")
+        mock_logger_instance.error.assert_called_with("Glific API Error: [{'message': 'Invalid input'}]")
     
-    @patch('your_module.get_glific_settings')
-    @patch('your_module.get_glific_auth_headers')
-    @patch('requests.post')
+    @patch('tap.tap.api.glific_webhook.get_glific_settings')
+    @patch('tap.tap.api.glific_webhook.get_glific_auth_headers')
+    @patch('tap.tap.api.glific_webhook.requests.post')
     def test_send_glific_update_http_error(self, mock_post, mock_headers, mock_settings):
         """Test handling of HTTP errors"""
         # Arrange
@@ -4210,36 +4234,41 @@ class TestGlificContactUpdate(unittest.TestCase):
         mock_post.return_value = mock_response
         
         # Act
-        from your_module import send_glific_update
+        from tap.tap.api.glific_webhook import send_glific_update
         result = send_glific_update("123", {"fields": "{}"})
         
         # Assert
         self.assertFalse(result)
     
-    @patch('frappe.get_all')
-    @patch('frappe.utils.now_datetime')
+    @patch('tap.tap.api.glific_webhook.frappe.get_all')
+    @patch('tap.tap.api.glific_webhook.frappe.utils.now_datetime')
     def test_prepare_update_payload_preserves_existing_fields(self, mock_now, mock_get_all):
         """Test that prepare_update_payload preserves existing fields not in mappings"""
         # Arrange
-        mock_now.return_value.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_datetime = Mock()
+        mock_datetime.isoformat.return_value = "2024-01-01T00:00:00"
+        mock_now.return_value = mock_datetime
+        
         mock_get_all.return_value = [
             {"frappe_field": "first_name", "glific_field": "firstName"}
         ]
         
-        glific_contact = {
-            "fields": '{"firstName": {"value": "Jane"}, "customField": {"value": "keepme"}}',
-            "language": {"id": "1", "label": "English"}
-        }
-        
-        # Act
-        from your_module import prepare_update_payload
-        result = prepare_update_payload(self.teacher_doc, glific_contact)
-        
-        # Assert
-        fields = json.loads(result["fields"])
-        self.assertIn("customField", fields)
-        self.assertEqual(fields["customField"]["value"], "keepme")
-        self.assertEqual(fields["firstName"]["value"], "John")
+        # Need to patch get_value for language check
+        with patch('tap.tap.api.glific_webhook.frappe.db.get_value', return_value="1"):
+            glific_contact = {
+                "fields": '{"firstName": {"value": "Jane"}, "customField": {"value": "keepme"}}',
+                "language": {"id": "1", "label": "English"}
+            }
+            
+            # Act
+            from tap.tap.api.glific_webhook import prepare_update_payload
+            result = prepare_update_payload(self.teacher_doc, glific_contact)
+            
+            # Assert
+            fields = json.loads(result["fields"])
+            self.assertIn("customField", fields)
+            self.assertEqual(fields["customField"]["value"], "keepme")
+            self.assertEqual(fields["firstName"]["value"], "John")
 
 
 if __name__ == '__main__':
