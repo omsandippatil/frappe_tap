@@ -3940,13 +3940,43 @@ class TestGlificWebhookDirect(unittest.TestCase):
         self.frappe_mock.ValidationError = Exception
         self.frappe_mock.DoesNotExistError = Exception
         
-        # Create requests mock
+        # Create proper requests mock with exceptions module
         self.requests_mock = MagicMock()
         self.requests_mock.__name__ = 'requests'
+        
+        # Create exceptions as classes
+        class ConnectionError(Exception):
+            pass
+        
+        class Timeout(Exception):
+            pass
+        
+        class RequestException(Exception):
+            pass
+        
+        class HTTPError(Exception):
+            pass
+        
+        # Create exceptions module mock
+        exceptions_mock = MagicMock()
+        exceptions_mock.ConnectionError = ConnectionError
+        exceptions_mock.Timeout = Timeout
+        exceptions_mock.RequestException = RequestException
+        exceptions_mock.HTTPError = HTTPError
+        
+        # Attach exceptions to requests mock
+        self.requests_mock.exceptions = exceptions_mock
+        
+        # Store exception classes for later use
+        self.ConnectionError = ConnectionError
+        self.Timeout = Timeout
+        self.RequestException = RequestException
+        self.HTTPError = HTTPError
         
         # Apply patches BEFORE importing the module
         sys.modules['frappe'] = self.frappe_mock
         sys.modules['requests'] = self.requests_mock
+        sys.modules['requests.exceptions'] = exceptions_mock
         
         # Now we need to execute the actual module code
         self.module = None
@@ -4279,10 +4309,6 @@ class TestGlificWebhookDirect(unittest.TestCase):
             self.skipTest("Module not loaded")
         
         # Force various exceptions to trigger error handling
-        
-        # Test 1: Network errors
-        from requests.exceptions import ConnectionError, Timeout, RequestException
-        
         doc = Mock()
         doc.doctype = "Teacher"
         doc.name = "ERROR-TEST"
@@ -4290,24 +4316,32 @@ class TestGlificWebhookDirect(unittest.TestCase):
         doc.full_name = "Error Test"
         doc.mobile_no = "1234567890"
         
-        # Connection error
-        self.requests_mock.post.side_effect = ConnectionError("Network unreachable")
+        # Test 1: Connection error (using our custom exception class)
+        self.requests_mock.post.side_effect = self.ConnectionError("Network unreachable")
         try:
             if hasattr(self.module, 'update_glific_contact'):
                 self.module.update_glific_contact(doc, "on_update")
         except:
             pass
         
-        # Timeout error
-        self.requests_mock.post.side_effect = Timeout("Request timed out")
+        # Test 2: Timeout error
+        self.requests_mock.post.side_effect = self.Timeout("Request timed out")
         try:
             if hasattr(self.module, 'update_glific_contact'):
                 self.module.update_glific_contact(doc, "on_update")
         except:
             pass
         
-        # Generic request exception
-        self.requests_mock.post.side_effect = RequestException("Generic error")
+        # Test 3: Generic request exception
+        self.requests_mock.post.side_effect = self.RequestException("Generic error")
+        try:
+            if hasattr(self.module, 'update_glific_contact'):
+                self.module.update_glific_contact(doc, "on_update")
+        except:
+            pass
+        
+        # Test 4: HTTP error
+        self.requests_mock.post.side_effect = self.HTTPError("HTTP 500 Internal Server Error")
         try:
             if hasattr(self.module, 'update_glific_contact'):
                 self.module.update_glific_contact(doc, "on_update")
