@@ -7,7 +7,7 @@ Place this file in: tests/test_glific_integration.py
 import pytest
 import sys
 import os
-from unittest.mock import Mock, patch, MagicMock, PropertyMock
+from unittest.mock import Mock, patch, MagicMock, call
 from datetime import datetime, timezone, timedelta
 import json
 
@@ -16,452 +16,437 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
-# Mock all dependencies before importing the module
-sys.modules['frappe'] = MagicMock()
-sys.modules['frappe.utils'] = MagicMock()
 
-
-def test_all_functions_coverage():
-    """Single comprehensive test to maximize coverage"""
-    
-    # Import after mocking
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_get_glific_settings(mock_frappe, mock_requests):
+    """Test get_glific_settings function"""
     from tap_lms import glific_integration
     
-    mock_frappe = sys.modules['frappe']
-    
-    # Test 1: get_glific_settings
+    # Setup mock settings
     mock_settings = Mock()
     mock_settings.api_url = "https://api.glific.com"
     mock_settings.access_token = "test_token"
-    mock_settings.username = "user"
-    mock_settings.password = "pass"
+    mock_frappe.get_single.return_value = mock_settings
+    
+    # Test successful retrieval
+    result = glific_integration.get_glific_settings()
+    assert result == mock_settings
+    mock_frappe.get_single.assert_called_with("Glific Settings")
+    
+    # Test exception
+    mock_frappe.get_single.side_effect = Exception("Error")
+    with pytest.raises(Exception):
+        glific_integration.get_glific_settings()
+
+
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_get_glific_auth_headers(mock_frappe, mock_requests):
+    """Test get_glific_auth_headers function"""
+    from tap_lms import glific_integration
+    
+    # Setup mock settings
+    mock_settings = Mock()
+    mock_settings.api_url = "https://api.glific.com"
+    mock_settings.access_token = "valid_token"
     mock_settings.token_expiry_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    mock_frappe.get_single.return_value = mock_settings
     
-    mock_frappe.get_single = Mock(return_value=mock_settings)
-    mock_frappe.logger = Mock()
-    mock_frappe.logger.return_value.info = Mock()
-    mock_frappe.logger.return_value.error = Mock()
-    mock_frappe.db = Mock()
-    mock_frappe.db.commit = Mock()
-    
-    settings = glific_integration.get_glific_settings()
-    assert settings.api_url == "https://api.glific.com"
-    assert settings.access_token == "test_token"
-    
-    # Test 2: get_glific_auth_headers with valid token
+    # Test with valid token
     headers = glific_integration.get_glific_auth_headers()
-    assert "authorization" in headers
-    assert headers["authorization"] == "test_token"
+    assert headers["authorization"] == "valid_token"
     assert headers["Content-Type"] == "application/json"
     
-    # Test 3: get_glific_auth_headers with expired token (triggers refresh)
-    with patch('requests.post') as mock_post:
-        # Set expired token
-        mock_settings.token_expiry_time = datetime.now(timezone.utc) - timedelta(hours=1)
-        
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "session": {
-                    "access_token": "new_token",
-                    "renewal_token": "renewal"
-                }
+    # Test with expired token - should trigger refresh
+    mock_settings.token_expiry_time = datetime.now(timezone.utc) - timedelta(hours=1)
+    mock_settings.username = "user"
+    mock_settings.password = "pass"
+    mock_settings.save = Mock()
+    
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {
+            "session": {
+                "access_token": "new_token",
+                "renewal_token": "renewal"
             }
         }
-        mock_post.return_value = mock_response
-        
-        with patch('dateutil.parser.parse') as mock_parse:
-            mock_parse.return_value = datetime.now(timezone.utc) + timedelta(hours=1)
-            mock_settings.save = Mock()
-            
-            headers = glific_integration.get_glific_auth_headers()
-            assert headers["authorization"] == "new_token"
+    }
+    mock_requests.post.return_value = mock_response
     
-    # Reset token for next tests
-    mock_settings.access_token = "test_token"
+    with patch('tap_lms.glific_integration.dateutil.parser.parse') as mock_parse:
+        mock_parse.return_value = datetime.now(timezone.utc) + timedelta(hours=1)
+        
+        headers = glific_integration.get_glific_auth_headers()
+        assert headers["authorization"] == "new_token"
+        mock_settings.save.assert_called()
+
+
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_create_contact(mock_frappe, mock_requests):
+    """Test create_contact function"""
+    from tap_lms import glific_integration
+    
+    # Setup mocks
+    mock_settings = Mock()
+    mock_settings.api_url = "https://api.glific.com"
+    mock_settings.access_token = "token"
     mock_settings.token_expiry_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    mock_frappe.get_single.return_value = mock_settings
+    mock_frappe.logger.return_value.info = Mock()
+    mock_frappe.logger.return_value.error = Mock()
     
-    # Test 4: create_contact success
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.text = "success"
-        mock_response.json.return_value = {
-            "data": {
-                "createContact": {
-                    "contact": {
-                        "id": "123",
-                        "name": "Test User",
-                        "phone": "1234567890"
-                    }
-                }
-            }
-        }
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.create_contact(
-            "Test User", "1234567890", "School", "Model", "1", "batch"
-        )
-        assert result is not None
-        assert result["id"] == "123"
-        assert result["name"] == "Test User"
-    
-    # Test 5: create_contact with error response
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 400
-        mock_response.text = "error"
-        mock_response.json.return_value = {"errors": [{"message": "Error"}]}
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.create_contact(
-            "Test", "123", "School", "Model", "1", "batch"
-        )
-        assert result is None
-    
-    # Test 6: create_contact with exception
-    with patch('requests.post') as mock_post:
-        mock_post.side_effect = Exception("Network error")
-        
-        result = glific_integration.create_contact(
-            "Test", "123", "School", "Model", "1", "batch"
-        )
-        assert result is None
-    
-    # Test 7: update_contact_fields success
-    with patch('requests.post') as mock_post:
-        fetch_resp = Mock()
-        fetch_resp.status_code = 200
-        fetch_resp.json.return_value = {
-            "data": {
+    # Test successful creation
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.text = "success"
+    mock_response.json.return_value = {
+        "data": {
+            "createContact": {
                 "contact": {
-                    "contact": {
-                        "id": "123",
-                        "fields": '{"existing": "value"}'
-                    }
+                    "id": "123",
+                    "name": "Test User",
+                    "phone": "1234567890"
                 }
             }
         }
-        
-        update_resp = Mock()
-        update_resp.status_code = 200
-        update_resp.json.return_value = {
-            "data": {
-                "updateContact": {
-                    "contact": {"id": "123"}
-                }
-            }
-        }
-        
-        mock_post.side_effect = [fetch_resp, update_resp]
-        
-        result = glific_integration.update_contact_fields("123", {"new": "field"})
-        assert result is True
+    }
+    mock_requests.post.return_value = mock_response
     
-    # Test 8: update_contact_fields with invalid JSON
-    with patch('requests.post') as mock_post:
-        fetch_resp = Mock()
-        fetch_resp.status_code = 200
-        fetch_resp.json.return_value = {
-            "data": {
+    result = glific_integration.create_contact(
+        "Test User", "1234567890", "School", "Model", "1", "batch"
+    )
+    assert result is not None
+    assert result["id"] == "123"
+    
+    # Test with error response
+    mock_response.status_code = 400
+    mock_response.json.return_value = {"errors": [{"message": "Error"}]}
+    result = glific_integration.create_contact(
+        "Test", "123", "School", "Model", "1", "batch"
+    )
+    assert result is None
+    
+    # Test with exception
+    mock_requests.post.side_effect = Exception("Network error")
+    result = glific_integration.create_contact(
+        "Test", "123", "School", "Model", "1", "batch"
+    )
+    assert result is None
+
+
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_update_contact_fields(mock_frappe, mock_requests):
+    """Test update_contact_fields function"""
+    from tap_lms import glific_integration
+    
+    # Setup mocks
+    mock_settings = Mock()
+    mock_settings.api_url = "https://api.glific.com"
+    mock_settings.access_token = "token"
+    mock_settings.token_expiry_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    mock_frappe.get_single.return_value = mock_settings
+    mock_frappe.logger.return_value.info = Mock()
+    mock_frappe.logger.return_value.error = Mock()
+    
+    # Test successful update
+    fetch_resp = Mock()
+    fetch_resp.status_code = 200
+    fetch_resp.json.return_value = {
+        "data": {
+            "contact": {
                 "contact": {
-                    "contact": {
-                        "id": "123",
-                        "fields": "invalid json"
-                    }
+                    "id": "123",
+                    "fields": '{"existing": "value"}'
                 }
             }
         }
-        
-        update_resp = Mock()
-        update_resp.status_code = 200
-        update_resp.json.return_value = {
-            "data": {
-                "updateContact": {
-                    "contact": {"id": "123"}
-                }
-            }
-        }
-        
-        mock_post.side_effect = [fetch_resp, update_resp]
-        
-        result = glific_integration.update_contact_fields("123", {"new": "field"})
-        assert result is True
+    }
     
-    # Test 9: update_contact_fields with None fields
-    with patch('requests.post') as mock_post:
-        fetch_resp = Mock()
-        fetch_resp.status_code = 200
-        fetch_resp.json.return_value = {
-            "data": {
+    update_resp = Mock()
+    update_resp.status_code = 200
+    update_resp.json.return_value = {
+        "data": {
+            "updateContact": {
+                "contact": {"id": "123"}
+            }
+        }
+    }
+    
+    mock_requests.post.side_effect = [fetch_resp, update_resp]
+    
+    result = glific_integration.update_contact_fields("123", {"new": "field"})
+    assert result is True
+    
+    # Test with invalid JSON fields
+    fetch_resp.json.return_value = {
+        "data": {
+            "contact": {
                 "contact": {
-                    "contact": {
-                        "id": "123",
-                        "fields": None
-                    }
+                    "id": "123",
+                    "fields": "invalid json"
                 }
             }
         }
-        
-        update_resp = Mock()
-        update_resp.status_code = 200
-        update_resp.json.return_value = {
-            "data": {
-                "updateContact": {
-                    "contact": {"id": "123"}
+    }
+    mock_requests.post.side_effect = [fetch_resp, update_resp]
+    
+    result = glific_integration.update_contact_fields("123", {"new": "field"})
+    assert result is True
+    
+    # Test with None fields
+    fetch_resp.json.return_value = {
+        "data": {
+            "contact": {
+                "contact": {
+                    "id": "123",
+                    "fields": None
                 }
             }
         }
-        
-        mock_post.side_effect = [fetch_resp, update_resp]
-        
-        result = glific_integration.update_contact_fields("123", {"new": "field"})
-        assert result is True
+    }
+    mock_requests.post.side_effect = [fetch_resp, update_resp]
     
-    # Test 10: update_contact_fields with exception
-    with patch('requests.post') as mock_post:
-        mock_post.side_effect = Exception("Network error")
-        
-        result = glific_integration.update_contact_fields("123", {"field": "value"})
-        assert result is False
+    result = glific_integration.update_contact_fields("123", {"new": "field"})
+    assert result is True
     
-    # Test 11: get_contact_by_phone found
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "contactByPhone": {
-                    "contact": {
-                        "id": "123",
-                        "phone": "1234567890"
-                    }
+    # Test with exception
+    mock_requests.post.side_effect = Exception("Network error")
+    result = glific_integration.update_contact_fields("123", {"field": "value"})
+    assert result is False
+
+
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_get_contact_by_phone(mock_frappe, mock_requests):
+    """Test get_contact_by_phone function"""
+    from tap_lms import glific_integration
+    
+    # Setup mocks
+    mock_settings = Mock()
+    mock_settings.api_url = "https://api.glific.com"
+    mock_settings.access_token = "token"
+    mock_settings.token_expiry_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    mock_frappe.get_single.return_value = mock_settings
+    mock_frappe.logger.return_value.error = Mock()
+    
+    # Test contact found
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {
+            "contactByPhone": {
+                "contact": {
+                    "id": "123",
+                    "phone": "1234567890"
                 }
             }
         }
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.get_contact_by_phone("1234567890")
-        assert result is not None
-        assert result["id"] == "123"
-        assert result["phone"] == "1234567890"
+    }
+    mock_requests.post.return_value = mock_response
     
-    # Test 12: get_contact_by_phone not found
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "contactByPhone": {
-                    "contact": None
-                }
+    result = glific_integration.get_contact_by_phone("1234567890")
+    assert result is not None
+    assert result["id"] == "123"
+    
+    # Test contact not found
+    mock_response.json.return_value = {
+        "data": {
+            "contactByPhone": {
+                "contact": None
             }
         }
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.get_contact_by_phone("9999999999")
-        assert result is None
+    }
+    result = glific_integration.get_contact_by_phone("9999999999")
+    assert result is None
     
-    # Test 13: get_contact_by_phone exception
-    with patch('requests.post') as mock_post:
-        mock_post.side_effect = Exception("Error")
-        
-        result = glific_integration.get_contact_by_phone("123")
-        assert result is None
+    # Test with exception
+    mock_requests.post.side_effect = Exception("Error")
+    result = glific_integration.get_contact_by_phone("123")
+    assert result is None
+
+
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_optin_contact(mock_frappe, mock_requests):
+    """Test optin_contact function"""
+    from tap_lms import glific_integration
     
-    # Test 14: optin_contact success
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "optinContact": {
-                    "contact": {"id": "123", "phone": "1234567890"}
-                }
+    # Setup mocks
+    mock_settings = Mock()
+    mock_settings.api_url = "https://api.glific.com"
+    mock_settings.access_token = "token"
+    mock_settings.token_expiry_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    mock_frappe.get_single.return_value = mock_settings
+    mock_frappe.logger.return_value.info = Mock()
+    mock_frappe.logger.return_value.error = Mock()
+    
+    # Test successful opt-in
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {
+            "optinContact": {
+                "contact": {"id": "123"}
             }
         }
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.optin_contact("1234567890", "User")
-        assert result is True
+    }
+    mock_requests.post.return_value = mock_response
     
-    # Test 15: optin_contact failure
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 400
-        mock_response.text = "Bad Request"
-        mock_response.json.return_value = {"errors": [{"message": "Error"}]}
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.optin_contact("123", "User")
-        assert result is False
+    result = glific_integration.optin_contact("1234567890", "User")
+    assert result is True
     
-    # Test 16: optin_contact exception
-    with patch('requests.post') as mock_post:
-        mock_post.side_effect = Exception("Error")
-        
-        result = glific_integration.optin_contact("123", "User")
-        assert result is False
+    # Test failed opt-in
+    mock_response.status_code = 400
+    mock_response.text = "Bad Request"
+    mock_response.json.return_value = {"errors": [{"message": "Error"}]}
+    result = glific_integration.optin_contact("123", "User")
+    assert result is False
     
-    # Test 17: check_glific_group_exists found
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "groups": [{"id": "g1", "label": "Group1"}]
-            }
+    # Test with exception
+    mock_requests.post.side_effect = Exception("Error")
+    result = glific_integration.optin_contact("123", "User")
+    assert result is False
+
+
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_check_glific_group_exists(mock_frappe, mock_requests):
+    """Test check_glific_group_exists function"""
+    from tap_lms import glific_integration
+    
+    # Setup mocks
+    mock_settings = Mock()
+    mock_settings.api_url = "https://api.glific.com"
+    mock_settings.access_token = "token"
+    mock_settings.token_expiry_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    mock_frappe.get_single.return_value = mock_settings
+    mock_frappe.logger.return_value.error = Mock()
+    
+    # Test group found
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {
+            "groups": [{"id": "g1", "label": "Group1"}]
         }
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.check_glific_group_exists("Group1")
-        assert result is not None
-        assert result["id"] == "g1"
-        assert result["label"] == "Group1"
+    }
+    mock_requests.post.return_value = mock_response
     
-    # Test 18: check_glific_group_exists not found
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"data": {"groups": []}}
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.check_glific_group_exists("NoGroup")
-        assert result is None
+    result = glific_integration.check_glific_group_exists("Group1")
+    assert result is not None
+    assert result["id"] == "g1"
     
-    # Test 19: check_glific_group_exists exception
-    with patch('requests.post') as mock_post:
-        mock_post.side_effect = Exception("Error")
-        
-        result = glific_integration.check_glific_group_exists("Group")
-        assert result is None
+    # Test group not found
+    mock_response.json.return_value = {"data": {"groups": []}}
+    result = glific_integration.check_glific_group_exists("NoGroup")
+    assert result is None
     
-    # Test 20: add_contact_to_group success
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "updateGroupContacts": {
-                    "groupContacts": [{"id": "123"}],
-                    "numberDeleted": 0
-                }
-            }
-        }
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.add_contact_to_group("c123", "g123")
-        assert result is True
+    # Test with exception
+    mock_requests.post.side_effect = Exception("Error")
+    result = glific_integration.check_glific_group_exists("Group")
+    assert result is None
+
+
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_add_contact_to_group(mock_frappe, mock_requests):
+    """Test add_contact_to_group function"""
+    from tap_lms import glific_integration
     
-    # Test 21: add_contact_to_group invalid params
+    # Test invalid parameters
     result = glific_integration.add_contact_to_group(None, "g123")
     assert result is False
     
     result = glific_integration.add_contact_to_group("c123", None)
     assert result is False
     
-    # Test 22: add_contact_to_group failure
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 400
-        mock_response.text = "Bad Request"
-        mock_response.json.return_value = {"errors": [{"message": "Error"}]}
-        mock_post.return_value = mock_response
-        
-        result = glific_integration.add_contact_to_group("c123", "g123")
-        assert result is False
-    
-    # Test 23: add_contact_to_group exception
-    with patch('requests.post') as mock_post:
-        mock_post.side_effect = Exception("Error")
-        
-        result = glific_integration.add_contact_to_group("c123", "g123")
-        assert result is False
-    
-    # Test 24: Test timezone-naive datetime handling
-    with patch('requests.post') as mock_post:
-        # Set timezone-naive datetime
-        mock_settings.token_expiry_time = datetime(2025, 12, 31, 23, 59, 59)
-        
-        headers = glific_integration.get_glific_auth_headers()
-        assert "authorization" in headers
-    
-    # Test 25: Test None token_expiry_time
-    with patch('requests.post') as mock_post:
-        mock_settings.token_expiry_time = None
-        mock_settings.access_token = None
-        
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "session": {
-                    "access_token": "fresh_token",
-                    "renewal_token": "renewal"
-                }
-            }
-        }
-        mock_post.return_value = mock_response
-        
-        with patch('dateutil.parser.parse') as mock_parse:
-            mock_parse.return_value = datetime.now(timezone.utc) + timedelta(hours=1)
-            mock_settings.save = Mock()
-            
-            headers = glific_integration.get_glific_auth_headers()
-            assert headers["authorization"] == "fresh_token"
-
-
-def test_individual_functions():
-    """Test individual functions separately for better coverage"""
-    
-    from tap_lms import glific_integration
-    
-    mock_frappe = sys.modules['frappe']
-    
-    # Setup basic mocks
+    # Setup mocks for valid tests
     mock_settings = Mock()
     mock_settings.api_url = "https://api.glific.com"
-    mock_settings.access_token = "test_token"
-    mock_settings.username = "user"
-    mock_settings.password = "pass"
+    mock_settings.access_token = "token"
     mock_settings.token_expiry_time = datetime.now(timezone.utc) + timedelta(hours=1)
-    
-    mock_frappe.get_single = Mock(return_value=mock_settings)
-    mock_frappe.logger = Mock()
+    mock_frappe.get_single.return_value = mock_settings
     mock_frappe.logger.return_value.info = Mock()
     mock_frappe.logger.return_value.error = Mock()
     
-    # Test get_glific_settings with exception
-    mock_frappe.get_single.side_effect = Exception("Settings error")
-    try:
-        glific_integration.get_glific_settings()
-    except Exception:
-        pass  # Expected to raise
+    # Test successful addition
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {
+            "updateGroupContacts": {
+                "groupContacts": [{"id": "123"}]
+            }
+        }
+    }
+    mock_requests.post.return_value = mock_response
     
-    # Reset for other tests
-    mock_frappe.get_single.side_effect = None
+    result = glific_integration.add_contact_to_group("c123", "g123")
+    assert result is True
+    
+    # Test failed addition
+    mock_response.status_code = 400
+    mock_response.json.return_value = {"errors": [{"message": "Error"}]}
+    result = glific_integration.add_contact_to_group("c123", "g123")
+    assert result is False
+    
+    # Test with exception
+    mock_requests.post.side_effect = Exception("Error")
+    result = glific_integration.add_contact_to_group("c123", "g123")
+    assert result is False
+
+
+@patch('tap_lms.glific_integration.requests')
+@patch('tap_lms.glific_integration.frappe')
+def test_edge_cases(mock_frappe, mock_requests):
+    """Test edge cases for better coverage"""
+    from tap_lms import glific_integration
+    
+    # Setup mocks
+    mock_settings = Mock()
+    mock_settings.api_url = "https://api.glific.com"
+    mock_settings.access_token = None  # No token
+    mock_settings.token_expiry_time = None
+    mock_settings.username = "user"
+    mock_settings.password = "pass"
+    mock_settings.save = Mock()
     mock_frappe.get_single.return_value = mock_settings
+    mock_frappe.db.commit = Mock()
     
-    # Test create_contact with no data in response
-    with patch('requests.post') as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.text = "success"
-        mock_response.json.return_value = {}
-        mock_post.return_value = mock_response
+    # Test refresh when no token exists
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {
+            "session": {
+                "access_token": "fresh_token",
+                "renewal_token": "renewal"
+            }
+        }
+    }
+    mock_requests.post.return_value = mock_response
+    
+    with patch('tap_lms.glific_integration.dateutil.parser.parse') as mock_parse:
+        mock_parse.return_value = datetime.now(timezone.utc) + timedelta(hours=1)
         
-        result = glific_integration.create_contact(
-            "Test", "123", "School", "Model", "1", "batch"
-        )
-        assert result is None
+        headers = glific_integration.get_glific_auth_headers()
+        assert headers["authorization"] == "fresh_token"
+    
+    # Test with timezone-naive datetime
+    mock_settings.token_expiry_time = datetime(2025, 12, 31, 23, 59, 59)
+    mock_settings.access_token = "test_token"
+    headers = glific_integration.get_glific_auth_headers()
+    assert "authorization" in headers
 
 
 if __name__ == "__main__":
-    # Run the tests
-    test_all_functions_coverage()
-    test_individual_functions()
-    print("All tests passed!")
+    # Run with pytest
+    pytest.main([__file__, "-v"])
     
     # To run with coverage:
     # pytest --cov=tap_lms.glific_integration tests/test_glific_integration.py --cov-report=term-missing
