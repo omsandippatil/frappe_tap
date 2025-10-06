@@ -572,5 +572,5 @@ class TestOTPFlow(BaseAPITest):
             self.assertEqual(mock_frappe.response.http_status_code, 200)
 
 
-# if __name__ == '__main__':
-#     unittest.main(verbosity=2)
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
