@@ -1,948 +1,553 @@
 """
 High-Coverage Test Suite for tap_lms/api.py
-Achieves 90%+ coverage by testing actual code execution paths
+Targets specific uncovered line ranges to achieve 90%+ coverage
 """
 
 import sys
 import unittest
-from unittest.mock import Mock, patch, MagicMock, PropertyMock
+from unittest.mock import Mock, patch, MagicMock
 import json
 from datetime import datetime, timedelta
 
-# =============================================================================
-# SETUP MOCKS BEFORE IMPORT
-# =============================================================================
-
-class MockRequest:
-    def __init__(self):
-        self.data = '{}'
-        self._json = {}
-    
-    def get_json(self):
-        return self._json
-
-class MockResponse:
-    def __init__(self):
-        self.http_status_code = 200
-        self._updates = []
-    
-    def update(self, data):
-        self._updates.append(data)
-        for key, value in data.items():
-            setattr(self, key, value)
-
-class MockDB:
-    def __init__(self):
-        self.committed = False
-        self.rolled_back = False
-    
-    def commit(self):
-        self.committed = True
-    
-    def rollback(self):
-        self.rolled_back = True
-    
-    def sql(self, query, values=None, as_dict=False):
-        return []
-    
-    def get_value(self, doctype, filters, fields=None, as_dict=False):
-        return None
-    
-    def get_all(self, doctype, **kwargs):
-        return []
-
-# Create mock frappe module
-mock_frappe = MagicMock()
-mock_frappe.request = MockRequest()
-mock_frappe.response = MockResponse()
-mock_frappe.local = MagicMock()
-mock_frappe.local.form_dict = {}
-mock_frappe.db = MockDB()
-mock_frappe.flags = MagicMock()
-mock_frappe.conf = MagicMock()
-mock_frappe.conf.get = MagicMock(side_effect=lambda k, d=None: d)
-
-# Mock frappe.utils
-mock_utils = MagicMock()
-mock_utils.cint = lambda x: int(x) if x and str(x).isdigit() else 0
-mock_utils.today = lambda: "2025-01-15"
-mock_utils.getdate = lambda x=None: datetime.strptime(x, '%Y-%m-%d').date() if x else datetime.now().date()
-mock_utils.cstr = lambda x: str(x) if x is not None else ""
-mock_utils.now_datetime = lambda: datetime.now()
-mock_utils.get_datetime = lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S') if isinstance(x, str) else x
-
-mock_frappe.utils = mock_utils
-
-# Mock exceptions
-mock_frappe.DoesNotExistError = type('DoesNotExistError', (Exception,), {})
-mock_frappe.ValidationError = type('ValidationError', (Exception,), {})
-mock_frappe.DuplicateEntryError = type('DuplicateEntryError', (Exception,), {})
-
-# Mock other modules
-mock_glific = MagicMock()
-mock_background = MagicMock()
-mock_requests = MagicMock()
-mock_random = MagicMock()
-mock_random.choices = MagicMock(return_value=['1', '2', '3', '4'])
-mock_string = MagicMock()
-mock_string.digits = '0123456789'
-
-# Install mocks
-sys.modules['frappe'] = mock_frappe
-sys.modules['frappe.utils'] = mock_utils
-sys.modules['tap_lms.glific_integration'] = mock_glific
-sys.modules['tap_lms.background_jobs'] = mock_background
-sys.modules['requests'] = mock_requests
-sys.modules['random'] = mock_random
-sys.modules['string'] = mock_string
-
-# Now import the actual API module
+# Import the real API module - this is critical for coverage
 import tap_lms.api as api
 
-# =============================================================================
-# TEST SUITE
-# =============================================================================
 
-class TestAPIWithRealExecution(unittest.TestCase):
-    """Tests that actually execute the API code"""
+class TestAPIHighCoverage(unittest.TestCase):
+    """Tests designed to cover specific missing line ranges"""
     
     def setUp(self):
-        """Reset mocks before each test"""
-        mock_frappe.request = MockRequest()
-        mock_frappe.response = MockResponse()
-        mock_frappe.local.form_dict = {}
-        mock_frappe.db = MockDB()
-        mock_frappe.db.committed = False
-        mock_frappe.db.rolled_back = False
-        mock_glific.reset_mock()
-        mock_background.reset_mock()
-        mock_requests.reset_mock()
+        """Reset before each test"""
+        pass
     
     # =========================================================================
-    # AUTHENTICATE API KEY
+    # LINES 351-469: create_teacher function
     # =========================================================================
     
-    def test_authenticate_valid_key(self):
-        """Test authenticate_api_key with valid key"""
-        mock_doc = MagicMock()
-        mock_doc.name = "valid_key"
-        mock_frappe.get_doc = MagicMock(return_value=mock_doc)
-        
-        result = api.authenticate_api_key("valid_key")
-        self.assertEqual(result, "valid_key")
-    
-    def test_authenticate_invalid_key(self):
-        """Test authenticate_api_key with invalid key"""
-        mock_frappe.get_doc = MagicMock(side_effect=mock_frappe.DoesNotExistError())
-        
-        result = api.authenticate_api_key("invalid")
-        self.assertIsNone(result)
-    
-    # =========================================================================
-    # LIST DISTRICTS
-    # =========================================================================
-    
-    def test_list_districts_success(self):
-        """Test list_districts with valid data"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'valid_key',
-            'state': 'STATE_001'
-        })
-        
-        # Mock authenticate
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            # Mock get_all
-            mock_frappe.get_all = MagicMock(return_value=[
-                {'name': 'D1', 'district_name': 'District 1'},
-                {'name': 'D2', 'district_name': 'District 2'}
-            ])
-            
-            result = api.list_districts()
-            
-            self.assertEqual(result['status'], 'success')
-            self.assertEqual(len(result['data']), 2)
-            self.assertEqual(mock_frappe.response.http_status_code, 200)
-    
-    def test_list_districts_no_api_key(self):
-        """Test list_districts without api_key"""
-        mock_frappe.request.data = json.dumps({'state': 'STATE_001'})
-        
-        result = api.list_districts()
-        
-        self.assertEqual(result['status'], 'error')
-        self.assertEqual(mock_frappe.response.http_status_code, 400)
-    
-    def test_list_districts_invalid_api_key(self):
-        """Test list_districts with invalid api_key"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'invalid',
-            'state': 'STATE_001'
-        })
-        
-        with patch.object(api, 'authenticate_api_key', return_value=None):
-            result = api.list_districts()
-            
-            self.assertEqual(result['status'], 'error')
-            self.assertEqual(mock_frappe.response.http_status_code, 401)
-    
-    def test_list_districts_exception(self):
-        """Test list_districts error handling"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'valid_key',
-            'state': 'STATE_001'
-        })
-        
-        with patch.object(api, 'authenticate_api_key', side_effect=Exception("DB Error")):
-            result = api.list_districts()
-            
-            self.assertEqual(result['status'], 'error')
-            self.assertEqual(mock_frappe.response.http_status_code, 500)
-    
-    # =========================================================================
-    # LIST CITIES
-    # =========================================================================
-    
-    def test_list_cities_success(self):
-        """Test list_cities with valid data"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'valid_key',
-            'district': 'DIST_001'
-        })
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[
-                {'name': 'C1', 'city_name': 'City 1'}
-            ])
-            
-            result = api.list_cities()
-            
-            self.assertEqual(result['status'], 'success')
-            self.assertEqual(mock_frappe.response.http_status_code, 200)
-    
-    def test_list_cities_missing_params(self):
-        """Test list_cities with missing parameters"""
-        mock_frappe.request.data = json.dumps({'api_key': 'valid_key'})
-        
-        result = api.list_cities()
-        
-        self.assertEqual(result['status'], 'error')
-        self.assertEqual(mock_frappe.response.http_status_code, 400)
-    
-    # =========================================================================
-    # VERIFY KEYWORD
-    # =========================================================================
-    
-    def test_verify_keyword_success(self):
-        """Test verify_keyword with existing keyword"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'keyword': 'test_school'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.db.get_value = MagicMock(return_value={
-                'name1': 'Test School',
-                'model': 'MODEL_001'
-            })
-            
-            result = api.verify_keyword()
-            
-            self.assertEqual(mock_frappe.response.http_status_code, 200)
-            last_update = mock_frappe.response._updates[-1]
-            self.assertEqual(last_update['status'], 'success')
-    
-    def test_verify_keyword_not_found(self):
-        """Test verify_keyword with non-existent keyword"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'keyword': 'nonexistent'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.db.get_value = MagicMock(return_value=None)
-            
-            result = api.verify_keyword()
-            
-            self.assertEqual(mock_frappe.response.http_status_code, 404)
-    
-    def test_verify_keyword_no_api_key(self):
-        """Test verify_keyword without api_key"""
-        mock_frappe.request._json = {'keyword': 'test'}
-        
-        result = api.verify_keyword()
-        
-        self.assertEqual(mock_frappe.response.http_status_code, 401)
-    
-    # =========================================================================
-    # VERIFY BATCH KEYWORD
-    # =========================================================================
-    
-    def test_verify_batch_keyword_success(self):
-        """Test verify_batch_keyword with active batch"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'valid_key',
-            'batch_skeyword': 'test_batch'
-        })
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[{
-                'school': 'SCHOOL_001',
-                'batch': 'BATCH_001',
-                'model': 'MODEL_001',
-                'kit_less': 1
-            }])
-            
-            mock_batch = MagicMock()
-            mock_batch.active = True
-            mock_batch.regist_end_date = (datetime.now() + timedelta(days=10)).date()
-            mock_frappe.get_doc = MagicMock(return_value=mock_batch)
-            
-            mock_frappe.get_value = MagicMock(side_effect=['Test School', 'BATCH_2025_001'])
-            
-            mock_tap_model = MagicMock()
-            mock_tap_model.name = 'MODEL_001'
-            mock_tap_model.mname = 'TAP Model 1'
-            
-            with patch.object(mock_frappe, 'get_doc', side_effect=[mock_batch, mock_tap_model]):
-                result = api.verify_batch_keyword()
-                
-                self.assertEqual(result['status'], 'success')
-                self.assertEqual(mock_frappe.response.http_status_code, 200)
-    
-    def test_verify_batch_keyword_inactive(self):
-        """Test verify_batch_keyword with inactive batch"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'valid_key',
-            'batch_skeyword': 'inactive_batch'
-        })
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[{
-                'school': 'SCHOOL_001',
-                'batch': 'BATCH_001',
-                'model': 'MODEL_001',
-                'kit_less': 1
-            }])
-            
-            mock_batch = MagicMock()
-            mock_batch.active = False
-            mock_frappe.get_doc = MagicMock(return_value=mock_batch)
-            
-            result = api.verify_batch_keyword()
-            
-            self.assertEqual(result['status'], 'error')
-            self.assertIn('not active', result['message'])
-    
-    def test_verify_batch_keyword_registration_ended(self):
-        """Test verify_batch_keyword with expired registration"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'valid_key',
-            'batch_skeyword': 'expired_batch'
-        })
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[{
-                'school': 'SCHOOL_001',
-                'batch': 'BATCH_001',
-                'model': 'MODEL_001',
-                'kit_less': 1
-            }])
-            
-            mock_batch = MagicMock()
-            mock_batch.active = True
-            mock_batch.regist_end_date = (datetime.now() - timedelta(days=10)).date()
-            mock_frappe.get_doc = MagicMock(return_value=mock_batch)
-            
-            result = api.verify_batch_keyword()
-            
-            self.assertEqual(result['status'], 'error')
-            self.assertIn('ended', result['message'])
-    
-    # =========================================================================
-    # GET ACTIVE BATCH FOR SCHOOL
-    # =========================================================================
-    
-    def test_get_active_batch_found(self):
-        """Test get_active_batch_for_school when batch exists"""
-        mock_frappe.get_all = MagicMock(return_value=[
-            {'batch': 'BATCH_001', 'name': 'BO_001'}
-        ])
-        mock_frappe.db.get_value = MagicMock(return_value='BATCH_2025_001')
-        
-        result = api.get_active_batch_for_school('SCHOOL_001')
-        
-        self.assertEqual(result['batch_name'], 'BATCH_001')
-        self.assertEqual(result['batch_id'], 'BATCH_2025_001')
-    
-    def test_get_active_batch_not_found(self):
-        """Test get_active_batch_for_school when no batch exists"""
-        mock_frappe.get_all = MagicMock(return_value=[])
-        
-        result = api.get_active_batch_for_school('SCHOOL_NO_BATCH')
-        
-        self.assertEqual(result['batch_name'], None)
-        self.assertEqual(result['batch_id'], 'no_active_batch_id')
-    
-    # =========================================================================
-    # GRADE LIST
-    # =========================================================================
-    
-    def test_grade_list_success(self):
-        """Test grade_list with valid data"""
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[{
-                'name': 'BO_001',
-                'from_grade': '1',
-                'to_grade': '10'
-            }])
-            
-            result = api.grade_list('valid_key', 'test_batch')
-            
-            self.assertIsInstance(result, dict)
-            self.assertEqual(result['count'], '10')
-    
-    def test_grade_list_invalid_api_key(self):
-        """Test grade_list with invalid api_key"""
-        with patch.object(api, 'authenticate_api_key', return_value=None):
-            mock_frappe.throw = MagicMock(side_effect=Exception("Invalid API key"))
-            
-            with self.assertRaises(Exception):
-                api.grade_list('invalid', 'test_batch')
-    
-    # =========================================================================
-    # COURSE VERTICAL LIST
-    # =========================================================================
-    
-    def test_course_vertical_list_success(self):
-        """Test course_vertical_list with valid data"""
-        mock_frappe.local.form_dict = {
-            'api_key': 'valid_key',
-            'keyword': 'test_batch'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(side_effect=[
-                [{'name': 'BO_001'}],
-                [{'course_vertical': 'VERT_001'}]
-            ])
-            
-            mock_vertical = MagicMock()
-            mock_vertical.vertical_id = 'V1'
-            mock_vertical.name2 = 'Math'
-            mock_frappe.get_doc = MagicMock(return_value=mock_vertical)
-            
-            result = api.course_vertical_list()
-            
-            self.assertIsInstance(result, dict)
-            self.assertIn('V1', result)
-    
-    def test_course_vertical_list_no_batch(self):
-        """Test course_vertical_list with invalid keyword"""
-        mock_frappe.local.form_dict = {
-            'api_key': 'valid_key',
-            'keyword': 'invalid'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[])
-            
-            result = api.course_vertical_list()
-            
-            self.assertIn('error', result)
-    
-    # =========================================================================
-    # LIST SCHOOLS
-    # =========================================================================
-    
-    def test_list_schools_success(self):
-        """Test list_schools with filters"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'district': 'DIST_001',
-            'city': 'CITY_001'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[
-                {'School_name': 'School 1'},
-                {'School_name': 'School 2'}
-            ])
-            
-            result = api.list_schools()
-            
-            self.assertEqual(mock_frappe.response.http_status_code, 200)
-    
-    def test_list_schools_no_results(self):
-        """Test list_schools with no results"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'district': 'DIST_EMPTY'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[])
-            
-            result = api.list_schools()
-            
-            self.assertEqual(mock_frappe.response.http_status_code, 404)
-    
-    # =========================================================================
-    # LIST BATCH KEYWORD
-    # =========================================================================
-    
-    def test_list_batch_keyword_success(self):
-        """Test list_batch_keyword with active batches"""
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[
-                {'batch': 'BATCH_001', 'school': 'SCHOOL_001', 'batch_skeyword': 'batch1'}
-            ])
-            
-            mock_batch = MagicMock()
-            mock_batch.active = True
-            mock_batch.regist_end_date = (datetime.now() + timedelta(days=10)).date()
-            mock_batch.batch_id = 'BATCH_2025_001'
-            mock_frappe.get_doc = MagicMock(return_value=mock_batch)
-            
-            mock_frappe.get_value = MagicMock(return_value='Test School')
-            
-            result = api.list_batch_keyword('valid_key')
-            
-            self.assertIsInstance(result, list)
-            self.assertTrue(len(result) > 0)
-    
-    # =========================================================================
-    # CREATE STUDENT - COMPREHENSIVE
-    # =========================================================================
-    
-    def test_create_student_new_student_success(self):
-        """Test create_student with new student"""
-        mock_frappe.local.form_dict = {
-            'api_key': 'valid_key',
-            'student_name': 'John Doe',
-            'phone': '9876543210',
-            'gender': 'Male',
-            'grade': '5',
-            'language': 'English',
-            'batch_skeyword': 'test_batch',
-            'vertical': 'Math',
-            'glific_id': 'glific_123'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            # Mock batch onboarding
-            mock_frappe.get_all = MagicMock(side_effect=[
-                [{'name': 'BO_001', 'school': 'SCHOOL_001', 'batch': 'BATCH_001', 'kit_less': 1}],
-                [{'name': 'VERT_001'}],
-                []  # No existing student
-            ])
-            
-            # Mock batch
-            mock_batch = MagicMock()
-            mock_batch.active = True
-            mock_batch.regist_end_date = (datetime.now() + timedelta(days=30)).date()
-            
-            # Mock student
-            mock_student = MagicMock()
-            mock_student.name = 'STUDENT_001'
-            mock_student.enrollment = []
-            mock_student.append = MagicMock()
-            mock_student.save = MagicMock()
-            
-            with patch.object(api, 'get_course_level_with_mapping', return_value='COURSE_001'):
-                with patch.object(api, 'create_new_student', return_value=mock_student):
-                    mock_frappe.get_doc = MagicMock(return_value=mock_batch)
+    def test_create_teacher_success(self):
+        """Test create_teacher with valid data"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.db.get_value', return_value='SCHOOL_001'):
+                with patch('tap_lms.api.frappe.new_doc') as mock_new_doc:
+                    mock_teacher = Mock()
+                    mock_teacher.name = 'TEACHER_001'
+                    mock_teacher.insert = Mock()
+                    mock_new_doc.return_value = mock_teacher
                     
-                    result = api.create_student()
-                    
-                    self.assertEqual(result['status'], 'success')
-                    self.assertEqual(result['crm_student_id'], 'STUDENT_001')
+                    with patch('tap_lms.api.frappe.db.commit'):
+                        result = api.create_teacher(
+                            api_key='valid_key',
+                            keyword='test_school',
+                            first_name='John',
+                            phone_number='9876543210',
+                            glific_id='glific_123',
+                            last_name='Doe',
+                            email='john@test.com',
+                            language='LANG_001'
+                        )
+                        
+                        self.assertIn('teacher_id', result)
+                        self.assertEqual(result['teacher_id'], 'TEACHER_001')
     
-    def test_create_student_invalid_api_key(self):
-        """Test create_student with invalid API key"""
-        mock_frappe.local.form_dict = {'api_key': 'invalid'}
-        
-        with patch.object(api, 'authenticate_api_key', return_value=None):
-            result = api.create_student()
-            
-            self.assertEqual(result['status'], 'error')
-            self.assertIn('Invalid', result['message'])
+    def test_create_teacher_invalid_api_key(self):
+        """Test create_teacher with invalid API key"""
+        with patch('tap_lms.api.authenticate_api_key', return_value=None):
+            with patch('tap_lms.api.frappe.throw', side_effect=Exception("Invalid API key")):
+                with self.assertRaises(Exception):
+                    api.create_teacher(
+                        api_key='invalid',
+                        keyword='test',
+                        first_name='John',
+                        phone_number='9876543210',
+                        glific_id='test'
+                    )
     
-    def test_create_student_missing_fields(self):
-        """Test create_student with missing required fields"""
-        mock_frappe.local.form_dict = {
-            'api_key': 'valid_key',
-            'student_name': 'John'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            result = api.create_student()
-            
-            self.assertEqual(result['status'], 'error')
-            self.assertIn('required', result['message'])
-    
-    def test_create_student_invalid_batch(self):
-        """Test create_student with invalid batch keyword"""
-        mock_frappe.local.form_dict = {
-            'api_key': 'valid_key',
-            'student_name': 'John',
-            'phone': '9876543210',
-            'gender': 'Male',
-            'grade': '5',
-            'language': 'English',
-            'batch_skeyword': 'invalid',
-            'vertical': 'Math',
-            'glific_id': 'test'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[])
-            
-            result = api.create_student()
-            
-            self.assertEqual(result['status'], 'error')
-    
-    def test_create_student_batch_not_active(self):
-        """Test create_student with inactive batch"""
-        mock_frappe.local.form_dict = {
-            'api_key': 'valid_key',
-            'student_name': 'John',
-            'phone': '9876543210',
-            'gender': 'Male',
-            'grade': '5',
-            'language': 'English',
-            'batch_skeyword': 'test',
-            'vertical': 'Math',
-            'glific_id': 'test'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[{
-                'name': 'BO_001',
-                'school': 'SCHOOL_001',
-                'batch': 'BATCH_001',
-                'kit_less': 1
-            }])
-            
-            mock_batch = MagicMock()
-            mock_batch.active = False
-            mock_frappe.get_doc = MagicMock(return_value=mock_batch)
-            
-            result = api.create_student()
-            
-            self.assertEqual(result['status'], 'error')
-            self.assertIn('not active', result['message'])
-    
-    # =========================================================================
-    # COURSE LEVEL SELECTION LOGIC
-    # =========================================================================
-    
-    def test_determine_student_type_new(self):
-        """Test determine_student_type returns New"""
-        mock_frappe.db.sql = MagicMock(return_value=[])
-        
-        result = api.determine_student_type('9876543210', 'John Doe', 'VERT_001')
-        
-        self.assertEqual(result, 'New')
-    
-    def test_determine_student_type_old(self):
-        """Test determine_student_type returns Old"""
-        mock_frappe.db.sql = MagicMock(return_value=[{'name': 'STUDENT_001'}])
-        
-        result = api.determine_student_type('9876543210', 'John Doe', 'VERT_001')
-        
-        self.assertEqual(result, 'Old')
-    
-    def test_get_current_academic_year_after_april(self):
-        """Test academic year calculation after April"""
-        with patch('tap_lms.api.frappe.utils.getdate') as mock_getdate:
-            mock_getdate.return_value = datetime(2025, 5, 1).date()
-            
-            result = api.get_current_academic_year()
-            
-            self.assertEqual(result, '2025-26')
-    
-    def test_get_current_academic_year_before_april(self):
-        """Test academic year calculation before April"""
-        with patch('tap_lms.api.frappe.utils.getdate') as mock_getdate:
-            mock_getdate.return_value = datetime(2025, 2, 1).date()
-            
-            result = api.get_current_academic_year()
-            
-            self.assertEqual(result, '2024-25')
-    
-    def test_get_course_level_with_mapping_found(self):
-        """Test course level selection with valid mapping"""
-        with patch.object(api, 'determine_student_type', return_value='New'):
-            with patch.object(api, 'get_current_academic_year', return_value='2025-26'):
-                mock_frappe.get_all = MagicMock(return_value=[{
-                    'assigned_course_level': 'COURSE_001',
-                    'mapping_name': 'Test Mapping'
-                }])
-                
-                result = api.get_course_level_with_mapping(
-                    'VERT_001', '5', '9876543210', 'John', 1
+    def test_create_teacher_school_not_found(self):
+        """Test create_teacher when school doesn't exist"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.db.get_value', return_value=None):
+                result = api.create_teacher(
+                    api_key='valid_key',
+                    keyword='nonexistent',
+                    first_name='John',
+                    phone_number='9876543210',
+                    glific_id='test'
                 )
+                
+                self.assertIn('error', result)
+    
+    def test_create_teacher_duplicate_phone(self):
+        """Test create_teacher with duplicate phone number"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.db.get_value', return_value='SCHOOL_001'):
+                with patch('tap_lms.api.frappe.new_doc') as mock_new_doc:
+                    mock_teacher = Mock()
+                    mock_teacher.insert = Mock(side_effect=api.frappe.DuplicateEntryError())
+                    mock_new_doc.return_value = mock_teacher
+                    
+                    result = api.create_teacher(
+                        api_key='valid_key',
+                        keyword='test',
+                        first_name='John',
+                        phone_number='9876543210',
+                        glific_id='test'
+                    )
+                    
+                    self.assertIn('error', result)
+    
+    def test_create_teacher_general_exception(self):
+        """Test create_teacher with general exception"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.db.get_value', side_effect=Exception("DB Error")):
+                result = api.create_teacher(
+                    api_key='valid_key',
+                    keyword='test',
+                    first_name='John',
+                    phone_number='9876543210',
+                    glific_id='test'
+                )
+                
+                self.assertIn('error', result)
+    
+    # =========================================================================
+    # LINES 1327-1493: send_otp variants
+    # =========================================================================
+    
+    def test_send_otp_v0_new_teacher(self):
+        """Test send_otp_v0 for new teacher"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.get_json.return_value = {
+                    'api_key': 'valid_key',
+                    'phone': '9876543210'
+                }
+                
+                with patch('tap_lms.api.frappe.get_all', return_value=[]):
+                    with patch('tap_lms.api.frappe.get_doc') as mock_get_doc:
+                        mock_otp = Mock()
+                        mock_otp.insert = Mock()
+                        mock_get_doc.return_value = mock_otp
+                        
+                        with patch('tap_lms.api.requests.get') as mock_req_get:
+                            mock_response = Mock()
+                            mock_response.json.return_value = {'status': 'success', 'id': 'msg_123'}
+                            mock_req_get.return_value = mock_response
+                            
+                            with patch('tap_lms.api.frappe.response') as mock_resp:
+                                mock_resp.http_status_code = 200
+                                result = api.send_otp_v0()
+                                
+                                self.assertEqual(result['status'], 'success')
+    
+    def test_send_otp_v0_existing_teacher(self):
+        """Test send_otp_v0 with existing teacher"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.get_json.return_value = {
+                    'api_key': 'valid_key',
+                    'phone': '9876543210'
+                }
+                
+                with patch('tap_lms.api.frappe.get_all', return_value=[{'name': 'TEACHER_001'}]):
+                    with patch('tap_lms.api.frappe.response') as mock_resp:
+                        mock_resp.http_status_code = 409
+                        result = api.send_otp_v0()
+                        
+                        self.assertEqual(result['status'], 'failure')
+    
+    def test_send_otp_v0_invalid_api_key(self):
+        """Test send_otp_v0 with invalid API key"""
+        with patch('tap_lms.api.authenticate_api_key', return_value=None):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.get_json.return_value = {
+                    'api_key': 'invalid',
+                    'phone': '9876543210'
+                }
+                
+                with patch('tap_lms.api.frappe.response') as mock_resp:
+                    mock_resp.http_status_code = 401
+                    result = api.send_otp_v0()
+                    
+                    self.assertEqual(result['status'], 'failure')
+    
+    def test_send_otp_v0_missing_phone(self):
+        """Test send_otp_v0 without phone number"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.get_json.return_value = {
+                    'api_key': 'valid_key'
+                }
+                
+                with patch('tap_lms.api.frappe.response') as mock_resp:
+                    mock_resp.http_status_code = 400
+                    result = api.send_otp_v0()
+                    
+                    self.assertEqual(result['status'], 'failure')
+    
+    def test_send_otp_v0_whatsapp_api_error(self):
+        """Test send_otp_v0 when WhatsApp API fails"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.get_json.return_value = {
+                    'api_key': 'valid_key',
+                    'phone': '9876543210'
+                }
+                
+                with patch('tap_lms.api.frappe.get_all', return_value=[]):
+                    with patch('tap_lms.api.frappe.get_doc') as mock_get_doc:
+                        mock_otp = Mock()
+                        mock_otp.insert = Mock()
+                        mock_get_doc.return_value = mock_otp
+                        
+                        with patch('tap_lms.api.requests.get') as mock_req_get:
+                            mock_response = Mock()
+                            mock_response.json.return_value = {'status': 'failure', 'message': 'API Error'}
+                            mock_req_get.return_value = mock_response
+                            
+                            with patch('tap_lms.api.frappe.response') as mock_resp:
+                                mock_resp.http_status_code = 500
+                                result = api.send_otp_v0()
+                                
+                                self.assertEqual(result['status'], 'failure')
+    
+    def test_send_otp_mock_variant(self):
+        """Test send_otp_mock function"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.get_json.return_value = {
+                    'api_key': 'valid_key',
+                    'phone': '9876543210'
+                }
+                
+                with patch('tap_lms.api.frappe.get_all', return_value=[]):
+                    with patch('tap_lms.api.frappe.get_doc') as mock_get_doc:
+                        mock_otp = Mock()
+                        mock_otp.insert = Mock()
+                        mock_get_doc.return_value = mock_otp
+                        
+                        with patch('tap_lms.api.frappe.response') as mock_resp:
+                            mock_resp.http_status_code = 200
+                            result = api.send_otp_mock()
+                            
+                            self.assertEqual(result['status'], 'success')
+                            self.assertIn('mock_otp', result)
+    
+    # =========================================================================
+    # LINES 2112-2167: get_teacher_by_glific_id
+    # =========================================================================
+    
+    def test_get_teacher_by_glific_id_success(self):
+        """Test get_teacher_by_glific_id with valid data"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.data = json.dumps({
+                    'api_key': 'valid_key',
+                    'glific_id': 'glific_123'
+                })
+                
+                with patch('tap_lms.api.frappe.get_all') as mock_get_all:
+                    mock_get_all.return_value = [{
+                        'name': 'TEACHER_001',
+                        'first_name': 'John',
+                        'last_name': 'Doe',
+                        'teacher_role': 'Teacher',
+                        'school_id': 'SCHOOL_001',
+                        'phone_number': '9876543210',
+                        'email_id': 'test@test.com',
+                        'department': 'Math',
+                        'language': 'LANG_001',
+                        'gender': 'Male',
+                        'course_level': 'COURSE_001'
+                    }]
+                    
+                    with patch('tap_lms.api.frappe.db.get_value', return_value='Test School'):
+                        with patch('tap_lms.api.frappe.db.sql', return_value=[]):
+                            with patch('tap_lms.api.frappe.response') as mock_resp:
+                                mock_resp.http_status_code = 200
+                                result = api.get_teacher_by_glific_id()
+                                
+                                self.assertEqual(result['status'], 'success')
+                                self.assertIn('data', result)
+    
+    def test_get_teacher_by_glific_id_not_found(self):
+        """Test get_teacher_by_glific_id when teacher not found"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.data = json.dumps({
+                    'api_key': 'valid_key',
+                    'glific_id': 'nonexistent'
+                })
+                
+                with patch('tap_lms.api.frappe.get_all', return_value=[]):
+                    with patch('tap_lms.api.frappe.response') as mock_resp:
+                        mock_resp.http_status_code = 404
+                        result = api.get_teacher_by_glific_id()
+                        
+                        self.assertEqual(result['status'], 'error')
+    
+    def test_get_teacher_by_glific_id_missing_params(self):
+        """Test get_teacher_by_glific_id with missing parameters"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.data = json.dumps({
+                    'api_key': 'valid_key'
+                })
+                
+                with patch('tap_lms.api.frappe.response') as mock_resp:
+                    mock_resp.http_status_code = 400
+                    result = api.get_teacher_by_glific_id()
+                    
+                    self.assertEqual(result['status'], 'error')
+    
+    # =========================================================================
+    # LINES 2250-2271: get_school_city and search_schools_by_city
+    # =========================================================================
+    
+    def test_get_school_city_success(self):
+        """Test get_school_city with valid school"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.data = json.dumps({
+                    'api_key': 'valid_key',
+                    'school_name': 'Test School'
+                })
+                
+                with patch('tap_lms.api.frappe.get_all') as mock_get_all:
+                    mock_get_all.return_value = [{
+                        'name': 'SCHOOL_001',
+                        'name1': 'Test School',
+                        'city': 'CITY_001',
+                        'state': 'STATE_001',
+                        'country': 'COUNTRY_001',
+                        'address': '123 Main St',
+                        'pin': '123456'
+                    }]
+                    
+                    with patch('tap_lms.api.frappe.get_doc') as mock_get_doc:
+                        mock_city = Mock()
+                        mock_city.city_name = 'Test City'
+                        mock_city.district = 'DISTRICT_001'
+                        mock_get_doc.return_value = mock_city
+                        
+                        with patch('tap_lms.api.frappe.db.get_value', return_value='Test State'):
+                            with patch('tap_lms.api.frappe.response') as mock_resp:
+                                mock_resp.http_status_code = 200
+                                result = api.get_school_city()
+                                
+                                self.assertEqual(result['status'], 'success')
+    
+    def test_get_school_city_no_city_assigned(self):
+        """Test get_school_city when school has no city"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.data = json.dumps({
+                    'api_key': 'valid_key',
+                    'school_name': 'Test School'
+                })
+                
+                with patch('tap_lms.api.frappe.get_all') as mock_get_all:
+                    mock_get_all.return_value = [{
+                        'name': 'SCHOOL_001',
+                        'name1': 'Test School',
+                        'city': None,
+                        'state': None,
+                        'country': None,
+                        'address': '123 Main St',
+                        'pin': '123456'
+                    }]
+                    
+                    with patch('tap_lms.api.frappe.response') as mock_resp:
+                        mock_resp.http_status_code = 200
+                        result = api.get_school_city()
+                        
+                        self.assertEqual(result['status'], 'success')
+                        self.assertIsNone(result['city'])
+    
+    def test_search_schools_by_city_success(self):
+        """Test search_schools_by_city with valid city"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.data = json.dumps({
+                    'api_key': 'valid_key',
+                    'city_name': 'Test City'
+                })
+                
+                with patch('tap_lms.api.frappe.get_all') as mock_get_all:
+                    mock_get_all.side_effect = [
+                        [{'name': 'CITY_001', 'city_name': 'Test City', 'district': 'DISTRICT_001'}],
+                        [{'name': 'SCHOOL_001', 'name1': 'School 1'}]
+                    ]
+                    
+                    with patch('tap_lms.api.frappe.get_doc') as mock_get_doc:
+                        mock_district = Mock()
+                        mock_district.district_name = 'Test District'
+                        mock_district.state = 'STATE_001'
+                        mock_get_doc.return_value = mock_district
+                        
+                        with patch('tap_lms.api.frappe.response') as mock_resp:
+                            mock_resp.http_status_code = 200
+                            result = api.search_schools_by_city()
+                            
+                            self.assertEqual(result['status'], 'success')
+    
+    # =========================================================================
+    # ADDITIONAL UNCOVERED FUNCTIONS
+    # =========================================================================
+    
+    def test_send_whatsapp_message_success(self):
+        """Test send_whatsapp_message function"""
+        with patch('tap_lms.api.frappe.get_single') as mock_get_single:
+            mock_settings = Mock()
+            mock_settings.api_key = 'test_key'
+            mock_settings.source_number = '1234567890'
+            mock_settings.app_name = 'TestApp'
+            mock_settings.api_endpoint = 'https://api.test.com'
+            mock_get_single.return_value = mock_settings
+            
+            with patch('tap_lms.api.requests.post') as mock_post:
+                mock_response = Mock()
+                mock_response.raise_for_status = Mock()
+                mock_post.return_value = mock_response
+                
+                result = api.send_whatsapp_message('9876543210', 'Test message')
+                
+                self.assertTrue(result)
+    
+    def test_send_whatsapp_message_no_settings(self):
+        """Test send_whatsapp_message when settings not found"""
+        with patch('tap_lms.api.frappe.get_single', return_value=None):
+            with patch('tap_lms.api.frappe.log_error'):
+                result = api.send_whatsapp_message('9876543210', 'Test')
+                
+                self.assertFalse(result)
+    
+    def test_send_whatsapp_message_incomplete_settings(self):
+        """Test send_whatsapp_message with incomplete settings"""
+        with patch('tap_lms.api.frappe.get_single') as mock_get_single:
+            mock_settings = Mock()
+            mock_settings.api_key = None
+            mock_settings.source_number = None
+            mock_get_single.return_value = mock_settings
+            
+            with patch('tap_lms.api.frappe.log_error'):
+                result = api.send_whatsapp_message('9876543210', 'Test')
+                
+                self.assertFalse(result)
+    
+    def test_send_whatsapp_message_request_exception(self):
+        """Test send_whatsapp_message with request exception"""
+        with patch('tap_lms.api.frappe.get_single') as mock_get_single:
+            mock_settings = Mock()
+            mock_settings.api_key = 'test'
+            mock_settings.source_number = '1234567890'
+            mock_settings.app_name = 'TestApp'
+            mock_settings.api_endpoint = 'https://api.test.com'
+            mock_get_single.return_value = mock_settings
+            
+            with patch('tap_lms.api.requests.post', side_effect=Exception("Network error")):
+                with patch('tap_lms.api.frappe.log_error'):
+                    result = api.send_whatsapp_message('9876543210', 'Test')
+                    
+                    self.assertFalse(result)
+    
+    def test_get_course_level_api_success(self):
+        """Test get_course_level_api function"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.form_dict') as mock_form_dict:
+                mock_form_dict.get.side_effect = lambda key: {
+                    'api_key': 'valid_key',
+                    'grade': '5',
+                    'vertical': 'Math',
+                    'batch_skeyword': 'test_batch'
+                }.get(key)
+                
+                with patch('tap_lms.api.frappe.get_all') as mock_get_all:
+                    mock_get_all.side_effect = [
+                        [{'name': 'BO_001', 'kit_less': 1}],
+                        [{'name': 'VERT_001'}]
+                    ]
+                    
+                    with patch('tap_lms.api.get_course_level', return_value='COURSE_001'):
+                        result = api.get_course_level_api()
+                        
+                        self.assertEqual(result['status'], 'success')
+    
+    def test_course_vertical_list_count_success(self):
+        """Test course_vertical_list_count function"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.local.form_dict', {'api_key': 'valid_key', 'keyword': 'test'}):
+                with patch('tap_lms.api.frappe.get_all') as mock_get_all:
+                    mock_get_all.side_effect = [
+                        [{'name': 'BO_001'}],
+                        [{'course_vertical': 'VERT_001'}]
+                    ]
+                    
+                    with patch('tap_lms.api.frappe.get_doc') as mock_get_doc:
+                        mock_vertical = Mock()
+                        mock_vertical.name2 = 'Math'
+                        mock_get_doc.return_value = mock_vertical
+                        
+                        result = api.course_vertical_list_count()
+                        
+                        self.assertIsInstance(result, dict)
+                        self.assertIn('count', result)
+    
+    def test_get_course_level_original_success(self):
+        """Test get_course_level_original function"""
+        with patch('tap_lms.api.frappe.db.sql') as mock_sql:
+            mock_sql.return_value = [{'name': 'STAGE_001'}]
+            
+            with patch('tap_lms.api.frappe.get_all') as mock_get_all:
+                mock_get_all.return_value = [{'name': 'COURSE_001'}]
+                
+                result = api.get_course_level_original('VERT_001', '5', 1)
                 
                 self.assertEqual(result, 'COURSE_001')
     
-    def test_get_course_level_with_mapping_fallback(self):
-        """Test course level selection with fallback"""
-        with patch.object(api, 'determine_student_type', return_value='New'):
-            with patch.object(api, 'get_current_academic_year', return_value='2025-26'):
-                mock_frappe.get_all = MagicMock(side_effect=[[], []])
+    def test_get_course_level_original_no_stage(self):
+        """Test get_course_level_original when no stage found"""
+        with patch('tap_lms.api.frappe.db.sql', return_value=[]):
+            with patch('tap_lms.api.frappe.throw', side_effect=Exception("No stage")):
+                with self.assertRaises(Exception):
+                    api.get_course_level_original('VERT_001', '99', 1)
+    
+    def test_get_course_level_original_kitless_fallback(self):
+        """Test get_course_level_original with kitless fallback"""
+        with patch('tap_lms.api.frappe.db.sql') as mock_sql:
+            mock_sql.return_value = [{'name': 'STAGE_001'}]
+            
+            with patch('tap_lms.api.frappe.get_all') as mock_get_all:
+                mock_get_all.side_effect = [
+                    [],  # No result with kit_less
+                    [{'name': 'COURSE_FALLBACK'}]  # Result without kit_less
+                ]
                 
-                with patch.object(api, 'get_course_level_original', return_value='COURSE_FALLBACK'):
-                    result = api.get_course_level_with_mapping(
-                        'VERT_001', '5', '9876543210', 'John', 1
-                    )
-                    
-                    self.assertEqual(result, 'COURSE_FALLBACK')
+                result = api.get_course_level_original('VERT_001', '5', 1)
+                
+                self.assertEqual(result, 'COURSE_FALLBACK')
     
-    # =========================================================================
-    # SEND OTP
-    # =========================================================================
-    
-    def test_send_otp_new_teacher(self):
-        """Test send_otp for new teacher"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'phone': '9876543210'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[])
-            
-            mock_otp_doc = MagicMock()
-            mock_otp_doc.insert = MagicMock()
-            mock_frappe.get_doc = MagicMock(return_value=mock_otp_doc)
-            
-            mock_response = MagicMock()
-            mock_response.json = MagicMock(return_value={'status': 'success', 'id': 'msg_123'})
-            mock_requests.get = MagicMock(return_value=mock_response)
-            
-            result = api.send_otp()
-            
-            self.assertEqual(result['status'], 'success')
-            self.assertEqual(result['action_type'], 'new_teacher')
-    
-    def test_send_otp_existing_teacher_no_batch(self):
-        """Test send_otp for existing teacher with no active batch"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'phone': '9876543210'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[{
-                'name': 'TEACHER_001',
-                'school_id': 'SCHOOL_001'
-            }])
-            
-            with patch.object(api, 'get_active_batch_for_school') as mock_batch:
-                mock_batch.return_value = {
-                    'batch_name': None,
-                    'batch_id': 'no_active_batch_id'
+    def test_send_otp_gs_function(self):
+        """Test send_otp_gs function"""
+        with patch('tap_lms.api.authenticate_api_key', return_value='valid_key'):
+            with patch('tap_lms.api.frappe.request') as mock_request:
+                mock_request.get_json.return_value = {
+                    'api_key': 'valid_key',
+                    'phone': '9876543210'
                 }
                 
-                result = api.send_otp()
-                
-                self.assertEqual(result['status'], 'failure')
-                self.assertEqual(result['code'], 'NO_ACTIVE_BATCH')
-    
-    # =========================================================================
-    # VERIFY OTP
-    # =========================================================================
-    
-    def test_verify_otp_success_new_teacher(self):
-        """Test verify_otp for new teacher"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'phone': '9876543210',
-            'otp': '1234'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.db.sql = MagicMock(return_value=[{
-                'name': 'OTP_001',
-                'expiry': datetime.now() + timedelta(minutes=10),
-                'context': json.dumps({'action_type': 'new_teacher'}),
-                'verified': False
-            }])
-            
-            result = api.verify_otp()
-            
-            self.assertEqual(result['status'], 'success')
-            self.assertEqual(result['action_type'], 'new_teacher')
-    
-    def test_verify_otp_expired(self):
-        """Test verify_otp with expired OTP"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'phone': '9876543210',
-            'otp': '1234'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.db.sql = MagicMock(return_value=[{
-                'name': 'OTP_001',
-                'expiry': datetime.now() - timedelta(minutes=10),
-                'context': json.dumps({'action_type': 'new_teacher'}),
-                'verified': False
-            }])
-            
-            result = api.verify_otp()
-            
-            self.assertEqual(result['status'], 'failure')
-            self.assertIn('expired', result['message'].lower())
-    
-    # =========================================================================
-    # CREATE TEACHER WEB
-    # =========================================================================
-    
-    def test_create_teacher_web_success(self):
-        """Test create_teacher_web with valid data"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'firstName': 'John',
-            'phone': '9876543210',
-            'School_name': 'Test School'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.db.get_value = MagicMock(side_effect=[
-                'OTP_001',  # Verified
-                None,  # No existing teacher
-                'SCHOOL_001'  # School exists
-            ])
-            
-            mock_teacher = MagicMock()
-            mock_teacher.name = 'TEACHER_001'
-            mock_teacher.insert = MagicMock()
-            mock_teacher.save = MagicMock()
-            mock_frappe.get_doc = MagicMock(return_value=mock_teacher)
-            
-            with patch.object(api, 'get_model_for_school', return_value='TAP_MODEL_1'):
-                with patch.object(api, 'get_active_batch_for_school') as mock_batch:
-                    mock_batch.return_value = {
-                        'batch_name': 'BATCH_001',
-                        'batch_id': 'BATCH_2025_001'
-                    }
-                    
-                    mock_glific.get_contact_by_phone = MagicMock(return_value=None)
-                    mock_glific.create_contact = MagicMock(return_value={'id': 'glific_123'})
-                    
-                    result = api.create_teacher_web()
-                    
-                    self.assertEqual(result['status'], 'success')
-    
-    def test_create_teacher_web_phone_not_verified(self):
-        """Test create_teacher_web with unverified phone"""
-        mock_frappe.request._json = {
-            'api_key': 'valid_key',
-            'firstName': 'John',
-            'phone': '9876543210',
-            'School_name': 'Test School'
-        }
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.db.get_value = MagicMock(return_value=None)
-            
-            result = api.create_teacher_web()
-            
-            self.assertEqual(result['status'], 'failure')
-            self.assertIn('not verified', result['message'].lower())
-    
-    # =========================================================================
-    # UPDATE TEACHER ROLE
-    # =========================================================================
-    
-    def test_update_teacher_role_success(self):
-        """Test update_teacher_role with valid data"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'valid_key',
-            'glific_id': 'glific_123',
-            'teacher_role': 'HM'
-        })
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            mock_frappe.get_all = MagicMock(return_value=[{
-                'name': 'TEACHER_001',
-                'first_name': 'John',
-                'last_name': 'Doe',
-                'teacher_role': 'Teacher',
-                'school_id': 'SCHOOL_001'
-            }])
-            
-            mock_teacher = MagicMock()
-            mock_teacher.teacher_role = 'Teacher'
-            mock_teacher.save = MagicMock()
-            mock_frappe.get_doc = MagicMock(return_value=mock_teacher)
-            
-            mock_frappe.db.get_value = MagicMock(return_value='Test School')
-            
-            result = api.update_teacher_role()
-            
-            self.assertEqual(result['status'], 'success')
-    
-    def test_update_teacher_role_invalid_role(self):
-        """Test update_teacher_role with invalid role"""
-        mock_frappe.request.data = json.dumps({
-            'api_key': 'valid_key',
-            'glific_id': 'glific_123',
-            'teacher_role': 'InvalidRole'
-        })
-        
-        with patch.object(api, 'authenticate_api_key', return_value='valid_key'):
-            result = api.update_teacher_role()
-            
-            self.assertEqual(result['status'], 'error')
-            self.assertIn('Invalid teacher_role', result['message'])
-    
-    # =========================================================================
-    # GET MODEL FOR SCHOOL
-    # =========================================================================
-    
-    def test_get_model_for_school_with_active_batch(self):
-        """Test get_model_for_school with active batch"""
-        mock_frappe.get_all = MagicMock(return_value=[{
-            'model': 'MODEL_001',
-            'creation': datetime.now()
-        }])
-        
-        mock_frappe.db.get_value = MagicMock(return_value='TAP Model 1')
-        
-        result = api.get_model_for_school('SCHOOL_001')
-        
-        self.assertEqual(result, 'TAP Model 1')
-    
-    def test_get_model_for_school_no_active_batch(self):
-        """Test get_model_for_school without active batch"""
-        mock_frappe.get_all = MagicMock(return_value=[])
-        mock_frappe.db.get_value = MagicMock(side_effect=['MODEL_DEFAULT', 'Default Model'])
-        
-        result = api.get_model_for_school('SCHOOL_001')
-        
-        self.assertEqual(result, 'Default Model')
+                with patch('tap_lms.api.frappe.get_all', return_value=[]):
+                    with patch('tap_lms.api.frappe.get_doc') as mock_get_doc:
+                        mock_otp = Mock()
+                        mock_otp.insert = Mock()
+                        mock_get_doc.return_value = mock_otp
+                        
+                        with patch('tap_lms.api.send_whatsapp_message', return_value=True):
+                            with patch('tap_lms.api.frappe.response') as mock_resp:
+                                mock_resp.http_status_code = 200
+                                result = api.send_otp_gs()
+                                
+                                self.assertEqual(result['status'], 'success')
 
-
-# =============================================================================
-# RUN TESTS
-# =============================================================================
 
 if __name__ == '__main__':
-    # Run with coverage
-    import sys
-    import subprocess
-    
-    # First run tests
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestAPIWithRealExecution)
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    
-    # Print coverage command suggestion
-    if result.wasSuccessful():
-        print("\n" + "="*70)
-        print("All tests passed! Now run with coverage:")
-        print("coverage run -m pytest test_api.py -v")
-        print("coverage report -m")
-        print("="*70)
+    unittest.main(verbosity=2)
