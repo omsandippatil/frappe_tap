@@ -1830,6 +1830,7 @@ class TestAPICompleteCoverage(unittest.TestCase):
                         mock_resp.http_status_code = 200
                         result = api.get_school_city()
                         self.assertIsNone(result['city'])
+                        
     
     def test_search_schools_by_city_success(self):
         """Test search_schools_by_city with valid city"""
