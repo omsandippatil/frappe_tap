@@ -1853,5 +1853,5 @@ class TestAPICompleteCoverage(unittest.TestCase):
                             self.assertEqual(result['status'], 'success')
 
 
-# if __name__ == '__main__':
-#     unittest.main(verbosity=2)
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
