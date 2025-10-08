@@ -277,6 +277,102 @@ class TestFeedbackConsumer(unittest.TestCase):
         self.assertIsNotNone(self.consumer.channel)
         self.assertIsNotNone(self.consumer.settings)
 
+    @patch('pika.PlainCredentials')
+    @patch('pika.ConnectionParameters')
+    @patch('pika.BlockingConnection')
+    def test_setup_rabbitmq_dl_queue_channel_error(self, mock_connection, mock_params, mock_creds):
+        """Test setup when dead letter queue declaration fails."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_conn = Mock()
+        mock_channel = Mock()
+        mock_conn.channel.return_value = mock_channel
+        mock_connection.return_value = mock_conn
+        
+        frappe_mock.get_single.return_value = self.mock_settings
+        
+        # Exchange succeeds, DL queue fails, then succeeds after reconnect
+        mock_channel.exchange_declare = Mock()
+        mock_channel.queue_declare.side_effect = [
+            MockChannelClosedByBroker(),  # DL queue fails
+            Mock(),  # DL queue succeeds after reconnect
+            Mock()   # Main queue succeeds
+        ]
+        mock_channel.queue_bind = Mock()
+        
+        with patch.object(FeedbackConsumer, '_reconnect') as mock_reconnect:
+            def reconnect_side_effect():
+                self.consumer.connection = mock_conn
+                self.consumer.channel = mock_channel
+            mock_reconnect.side_effect = reconnect_side_effect
+            
+            self.consumer.setup_rabbitmq()
+        
+        self.assertGreaterEqual(mock_channel.queue_declare.call_count, 2)
+
+    @patch('pika.PlainCredentials')
+    @patch('pika.ConnectionParameters')
+    @patch('pika.BlockingConnection')
+    def test_setup_rabbitmq_queue_bind_exception(self, mock_connection, mock_params, mock_creds):
+        """Test setup when queue bind fails (should be ignored)."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_conn = Mock()
+        mock_channel = Mock()
+        mock_conn.channel.return_value = mock_channel
+        mock_connection.return_value = mock_conn
+        
+        frappe_mock.get_single.return_value = self.mock_settings
+        
+        mock_channel.exchange_declare = Mock()
+        mock_channel.queue_declare = Mock(return_value=Mock())
+        mock_channel.queue_bind.side_effect = Exception("Bind failed")
+        
+        # Should not raise exception - binding errors are ignored
+        self.consumer.setup_rabbitmq()
+        
+        self.assertIsNotNone(self.consumer.channel)
+
+    @patch('pika.PlainCredentials')
+    @patch('pika.ConnectionParameters')
+    @patch('pika.BlockingConnection')
+    def test_setup_rabbitmq_all_scenarios(self, mock_connection, mock_params, mock_creds):
+        """Test setup_rabbitmq with comprehensive scenario coverage."""
+        if not USING_REAL_CLASS:
+            return
+        
+        frappe_mock.get_single.return_value = self.mock_settings
+        
+        mock_conn = Mock()
+        mock_channel = Mock()
+        mock_conn.channel.return_value = mock_channel
+        mock_connection.return_value = mock_conn
+        
+        # Simulate: exchange exists, DL queue exists, main queue doesn't exist
+        mock_channel.exchange_declare = Mock()  # Succeeds (exchange exists)
+        
+        mock_channel.queue_declare.side_effect = [
+            Mock(),  # DL queue succeeds
+            MockChannelClosedByBroker(),  # Main queue passive check fails
+            Mock()   # Main queue creation succeeds
+        ]
+        
+        mock_channel.queue_bind = Mock()
+        
+        with patch.object(FeedbackConsumer, '_reconnect') as mock_reconnect:
+            def reconnect_side_effect():
+                self.consumer.connection = mock_conn
+                self.consumer.channel = mock_channel
+            mock_reconnect.side_effect = reconnect_side_effect
+            
+            self.consumer.setup_rabbitmq()
+        
+        # Verify setup completed
+        self.assertIsNotNone(self.consumer.connection)
+        self.assertIsNotNone(self.consumer.channel)
+
     # ==================== _reconnect Tests ====================
     
     @patch('pika.BlockingConnection')
@@ -376,6 +472,27 @@ class TestFeedbackConsumer(unittest.TestCase):
                     
                     # Should not raise exception
                     self.consumer._reconnect()
+
+    @patch('pika.BlockingConnection')
+    @patch('pika.ConnectionParameters')
+    @patch('pika.PlainCredentials')
+    def test_reconnect_with_none_connection(self, mock_creds, mock_params, mock_connection):
+        """Test _reconnect when connection is None."""
+        if not USING_REAL_CLASS:
+            return
+        
+        self.consumer.settings = self.mock_settings
+        self.consumer.connection = None
+        
+        mock_new_conn = Mock()
+        mock_new_channel = Mock()
+        mock_new_conn.channel.return_value = mock_new_channel
+        mock_connection.return_value = mock_new_conn
+        
+        self.consumer._reconnect()
+        
+        self.assertEqual(self.consumer.connection, mock_new_conn)
+        self.assertEqual(self.consumer.channel, mock_new_channel)
 
     # ==================== start_consuming Tests ====================
     
@@ -716,6 +833,99 @@ class TestFeedbackConsumer(unittest.TestCase):
         mock_start_flow.assert_called_once()
         frappe_mock.db.commit.assert_called_once()
         mock_ch.basic_ack.assert_called_once_with(delivery_tag="integration_tag")
+
+    def test_process_message_json_decode_error_specific(self):
+        """Test process_message with JSON decode error specifically."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_ch = Mock()
+        mock_method = Mock()
+        mock_method.delivery_tag = "decode_tag"
+        mock_properties = Mock()
+        body = b"{invalid json content"
+        
+        frappe_mock.db.begin = Mock()
+        
+        self.consumer.process_message(mock_ch, mock_method, mock_properties, body)
+        
+        mock_ch.basic_reject.assert_called_once_with(delivery_tag="decode_tag", requeue=False)
+
+    def test_process_message_value_error_in_validation(self):
+        """Test process_message with ValueError during validation."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_ch = Mock()
+        mock_method = Mock()
+        mock_method.delivery_tag = "value_tag"
+        mock_properties = Mock()
+        
+        # Valid JSON but will trigger ValueError in validation
+        invalid_data = {"submission_id": "", "feedback": {}}  # Empty submission_id
+        body = json.dumps(invalid_data).encode('utf-8')
+        
+        frappe_mock.db.begin = Mock()
+        
+        self.consumer.process_message(mock_ch, mock_method, mock_properties, body)
+        
+        mock_ch.basic_reject.assert_called_once_with(delivery_tag="value_tag", requeue=False)
+
+    def test_full_error_flow_with_retries(self):
+        """Test complete error flow with retry logic."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_ch = Mock()
+        mock_method = Mock()
+        mock_method.delivery_tag = "retry_tag"
+        mock_properties = Mock()
+        body = json.dumps(self.sample_message_data).encode('utf-8')
+        
+        frappe_mock.db.exists.return_value = True
+        frappe_mock.db.begin = Mock()
+        frappe_mock.db.rollback = Mock()
+        
+        # Simulate retryable error
+        error = Exception("Connection timeout")
+        
+        with patch.object(self.consumer, 'update_submission', side_effect=error):
+            with patch.object(self.consumer, 'is_retryable_error', return_value=True):
+                self.consumer.process_message(mock_ch, mock_method, mock_properties, body)
+                
+                frappe_mock.db.rollback.assert_called()
+                mock_ch.basic_nack.assert_called_once_with(
+                    delivery_tag="retry_tag",
+                    requeue=True
+                )
+
+    def test_process_message_all_error_patterns(self):
+        """Test all error patterns in is_retryable_error."""
+        if not USING_REAL_CLASS:
+            return
+        
+        # Test each non-retryable pattern
+        patterns = [
+            ("does not exist", False),
+            ("not found", False),
+            ("invalid", False),
+            ("permission denied", False),
+            ("duplicate", False),
+            ("constraint violation", False),
+            ("missing submission_id", False),
+            ("missing feedback data", False),
+            ("validation error", False),
+            ("random error", True),  # Retryable
+        ]
+        
+        for error_msg, should_retry in patterns:
+            error = Exception(error_msg)
+            result = self.consumer.is_retryable_error(error)
+            self.assertEqual(
+                result,
+                should_retry,
+                f"Error '{error_msg}' should {'be retryable' if should_retry else 'not be retryable'}"
+            )
 
     # ==================== is_retryable_error Tests ====================
     
@@ -1091,6 +1301,163 @@ class TestFeedbackConsumer(unittest.TestCase):
         self.assertEqual(call_args["status"], "Completed")
         mock_submission.save.assert_called_once_with(ignore_permissions=True)
 
+    def test_update_submission_with_none_grade(self):
+        """Test update_submission when grade_recommendation is None."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        test_data = {
+            "submission_id": "none_grade_123",
+            "feedback": {
+                "grade_recommendation": None,
+                "overall_feedback": "Feedback"
+            },
+            "plagiarism_score": 0,
+            "summary": "",
+            "similar_sources": []
+        }
+        
+        self.consumer.update_submission(test_data)
+        
+        call_args = mock_submission.update.call_args[0][0]
+        self.assertEqual(call_args["grade"], 0.0)
+
+    def test_update_submission_type_error_in_grade(self):
+        """Test update_submission with TypeError in grade conversion."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        test_data = {
+            "submission_id": "type_error_123",
+            "feedback": {
+                "grade_recommendation": {"nested": "dict"},  # Will cause TypeError
+                "overall_feedback": "Test"
+            },
+            "plagiarism_score": 0,
+            "summary": "",
+            "similar_sources": []
+        }
+        
+        self.consumer.update_submission(test_data)
+        
+        call_args = mock_submission.update.call_args[0][0]
+        self.assertEqual(call_args["grade"], 0.0)
+
+    def test_update_submission_missing_grade_key(self):
+        """Test update_submission when grade_recommendation key is missing."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        test_data = {
+            "submission_id": "missing_grade_123",
+            "feedback": {
+                "overall_feedback": "Good"
+            },
+            "plagiarism_score": 5,
+            "summary": "Summary",
+            "similar_sources": []
+        }
+        
+        self.consumer.update_submission(test_data)
+        
+        call_args = mock_submission.update.call_args[0][0]
+        self.assertEqual(call_args["grade"], 0.0)  # Default when missing
+
+    def test_update_submission_with_decimal_in_string(self):
+        """Test update_submission with grade as string with multiple decimals."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        test_data = {
+            "submission_id": "decimal_123",
+            "feedback": {
+                "grade_recommendation": "Score: 88.75%",
+                "overall_feedback": "Great"
+            },
+            "plagiarism_score": 2.5,
+            "summary": "Test",
+            "similar_sources": []
+        }
+        
+        self.consumer.update_submission(test_data)
+        
+        call_args = mock_submission.update.call_args[0][0]
+        self.assertEqual(call_args["grade"], 88.75)
+
+    def test_update_submission_with_boolean_grade(self):
+        """Test update_submission with boolean grade value."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        test_data = {
+            "submission_id": "bool_grade_123",
+            "feedback": {
+                "grade_recommendation": True,  # Boolean instead of number
+                "overall_feedback": "Test"
+            },
+            "plagiarism_score": 0,
+            "summary": "",
+            "similar_sources": []
+        }
+        
+        self.consumer.update_submission(test_data)
+        
+        call_args = mock_submission.update.call_args[0][0]
+        # Boolean True should convert to 1.0
+        self.assertEqual(call_args["grade"], 1.0)
+
+    def test_update_submission_with_list_grade(self):
+        """Test update_submission with list as grade value."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        test_data = {
+            "submission_id": "list_grade_123",
+            "feedback": {
+                "grade_recommendation": [85, 90],  # List instead of number
+                "overall_feedback": "Test"
+            },
+            "plagiarism_score": 0,
+            "summary": "",
+            "similar_sources": []
+        }
+        
+        self.consumer.update_submission(test_data)
+        
+        call_args = mock_submission.update.call_args[0][0]
+        # Should default to 0.0 for invalid types
+        self.assertEqual(call_args["grade"], 0.0)
+
     # ==================== send_glific_notification Tests ====================
     
     @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
@@ -1222,6 +1589,49 @@ class TestFeedbackConsumer(unittest.TestCase):
         self.assertEqual(call_kwargs["contact_id"], "student_real_456")
         self.assertIn("default_results", call_kwargs)
 
+    @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
+    def test_send_glific_notification_empty_student_id(self, mock_start_flow):
+        """Test Glific notification with empty string student_id."""
+        if not USING_REAL_CLASS:
+            return
+        
+        test_data = self.sample_message_data.copy()
+        test_data["student_id"] = ""
+        
+        self.consumer.send_glific_notification(test_data)
+        
+        mock_start_flow.assert_not_called()
+
+    @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
+    def test_send_glific_notification_empty_feedback(self, mock_start_flow):
+        """Test Glific notification with empty overall_feedback."""
+        if not USING_REAL_CLASS:
+            return
+        
+        frappe_mock.get_value.return_value = "flow_123"
+        
+        test_data = self.sample_message_data.copy()
+        test_data["feedback"]["overall_feedback"] = ""
+        
+        self.consumer.send_glific_notification(test_data)
+        
+        mock_start_flow.assert_not_called()
+
+    @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
+    def test_send_glific_notification_missing_feedback_dict(self, mock_start_flow):
+        """Test Glific notification when feedback key is missing entirely."""
+        if not USING_REAL_CLASS:
+            return
+        
+        test_data = {
+            "submission_id": "test_123",
+            "student_id": "student_456"
+        }
+        
+        self.consumer.send_glific_notification(test_data)
+        
+        mock_start_flow.assert_not_called()
+
     # ==================== mark_submission_failed Tests ====================
     
     def test_mark_submission_failed_with_error_field(self):
@@ -1329,6 +1739,38 @@ class TestFeedbackConsumer(unittest.TestCase):
         # Should truncate to 500 chars
         self.assertTrue(len(mock_sub.error_message) <= 500)
         mock_sub.save.assert_called_once_with(ignore_permissions=True)
+
+    def test_mark_submission_failed_save_exception(self):
+        """Test mark_submission_failed when save() raises exception."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.status = None
+        mock_submission.error_message = None
+        mock_submission.save.side_effect = Exception("Save failed")
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        # Should not raise exception
+        self.consumer.mark_submission_failed("test_123", "Error message")
+        
+        self.assertEqual(mock_submission.status, "Failed")
+
+    def test_mark_submission_failed_exact_500_chars(self):
+        """Test mark_submission_failed with exactly 500 character error."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.status = None
+        mock_submission.error_message = None
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        error_msg = "x" * 500
+        self.consumer.mark_submission_failed("test_123", error_msg)
+        
+        self.assertEqual(len(mock_submission.error_message), 500)
 
     # ==================== stop_consuming Tests ====================
     
@@ -1591,6 +2033,55 @@ class TestFeedbackConsumer(unittest.TestCase):
         
         # Should not raise exception
         self.consumer.move_to_dead_letter(test_data)
+
+    def test_move_to_dead_letter_with_properties(self):
+        """Test move_to_dead_letter verifies properties are set correctly."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_channel = Mock()
+        self.consumer.channel = mock_channel
+        self.consumer.settings = self.mock_settings
+        
+        test_data = {
+            "submission_id": "dlq_123",
+            "error": "Test error",
+            "timestamp": "2025-01-01"
+        }
+        
+        self.consumer.move_to_dead_letter(test_data)
+        
+        # Verify basic_publish was called
+        self.assertTrue(mock_channel.basic_publish.called)
+        
+        # Verify properties
+        call_kwargs = mock_channel.basic_publish.call_args[1]
+        self.assertIn('properties', call_kwargs)
+
+    def test_move_to_dead_letter_json_serialization(self):
+        """Test move_to_dead_letter handles complex data structures."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_channel = Mock()
+        self.consumer.channel = mock_channel
+        self.consumer.settings = self.mock_settings
+        
+        complex_data = {
+            "submission_id": "complex_123",
+            "nested": {"data": [1, 2, 3]},
+            "list": ["a", "b", "c"]
+        }
+        
+        self.consumer.move_to_dead_letter(complex_data)
+        
+        mock_channel.basic_publish.assert_called_once()
+        
+        # Verify body can be deserialized
+        call_kwargs = mock_channel.basic_publish.call_args[1]
+        body = call_kwargs['body']
+        parsed = json.loads(body)
+        self.assertEqual(parsed["submission_id"], "complex_123")
 
     # ==================== Coverage Helper Tests ====================
     
