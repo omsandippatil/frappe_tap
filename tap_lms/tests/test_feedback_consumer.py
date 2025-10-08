@@ -5,10 +5,15 @@ from unittest.mock import Mock, patch, MagicMock, call, PropertyMock
 import json
 from datetime import datetime
 
+# FIXED: Go up TWO levels (not one) to reach the directory containing tap_lms/
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
 # Mock all external dependencies before importing anything
 sys.modules['frappe'] = MagicMock()
 sys.modules['pika'] = MagicMock()
 sys.modules['pika.exceptions'] = MagicMock()
+# FIXED: Mock glific_integration to prevent relative import error
+sys.modules['tap_lms.glific_integration'] = MagicMock()
 
 # Configure frappe mock
 frappe_mock = sys.modules['frappe']
