@@ -250,6 +250,33 @@ class TestFeedbackConsumer(unittest.TestCase):
         with self.assertRaises(Exception):
             self.consumer.setup_rabbitmq()
 
+    @patch('pika.PlainCredentials')
+    @patch('pika.ConnectionParameters')
+    @patch('pika.BlockingConnection')
+    def test_setup_rabbitmq_full_execution(self, mock_connection, mock_params, mock_creds):
+        """Force full execution of setup_rabbitmq with all paths."""
+        if not USING_REAL_CLASS:
+            return
+        
+        frappe_mock.get_single.return_value = self.mock_settings
+        
+        mock_conn = Mock()
+        mock_channel = Mock()
+        mock_conn.channel.return_value = mock_channel
+        mock_connection.return_value = mock_conn
+        
+        # Mock all operations to succeed
+        mock_channel.exchange_declare = Mock()
+        mock_channel.queue_declare = Mock(return_value=Mock())
+        mock_channel.queue_bind = Mock()
+        
+        self.consumer.setup_rabbitmq()
+        
+        # Verify everything was set up
+        self.assertIsNotNone(self.consumer.connection)
+        self.assertIsNotNone(self.consumer.channel)
+        self.assertIsNotNone(self.consumer.settings)
+
     # ==================== _reconnect Tests ====================
     
     @patch('pika.BlockingConnection')
@@ -325,6 +352,30 @@ class TestFeedbackConsumer(unittest.TestCase):
         self.consumer._reconnect()
         
         self.assertEqual(self.consumer.connection, mock_new_conn)
+
+    def test_reconnect_exception_during_close(self):
+        """Test reconnection when closing old connection fails."""
+        if not USING_REAL_CLASS:
+            return
+            
+        self.consumer.settings = self.mock_settings
+        
+        # Mock old connection that fails to close
+        old_conn = Mock()
+        old_conn.is_closed = False
+        old_conn.close.side_effect = Exception("Close failed")
+        self.consumer.connection = old_conn
+        
+        with patch('pika.PlainCredentials'):
+            with patch('pika.ConnectionParameters'):
+                with patch('pika.BlockingConnection') as mock_connection:
+                    mock_new_conn = Mock()
+                    mock_new_channel = Mock()
+                    mock_new_conn.channel.return_value = mock_new_channel
+                    mock_connection.return_value = mock_new_conn
+                    
+                    # Should not raise exception
+                    self.consumer._reconnect()
 
     # ==================== start_consuming Tests ====================
     
@@ -619,6 +670,53 @@ class TestFeedbackConsumer(unittest.TestCase):
                     # Should still reject the message
                     mock_ch.basic_reject.assert_called_once_with(delivery_tag="test_tag", requeue=False)
 
+    @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
+    def test_process_message_complete_integration(self, mock_start_flow):
+        """Test complete process_message integration with all components."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_ch = Mock()
+        mock_method = Mock()
+        mock_method.delivery_tag = "integration_tag"
+        mock_properties = Mock()
+        
+        complete_message = {
+            "submission_id": "integration_test_123",
+            "student_id": "student_integration",
+            "feedback": {
+                "grade_recommendation": "95.0",
+                "overall_feedback": "Outstanding work!"
+            },
+            "plagiarism_score": 3.5,
+            "summary": "Excellent submission",
+            "similar_sources": [{"source": "academic.com", "score": 0.03}]
+        }
+        body = json.dumps(complete_message).encode('utf-8')
+        
+        # Setup mocks
+        frappe_mock.db.exists.return_value = True
+        frappe_mock.db.begin = Mock()
+        frappe_mock.db.commit = Mock()
+        frappe_mock.get_value.return_value = "flow_integration"
+        mock_start_flow.return_value = True
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        # Execute
+        self.consumer.process_message(mock_ch, mock_method, mock_properties, body)
+        
+        # Verify complete flow
+        frappe_mock.db.begin.assert_called_once()
+        mock_submission.update.assert_called_once()
+        mock_submission.save.assert_called_once()
+        mock_start_flow.assert_called_once()
+        frappe_mock.db.commit.assert_called_once()
+        mock_ch.basic_ack.assert_called_once_with(delivery_tag="integration_tag")
+
     # ==================== is_retryable_error Tests ====================
     
     def test_is_retryable_error(self):
@@ -655,6 +753,44 @@ class TestFeedbackConsumer(unittest.TestCase):
             self.assertTrue(self.consumer.is_retryable_error(error), f"Should retry: {error}")
 
     # ==================== update_submission Tests ====================
+    
+    def test_update_submission_complete_flow(self):
+        """Test complete update_submission flow with all fields."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        # Complete message data
+        complete_data = {
+            "submission_id": "test_123",
+            "feedback": {
+                "grade_recommendation": "92.5",
+                "overall_feedback": "Excellent work with detailed analysis"
+            },
+            "plagiarism_score": 8.3,
+            "summary": "Well-researched submission",
+            "similar_sources": [
+                {"source": "example.com", "score": 0.15},
+                {"source": "test.org", "score": 0.08}
+            ]
+        }
+        
+        self.consumer.update_submission(complete_data)
+        
+        # Verify all fields were updated
+        call_args = mock_submission.update.call_args[0][0]
+        self.assertEqual(call_args["status"], "Completed")
+        self.assertEqual(call_args["grade"], 92.5)
+        self.assertEqual(call_args["plagiarism_result"], 8.3)
+        self.assertEqual(call_args["feedback_summary"], "Well-researched submission")
+        self.assertEqual(call_args["overall_feedback"], "Excellent work with detailed analysis")
+        self.assertIn("similar_sources", call_args)
+        self.assertIn("generated_feedback", call_args)
+        mock_submission.save.assert_called_once_with(ignore_permissions=True)
     
     def test_update_submission_with_string_grade(self):
         """Test update_submission with string grade value."""
@@ -880,6 +1016,81 @@ class TestFeedbackConsumer(unittest.TestCase):
         self.assertEqual(call_args["overall_feedback"], "")
         self.assertEqual(call_args["feedback_summary"], "")
 
+    def test_update_submission_all_edge_cases(self):
+        """Test update_submission with various edge cases in one test."""
+        if not USING_REAL_CLASS:
+            return
+        
+        # Test with empty strings and missing fields
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        edge_case_data = {
+            "submission_id": "edge_case_123",
+            "feedback": {
+                "grade_recommendation": "",  # Empty string
+                "overall_feedback": ""
+            },
+            "plagiarism_score": None,  # None value
+            "summary": None,
+            "similar_sources": None
+        }
+        
+        # Should not raise exception
+        self.consumer.update_submission(edge_case_data)
+        
+        call_args = mock_submission.update.call_args[0][0]
+        self.assertEqual(call_args["status"], "Completed")
+        # Empty grade should become 0.0
+        self.assertEqual(call_args["grade"], 0.0)
+        # None plagiarism should become 0.0
+        self.assertEqual(call_args["plagiarism_result"], 0.0)
+        mock_submission.save.assert_called_once()
+
+    def test_update_submission_real_execution(self):
+        """Force real execution of update_submission with all code paths."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_submission = Mock()
+        mock_submission.update = Mock()
+        mock_submission.save = Mock()
+        frappe_mock.get_doc.return_value = mock_submission
+        
+        data = {
+            "submission_id": "real_test_123",
+            "feedback": {
+                "grade_recommendation": "78.5",
+                "overall_feedback": "Good effort"
+            },
+            "plagiarism_score": 12.3,
+            "summary": "Test summary",
+            "similar_sources": [{"source": "test.com"}]
+        }
+        
+        # This will execute all lines in update_submission
+        self.consumer.update_submission(data)
+        
+        # Verify execution
+        mock_submission.update.assert_called_once()
+        call_args = mock_submission.update.call_args[0][0]
+        
+        # Verify all fields were processed
+        self.assertIn("status", call_args)
+        self.assertIn("grade", call_args)
+        self.assertIn("plagiarism_result", call_args)
+        self.assertIn("feedback_summary", call_args)
+        self.assertIn("overall_feedback", call_args)
+        self.assertIn("similar_sources", call_args)
+        self.assertIn("generated_feedback", call_args)
+        self.assertIn("completed_at", call_args)
+        
+        self.assertEqual(call_args["grade"], 78.5)
+        self.assertEqual(call_args["status"], "Completed")
+        mock_submission.save.assert_called_once_with(ignore_permissions=True)
+
     # ==================== send_glific_notification Tests ====================
     
     @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
@@ -955,6 +1166,62 @@ class TestFeedbackConsumer(unittest.TestCase):
         with self.assertRaises(Exception):
             self.consumer.send_glific_notification(self.sample_message_data)
 
+    @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
+    @patch('tap_lms.feedback_consumer.feedback_consumer.get_glific_settings')
+    def test_send_glific_notification_complete_flow(self, mock_settings, mock_start_flow):
+        """Test complete Glific notification flow."""
+        if not USING_REAL_CLASS:
+            return
+        
+        frappe_mock.get_value.return_value = "flow_456"
+        mock_start_flow.return_value = True
+        
+        complete_data = {
+            "submission_id": "test_sub_999",
+            "student_id": "student_789",
+            "feedback": {
+                "grade_recommendation": "88",
+                "overall_feedback": "Great job on this assignment!"
+            }
+        }
+        
+        self.consumer.send_glific_notification(complete_data)
+        
+        # Verify flow was called with correct parameters
+        self.assertTrue(mock_start_flow.called)
+        call_kwargs = mock_start_flow.call_args[1]
+        self.assertEqual(call_kwargs["flow_id"], "flow_456")
+        self.assertEqual(call_kwargs["contact_id"], "student_789")
+        self.assertIn("default_results", call_kwargs)
+        self.assertEqual(call_kwargs["default_results"]["submission_id"], "test_sub_999")
+
+    @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
+    def test_send_glific_notification_real_execution(self, mock_flow):
+        """Force real execution of send_glific_notification."""
+        if not USING_REAL_CLASS:
+            return
+        
+        frappe_mock.get_value.return_value = "flow_real_test"
+        mock_flow.return_value = True
+        
+        data = {
+            "submission_id": "glific_real_123",
+            "student_id": "student_real_456",
+            "feedback": {
+                "overall_feedback": "Well done!"
+            }
+        }
+        
+        # Execute
+        self.consumer.send_glific_notification(data)
+        
+        # Verify
+        mock_flow.assert_called_once()
+        call_kwargs = mock_flow.call_args[1]
+        self.assertEqual(call_kwargs["flow_id"], "flow_real_test")
+        self.assertEqual(call_kwargs["contact_id"], "student_real_456")
+        self.assertIn("default_results", call_kwargs)
+
     # ==================== mark_submission_failed Tests ====================
     
     def test_mark_submission_failed_with_error_field(self):
@@ -1017,6 +1284,51 @@ class TestFeedbackConsumer(unittest.TestCase):
         
         # Should truncate to 500 characters
         self.assertEqual(len(mock_submission.error_message), 500)
+
+    def test_mark_submission_failed_complete_coverage(self):
+        """Test mark_submission_failed with complete coverage."""
+        if not USING_REAL_CLASS:
+            return
+        
+        # Test with error_message attribute present
+        mock_submission_with_attr = Mock()
+        mock_submission_with_attr.status = "Pending"
+        mock_submission_with_attr.error_message = ""
+        mock_submission_with_attr.save = Mock()
+        
+        # Mock hasattr to return True
+        frappe_mock.get_doc.return_value = mock_submission_with_attr
+        
+        long_error = "x" * 600  # Longer than 500
+        self.consumer.mark_submission_failed("test_fail_123", long_error)
+        
+        self.assertEqual(mock_submission_with_attr.status, "Failed")
+        # Should be truncated to 500
+        self.assertEqual(len(mock_submission_with_attr.error_message), 500)
+        mock_submission_with_attr.save.assert_called_once()
+
+    def test_mark_submission_failed_real_execution(self):
+        """Force real execution of mark_submission_failed."""
+        if not USING_REAL_CLASS:
+            return
+        
+        mock_sub = Mock()
+        mock_sub.status = "Pending"
+        # Simulate having error_message attribute
+        mock_sub.error_message = ""
+        mock_sub.save = Mock()
+        frappe_mock.get_doc.return_value = mock_sub
+        
+        error_msg = "Real test error" * 50  # Long error
+        
+        # Execute
+        self.consumer.mark_submission_failed("real_fail_123", error_msg)
+        
+        # Verify
+        self.assertEqual(mock_sub.status, "Failed")
+        # Should truncate to 500 chars
+        self.assertTrue(len(mock_sub.error_message) <= 500)
+        mock_sub.save.assert_called_once_with(ignore_permissions=True)
 
     # ==================== stop_consuming Tests ====================
     
@@ -1217,6 +1529,34 @@ class TestFeedbackConsumer(unittest.TestCase):
         self.assertEqual(stats["main_queue"], 0)
         self.assertEqual(stats["dead_letter_queue"], 0)
 
+    def test_get_queue_stats_no_channel_setup(self):
+        """Test get_queue_stats triggers setup when no channel."""
+        if not USING_REAL_CLASS:
+            return
+        
+        self.consumer.channel = None
+        self.consumer.settings = self.mock_settings
+        
+        with patch.object(self.consumer, 'setup_rabbitmq') as mock_setup:
+            mock_channel = Mock()
+            main_response = Mock()
+            main_response.method.message_count = 10
+            dl_response = Mock()
+            dl_response.method.message_count = 2
+            
+            mock_channel.queue_declare.side_effect = [main_response, dl_response]
+            
+            def setup_effect():
+                self.consumer.channel = mock_channel
+            
+            mock_setup.side_effect = setup_effect
+            
+            stats = self.consumer.get_queue_stats()
+            
+            mock_setup.assert_called_once()
+            self.assertEqual(stats["main_queue"], 10)
+            self.assertEqual(stats["dead_letter_queue"], 2)
+
     # ==================== move_to_dead_letter Tests ====================
     
     def test_move_to_dead_letter_success(self):
@@ -1270,8 +1610,11 @@ class TestFeedbackConsumer(unittest.TestCase):
 
     def test_using_real_class_branches(self):
         """Test both branches of USING_REAL_CLASS."""
+        # This test ensures both code paths are covered
         if USING_REAL_CLASS:
+            # Test real class import
             self.assertTrue(USING_REAL_CLASS)
+            # Verify the real class has expected methods
             expected_methods = [
                 'setup_rabbitmq', 'start_consuming', 'stop_consuming',
                 'cleanup', 'process_message', 'is_retryable_error',
@@ -1282,7 +1625,9 @@ class TestFeedbackConsumer(unittest.TestCase):
             for method in expected_methods:
                 self.assertTrue(hasattr(self.consumer, method), f"Missing method: {method}")
         else:
+            # Test mock class fallback
             self.assertFalse(USING_REAL_CLASS)
+            # Verify mock class basic structure
             self.assertIsNone(self.consumer.connection)
             self.assertIsNone(self.consumer.channel)
             self.assertIsNone(self.consumer.settings)
