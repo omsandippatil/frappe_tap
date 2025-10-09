@@ -24,14 +24,14 @@ frappe_mock.db = MagicMock()
 frappe_mock.logger = MagicMock()
 frappe_mock.logger.return_value = MagicMock()
 
-# Create mock pika exceptions
-class MockChannelClosedByBroker(Exception):
+# Create mock pika exceptions - MUST inherit from BaseException
+class MockChannelClosedByBroker(BaseException):
     def __init__(self, reply_code=200, reply_text=""):
         self.reply_code = reply_code
         self.reply_text = reply_text
         super().__init__(f"{reply_code}: {reply_text}")
 
-class MockConnectionClosed(Exception):
+class MockConnectionClosed(BaseException):
     pass
 
 # Add mock exceptions to pika.exceptions
@@ -55,7 +55,12 @@ class TestFeedbackConsumer(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures before each test method."""
+        # Reset all frappe mocks and clear side_effects
         frappe_mock.reset_mock()
+        frappe_mock.get_doc.side_effect = None
+        frappe_mock.get_value.side_effect = None
+        frappe_mock.get_single.side_effect = None
+        frappe_mock.db.exists.side_effect = None
         
         self.consumer = FeedbackConsumer()
         
@@ -105,7 +110,7 @@ class TestFeedbackConsumer(unittest.TestCase):
         
         # Test MockConnectionClosed
         conn_exception = MockConnectionClosed()
-        self.assertIsInstance(conn_exception, Exception)
+        self.assertIsInstance(conn_exception, BaseException)
 
     # ==================== setup_rabbitmq Tests ====================
     
@@ -1204,8 +1209,12 @@ class TestFeedbackConsumer(unittest.TestCase):
             }
         }
         
-        with self.assertRaises(Exception):
-            self.consumer.update_submission(test_data)
+        try:
+            with self.assertRaises(Exception):
+                self.consumer.update_submission(test_data)
+        finally:
+            # Clean up side_effect for next tests
+            frappe_mock.get_doc.side_effect = None
 
     def test_update_submission_with_missing_optional_fields(self):
         """Test update_submission with missing optional fields."""
@@ -1535,8 +1544,12 @@ class TestFeedbackConsumer(unittest.TestCase):
         
         frappe_mock.get_value.side_effect = Exception("Glific error")
         
-        with self.assertRaises(Exception):
-            self.consumer.send_glific_notification(self.sample_message_data)
+        try:
+            with self.assertRaises(Exception):
+                self.consumer.send_glific_notification(self.sample_message_data)
+        finally:
+            # Clean up side_effect for next tests
+            frappe_mock.get_value.side_effect = None
 
     @patch('tap_lms.feedback_consumer.feedback_consumer.start_contact_flow')
     @patch('tap_lms.feedback_consumer.feedback_consumer.get_glific_settings')
@@ -1645,8 +1658,9 @@ class TestFeedbackConsumer(unittest.TestCase):
             return
         
         mock_submission = Mock()
-        mock_submission.status = None
-        mock_submission.error_message = None
+        mock_submission.status = "Pending"
+        # Create a mock that properly supports attribute assignment
+        type(mock_submission).error_message = PropertyMock()
         mock_submission.save = Mock()
         frappe_mock.get_doc.return_value = mock_submission
         
@@ -1663,7 +1677,7 @@ class TestFeedbackConsumer(unittest.TestCase):
             return
         
         mock_submission = Mock(spec=['status', 'save'])
-        mock_submission.status = None
+        mock_submission.status = "Pending"
         mock_submission.save = Mock()
         frappe_mock.get_doc.return_value = mock_submission
         
@@ -1682,6 +1696,9 @@ class TestFeedbackConsumer(unittest.TestCase):
         
         # Should not raise exception, just log error
         self.consumer.mark_submission_failed("test_123", "Test error")
+        
+        # Clean up for next tests
+        frappe_mock.get_doc.side_effect = None
 
     def test_mark_submission_failed_long_error_message(self):
         """Test mark_submission_failed with very long error message."""
@@ -1689,8 +1706,8 @@ class TestFeedbackConsumer(unittest.TestCase):
             return
         
         mock_submission = Mock()
-        mock_submission.status = None
-        mock_submission.error_message = None
+        mock_submission.status = "Pending"
+        type(mock_submission).error_message = PropertyMock()
         mock_submission.save = Mock()
         frappe_mock.get_doc.return_value = mock_submission
         
@@ -1699,6 +1716,8 @@ class TestFeedbackConsumer(unittest.TestCase):
         
         # Should truncate to 500 characters
         self.assertEqual(len(mock_submission.error_message), 500)
+        self.assertEqual(mock_submission.status, "Failed")
+        mock_submission.save.assert_called_once_with(ignore_permissions=True)
 
     def test_mark_submission_failed_complete_coverage(self):
         """Test mark_submission_failed with complete coverage."""
@@ -1708,10 +1727,9 @@ class TestFeedbackConsumer(unittest.TestCase):
         # Test with error_message attribute present
         mock_submission_with_attr = Mock()
         mock_submission_with_attr.status = "Pending"
-        mock_submission_with_attr.error_message = ""
+        type(mock_submission_with_attr).error_message = PropertyMock()
         mock_submission_with_attr.save = Mock()
         
-        # Mock hasattr to return True
         frappe_mock.get_doc.return_value = mock_submission_with_attr
         
         long_error = "x" * 600  # Longer than 500
@@ -1730,7 +1748,7 @@ class TestFeedbackConsumer(unittest.TestCase):
         mock_sub = Mock()
         mock_sub.status = "Pending"
         # Simulate having error_message attribute
-        mock_sub.error_message = ""
+        type(mock_sub).error_message = PropertyMock()
         mock_sub.save = Mock()
         frappe_mock.get_doc.return_value = mock_sub
         
@@ -1751,8 +1769,8 @@ class TestFeedbackConsumer(unittest.TestCase):
             return
         
         mock_submission = Mock()
-        mock_submission.status = None
-        mock_submission.error_message = None
+        mock_submission.status = "Pending"
+        type(mock_submission).error_message = PropertyMock()
         mock_submission.save.side_effect = Exception("Save failed")
         frappe_mock.get_doc.return_value = mock_submission
         
@@ -1760,6 +1778,7 @@ class TestFeedbackConsumer(unittest.TestCase):
         self.consumer.mark_submission_failed("test_123", "Error message")
         
         self.assertEqual(mock_submission.status, "Failed")
+        mock_submission.save.assert_called_once_with(ignore_permissions=True)
 
     def test_mark_submission_failed_exact_500_chars(self):
         """Test mark_submission_failed with exactly 500 character error."""
@@ -1767,8 +1786,8 @@ class TestFeedbackConsumer(unittest.TestCase):
             return
         
         mock_submission = Mock()
-        mock_submission.status = None
-        mock_submission.error_message = None
+        mock_submission.status = "Pending"
+        type(mock_submission).error_message = PropertyMock()
         mock_submission.save = Mock()
         frappe_mock.get_doc.return_value = mock_submission
         
@@ -1776,6 +1795,8 @@ class TestFeedbackConsumer(unittest.TestCase):
         self.consumer.mark_submission_failed("test_123", error_msg)
         
         self.assertEqual(len(mock_submission.error_message), 500)
+        self.assertEqual(mock_submission.status, "Failed")
+        mock_submission.save.assert_called_once_with(ignore_permissions=True)
 
     # ==================== stop_consuming Tests ====================
     
