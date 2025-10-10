@@ -1,12 +1,6 @@
 """
 Comprehensive test suite for Glific Integration module.
 
-This test suite covers:
-- Authentication and token management
-- Contact creation and updates
-- Group management
-- Phone number formatting
-- Error handling and edge cases
 """
 
 import pytest
@@ -384,10 +378,13 @@ class TestContactManagement:
         self, mock_frappe, mock_glific_settings, mock_requests, mock_api_response
     ):
         """Test successful contact field update"""
+        # Need to properly mock requests.exceptions for the code's exception handling
+        mock_requests.exceptions.RequestException = Exception
+        
         # Mock fetch response
         fetch_response = Mock()
         fetch_response.status_code = 200
-        fetch_response.raise_for_status = Mock()
+        fetch_response.raise_for_status = Mock(return_value=None)  # Should not raise
         fetch_response.json.return_value = {
             "data": {
                 "contact": {
@@ -409,7 +406,7 @@ class TestContactManagement:
         update_response = Mock()
         update_response.status_code = 200
         update_response.text = "success"
-        update_response.raise_for_status = Mock()
+        update_response.raise_for_status = Mock(return_value=None)  # Should not raise
         update_response.json.return_value = {
             "data": {
                 "updateContact": {
@@ -443,9 +440,11 @@ class TestContactManagement:
         self, mock_frappe, mock_glific_settings, mock_requests, mock_api_response
     ):
         """Test update when existing fields have invalid JSON"""
+        mock_requests.exceptions.RequestException = Exception
+        
         fetch_response = Mock()
         fetch_response.status_code = 200
-        fetch_response.raise_for_status = Mock()
+        fetch_response.raise_for_status = Mock(return_value=None)
         fetch_response.json.return_value = {
             "data": {
                 "contact": {
@@ -460,7 +459,7 @@ class TestContactManagement:
         
         update_response = Mock()
         update_response.status_code = 200
-        update_response.raise_for_status = Mock()
+        update_response.raise_for_status = Mock(return_value=None)
         update_response.json.return_value = {
             "data": {
                 "updateContact": {
@@ -714,11 +713,18 @@ class TestPhoneNumberFormatting:
         self, mock_frappe, mock_glific_settings, mock_requests, mock_api_response
     ):
         """Test batch update of student Glific IDs"""
-        # Mock students - frappe.get_all returns list of dicts
-        mock_frappe.get_all.return_value = [
-            {"name": "student1", "phone": "1234567890"},
-            {"name": "student2", "phone": "911234567891"}
-        ]
+        # The code uses student.phone (attribute access), not student["phone"] (dict access)
+        # So we need to create mock objects with attributes
+        student1 = Mock()
+        student1.name = "student1"
+        student1.phone = "1234567890"
+        
+        student2 = Mock()
+        student2.name = "student2"
+        student2.phone = "911234567891"
+        
+        # Mock frappe.get_all to return objects with attributes (not dicts)
+        mock_frappe.get_all.return_value = [student1, student2]
         
         with patch('glific_integration.get_glific_settings') as mock_get_settings, \
              patch('glific_integration.get_glific_auth_headers') as mock_get_headers, \
