@@ -528,12 +528,20 @@ class TestUpdateSpecificSetContactsHappyPath:
         assert result["total_processed"] == 1
         mock_logger().warning.assert_called()
     
+    # @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
+    # @patch('tap_lms.glific_batch_id_update.frappe.get_all')
+    # @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
+    # @patch('tap_lms.glific_batch_id_update.frappe.logger')
+    # def test_skips_student_without_batch_id(
+    #     self, mock_logger, mock_exists, mock_get_all, mock_get_doc,
+    #     test_data, mock_onboarding_set, mock_student_doc
+    # ):
     @patch('tap_lms.glific_batch_id_update.frappe.get_doc')
     @patch('tap_lms.glific_batch_id_update.frappe.get_all')
     @patch('tap_lms.glific_batch_id_update.frappe.db.exists')
     @patch('tap_lms.glific_batch_id_update.frappe.logger')
     def test_skips_student_without_batch_id(
-        self, mock_logger, mock_exists, mock_get_all, mock_get_doc,
+        self, mock_get_doc, mock_get_all, mock_exists, mock_logger,  # ✅ CORRECT ORDER
         test_data, mock_onboarding_set, mock_student_doc
     ):
         """Test skipping student that has no batch_id value"""
