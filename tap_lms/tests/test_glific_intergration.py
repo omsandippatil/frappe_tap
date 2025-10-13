@@ -1,6 +1,17 @@
 """
 Comprehensive test suite for Glific Integration module.
 
+This test suite covers:
+- Authentication and token management
+- Contact creation and updates
+- Group management
+- Phone number formatting
+- Error handling and edge cases
+- Integration workflows
+
+Run with:
+    pytest test_glific_integration.py -v
+    pytest test_glific_integration.py --cov=glific_integration --cov-report=html
 """
 
 import pytest
@@ -378,63 +389,67 @@ class TestContactManagement:
         self, mock_frappe, mock_glific_settings, mock_requests, mock_api_response
     ):
         """Test successful contact field update"""
-        # Need to properly mock requests.exceptions for the code's exception handling
+        # Set up exception handling mock
         mock_requests.exceptions.RequestException = Exception
         
-        # Mock fetch response
-        fetch_response = Mock()
-        fetch_response.status_code = 200
-        fetch_response.raise_for_status = Mock(return_value=None)  # Should not raise
-        fetch_response.json.return_value = {
-            "data": {
-                "contact": {
-                    "contact": {
-                        "id": "123",
-                        "name": "Test User",
-                        "fields": json.dumps({
-                            "existing_field": {
-                                "value": "existing_value",
-                                "type": "string"
-                            }
-                        })
-                    }
-                }
-            }
-        }
-        
-        # Mock update response
-        update_response = Mock()
-        update_response.status_code = 200
-        update_response.text = "success"
-        update_response.raise_for_status = Mock(return_value=None)  # Should not raise
-        update_response.json.return_value = {
-            "data": {
-                "updateContact": {
-                    "contact": {
-                        "id": "123",
-                        "name": "Test User",
-                        "fields": json.dumps({
-                            "existing_field": {"value": "existing_value"},
-                            "new_field": {"value": "new_value"}
-                        })
-                    }
-                }
-            }
-        }
-        
-        mock_requests.post.side_effect = [fetch_response, update_response]
-        
+        # Create fully configured mocks without side_effect - use direct patching
         with patch('glific_integration.get_glific_settings') as mock_get_settings, \
-             patch('glific_integration.get_glific_auth_headers') as mock_get_headers:
+             patch('glific_integration.get_glific_auth_headers') as mock_get_headers, \
+             patch('glific_integration.requests.post') as mock_post:
             
             mock_get_settings.return_value = mock_glific_settings
             mock_get_headers.return_value = {"authorization": "token"}
+            
+            # Mock fetch response
+            fetch_response = Mock()
+            fetch_response.status_code = 200
+            fetch_response.raise_for_status = Mock()
+            fetch_response.json.return_value = {
+                "data": {
+                    "contact": {
+                        "contact": {
+                            "id": "123",
+                            "name": "Test User",
+                            "fields": json.dumps({
+                                "existing_field": {
+                                    "value": "existing_value",
+                                    "type": "string"
+                                }
+                            })
+                        }
+                    }
+                }
+            }
+            
+            # Mock update response
+            update_response = Mock()
+            update_response.status_code = 200
+            update_response.text = "success"
+            update_response.raise_for_status = Mock()
+            update_response.json.return_value = {
+                "data": {
+                    "updateContact": {
+                        "contact": {
+                            "id": "123",
+                            "name": "Test User",
+                            "fields": json.dumps({
+                                "existing_field": {"value": "existing_value"},
+                                "new_field": {"value": "new_value"}
+                            })
+                        }
+                    }
+                }
+            }
+            
+            # Set up the mock to return fetch then update response
+            mock_post.side_effect = [fetch_response, update_response]
             
             from glific_integration import update_contact_fields
             
             result = update_contact_fields("123", {"new_field": "new_value"})
             
             assert result is True
+            assert mock_post.call_count == 2
     
     def test_update_contact_fields_invalid_json(
         self, mock_frappe, mock_glific_settings, mock_requests, mock_api_response
