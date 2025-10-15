@@ -5,8 +5,14 @@ import sys
 import os
 
 # Add the parent directory to the path to allow imports
-# This goes from /tap_lms/tests/ up to /tap_lms/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Mock frappe and related modules BEFORE importing glific_webhook
+sys.modules['frappe'] = MagicMock()
+sys.modules['frappe.utils'] = MagicMock()
+
+# Now we can safely import glific_webhook
+import glific_webhook
 
 
 class TestGlificWebhook(unittest.TestCase):
@@ -89,8 +95,7 @@ class TestGetGlificContact(TestGlificWebhook):
         mock_post.return_value = mock_response
         
         # Act
-        from glific_webhook import get_glific_contact
-        result = get_glific_contact("123")
+        result = glific_webhook.get_glific_contact("123")
         
         # Assert
         self.assertIsNotNone(result)
@@ -124,8 +129,7 @@ class TestGetGlificContact(TestGlificWebhook):
         mock_post.return_value = mock_response
         
         # Act
-        from glific_webhook import get_glific_contact
-        result = get_glific_contact("999")
+        result = glific_webhook.get_glific_contact("999")
         
         # Assert
         self.assertIsNone(result)
@@ -145,8 +149,7 @@ class TestGetGlificContact(TestGlificWebhook):
         mock_post.return_value = mock_response
         
         # Act
-        from glific_webhook import get_glific_contact
-        result = get_glific_contact("123")
+        result = glific_webhook.get_glific_contact("123")
         
         # Assert
         self.assertIsNone(result)
@@ -165,8 +168,7 @@ class TestGetGlificContact(TestGlificWebhook):
         mock_post.return_value = mock_response
         
         # Act
-        from glific_webhook import get_glific_contact
-        result = get_glific_contact("123")
+        result = glific_webhook.get_glific_contact("123")
         
         # Assert
         self.assertIsNone(result)
@@ -184,9 +186,8 @@ class TestGetGlificContact(TestGlificWebhook):
         mock_post.side_effect = requests.exceptions.ConnectionError("Network error")
         
         # Act & Assert
-        from glific_webhook import get_glific_contact
         with self.assertRaises(requests.exceptions.ConnectionError):
-            get_glific_contact("123")
+            glific_webhook.get_glific_contact("123")
     
     @patch('glific_webhook.get_glific_auth_headers')
     @patch('glific_webhook.get_glific_settings')
@@ -201,9 +202,8 @@ class TestGetGlificContact(TestGlificWebhook):
         mock_post.side_effect = requests.exceptions.Timeout("Request timeout")
         
         # Act & Assert
-        from glific_webhook import get_glific_contact
         with self.assertRaises(requests.exceptions.Timeout):
-            get_glific_contact("123")
+            glific_webhook.get_glific_contact("123")
     
     @patch('glific_webhook.get_glific_auth_headers')
     @patch('glific_webhook.get_glific_settings')
@@ -220,9 +220,8 @@ class TestGetGlificContact(TestGlificWebhook):
         mock_post.return_value = mock_response
         
         # Act & Assert
-        from glific_webhook import get_glific_contact
         with self.assertRaises(json.JSONDecodeError):
-            get_glific_contact("123")
+            glific_webhook.get_glific_contact("123")
 
 
 class TestPrepareUpdatePayload(TestGlificWebhook):
@@ -243,8 +242,7 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
         self.mock_teacher_doc.first_name = "Jane"
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert
         self.assertIsNotNone(result)
@@ -265,8 +263,7 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
         mock_frappe.db.get_value.return_value = "2"  # Different language ID
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert
         self.assertIsNotNone(result)
@@ -284,8 +281,7 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
         mock_frappe.db.get_value.return_value = "1"  # Same language ID
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert
         self.assertIsNone(result)
@@ -303,8 +299,7 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
         self.mock_teacher_doc.email = "john@example.com"
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert
         self.assertIsNotNone(result)
@@ -322,8 +317,7 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
         mock_frappe.db.get_value.return_value = "1"
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert
         self.assertIsNone(result)
@@ -341,8 +335,7 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
         self.mock_teacher_doc.middle_name = None
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert
         self.assertIsNotNone(result)
@@ -365,8 +358,7 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
         glific_contact_empty["fields"] = "{}"
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, glific_contact_empty)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, glific_contact_empty)
         
         # Assert
         self.assertIsNotNone(result)
@@ -385,8 +377,7 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
         mock_frappe.db.get_value.return_value = None  # Language not found
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert - Should still work without language update
         if result:
@@ -427,8 +418,7 @@ class TestSendGlificUpdate(TestGlificWebhook):
         }
         
         # Act
-        from glific_webhook import send_glific_update
-        result = send_glific_update("123", payload)
+        result = glific_webhook.send_glific_update("123", payload)
         
         # Assert
         self.assertTrue(result)
@@ -462,8 +452,7 @@ class TestSendGlificUpdate(TestGlificWebhook):
         payload = {"fields": json.dumps({"test": "data"})}
         
         # Act
-        from glific_webhook import send_glific_update
-        result = send_glific_update("123", payload)
+        result = glific_webhook.send_glific_update("123", payload)
         
         # Assert
         self.assertFalse(result)
@@ -485,8 +474,7 @@ class TestSendGlificUpdate(TestGlificWebhook):
         payload = {"fields": json.dumps({"test": "data"})}
         
         # Act
-        from glific_webhook import send_glific_update
-        result = send_glific_update("123", payload)
+        result = glific_webhook.send_glific_update("123", payload)
         
         # Assert
         self.assertFalse(result)
@@ -506,9 +494,8 @@ class TestSendGlificUpdate(TestGlificWebhook):
         payload = {"fields": json.dumps({"test": "data"})}
         
         # Act & Assert
-        from glific_webhook import send_glific_update
         with self.assertRaises(requests.exceptions.ConnectionError):
-            send_glific_update("123", payload)
+            glific_webhook.send_glific_update("123", payload)
     
     @patch('glific_webhook.get_glific_auth_headers')
     @patch('glific_webhook.get_glific_settings')
@@ -525,9 +512,8 @@ class TestSendGlificUpdate(TestGlificWebhook):
         payload = {"fields": json.dumps({"test": "data"})}
         
         # Act & Assert
-        from glific_webhook import send_glific_update
         with self.assertRaises(requests.exceptions.Timeout):
-            send_glific_update("123", payload)
+            glific_webhook.send_glific_update("123", payload)
     
     @patch('glific_webhook.get_glific_auth_headers')
     @patch('glific_webhook.get_glific_settings')
@@ -546,9 +532,8 @@ class TestSendGlificUpdate(TestGlificWebhook):
         payload = {"fields": json.dumps({"test": "data"})}
         
         # Act & Assert
-        from glific_webhook import send_glific_update
         with self.assertRaises(json.JSONDecodeError):
-            send_glific_update("123", payload)
+            glific_webhook.send_glific_update("123", payload)
 
 
 class TestUpdateGlificContact(TestGlificWebhook):
@@ -570,8 +555,7 @@ class TestUpdateGlificContact(TestGlificWebhook):
         mock_send.return_value = True
         
         # Act
-        from glific_webhook import update_glific_contact
-        update_glific_contact(self.mock_teacher_doc, "on_update")
+        glific_webhook.update_glific_contact(self.mock_teacher_doc, "on_update")
         
         # Assert
         mock_get.assert_called_once_with("123")
@@ -588,8 +572,7 @@ class TestUpdateGlificContact(TestGlificWebhook):
         student_doc.name = "STUDENT-001"
         
         # Act
-        from glific_webhook import update_glific_contact
-        result = update_glific_contact(student_doc, "on_update")
+        result = glific_webhook.update_glific_contact(student_doc, "on_update")
         
         # Assert
         self.assertIsNone(result)
@@ -602,8 +585,7 @@ class TestUpdateGlificContact(TestGlificWebhook):
         mock_get.return_value = None
         
         # Act
-        from glific_webhook import update_glific_contact
-        update_glific_contact(self.mock_teacher_doc, "on_update")
+        glific_webhook.update_glific_contact(self.mock_teacher_doc, "on_update")
         
         # Assert
         mock_get.assert_called_once_with("123")
@@ -622,8 +604,7 @@ class TestUpdateGlificContact(TestGlificWebhook):
         mock_prepare.return_value = None  # No updates
         
         # Act
-        from glific_webhook import update_glific_contact
-        update_glific_contact(self.mock_teacher_doc, "on_update")
+        glific_webhook.update_glific_contact(self.mock_teacher_doc, "on_update")
         
         # Assert
         mock_get.assert_called_once()
@@ -644,8 +625,7 @@ class TestUpdateGlificContact(TestGlificWebhook):
         mock_send.return_value = False  # Send fails
         
         # Act
-        from glific_webhook import update_glific_contact
-        update_glific_contact(self.mock_teacher_doc, "on_update")
+        glific_webhook.update_glific_contact(self.mock_teacher_doc, "on_update")
         
         # Assert
         mock_send.assert_called_once()
@@ -661,8 +641,7 @@ class TestUpdateGlificContact(TestGlificWebhook):
         mock_get.side_effect = Exception("Unexpected error")
         
         # Act
-        from glific_webhook import update_glific_contact
-        update_glific_contact(self.mock_teacher_doc, "on_update")
+        glific_webhook.update_glific_contact(self.mock_teacher_doc, "on_update")
         
         # Assert
         mock_frappe.logger().error.assert_called_once()
@@ -688,8 +667,7 @@ class TestEdgeCases(TestGlificWebhook):
         self.mock_teacher_doc.first_name = "José María O'Brien <test@example.com>"
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert
         self.assertIsNotNone(result)
@@ -711,8 +689,7 @@ class TestEdgeCases(TestGlificWebhook):
         self.mock_teacher_doc.notes = long_value
         
         # Act
-        from glific_webhook import prepare_update_payload
-        result = prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
+        result = glific_webhook.prepare_update_payload(self.mock_teacher_doc, self.mock_glific_contact)
         
         # Assert
         self.assertIsNotNone(result)
