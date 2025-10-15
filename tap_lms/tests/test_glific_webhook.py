@@ -11,8 +11,28 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.modules['frappe'] = MagicMock()
 sys.modules['frappe.utils'] = MagicMock()
 
-# Now we can safely import glific_webhook
-import glific_webhook
+# Mock glific_integration module with the required functions
+mock_glific_integration = MagicMock()
+mock_glific_integration.get_glific_auth_headers = MagicMock()
+mock_glific_integration.get_glific_settings = MagicMock()
+sys.modules['tap_lms.glific_integration'] = mock_glific_integration
+
+# Patch the relative import to use the absolute path
+import importlib.util
+import types
+
+# Create a custom module for glific_webhook that handles the relative import
+spec = importlib.util.spec_from_file_location("glific_webhook", 
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "glific_webhook.py"))
+glific_webhook = importlib.util.module_from_spec(spec)
+
+# Mock the relative imports in glific_webhook
+glific_webhook.get_glific_auth_headers = mock_glific_integration.get_glific_auth_headers
+glific_webhook.get_glific_settings = mock_glific_integration.get_glific_settings
+
+# Now load the module
+sys.modules['glific_webhook'] = glific_webhook
+spec.loader.exec_module(glific_webhook)
 
 
 class TestGlificWebhook(unittest.TestCase):
