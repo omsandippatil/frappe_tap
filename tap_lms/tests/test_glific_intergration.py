@@ -1019,7 +1019,7 @@ class TestErrorHandling:
 # TEST CLASS: INTEGRATION SCENARIOS
 # ============================================================================
 
-@pytest.mark.integration
+
 class TestIntegrationScenarios:
     """Integration tests for complete workflows"""
     
