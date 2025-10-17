@@ -4,6 +4,8 @@ import json
 from frappe.utils import nowdate, nowtime, now
 from tap_lms.glific_integration import create_or_get_glific_group_for_batch, add_student_to_glific_for_onboarding, get_contact_by_phone
 from tap_lms.api import get_course_level
+import time 
+
 
 def normalize_phone_number(phone):
     """
@@ -318,7 +320,7 @@ def process_batch_job(set_id):
         # Process students in batches for better performance
         total_students = len(students)
         batch_size = 50  # Process 50 students at a time
-        commit_interval = 10  # Commit every 10 students
+        commit_interval = 200  # Commit every 10 students
         
         for batch_start in range(0, total_students, batch_size):
             batch_end = min(batch_start + batch_size, total_students)
@@ -341,9 +343,10 @@ def process_batch_job(set_id):
             
             for index, student_entry in enumerate(batch_students):
                 try:
-                    # Update job progress
+
                     actual_index = batch_start + index
                     update_job_progress(actual_index, total_students)
+                    # Update job progress
                     
                     student = frappe.get_doc("Backend Students", student_entry.name)
                     
@@ -392,6 +395,7 @@ def process_batch_job(set_id):
                     # Commit every 10 students instead of every student
                     if (actual_index + 1) % commit_interval == 0:
                         frappe.db.commit()
+                        time.sleep(0.1)
                         #frappe.log_error(f"Committed batch at student {actual_index + 1}/{total_students}", "Backend Batch Progress")
                     
                 except Exception as e:
@@ -485,7 +489,7 @@ def update_job_progress(current, total):
         except Exception:
             # Fall back to basic approach if publish_progress fails
             if (current+1) % 10 == 0 or (current+1) == total: # Update every 10 items
-                frappe.db.commit()
+              #  frappe.db.commit()
                 print(f"Processed {current+1} of {total} students")
 
 
