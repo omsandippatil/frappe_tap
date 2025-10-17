@@ -24,10 +24,12 @@ sys.modules['glific_integration'] = mock_glific_integration
 # Monkey-patch the __import__ to handle relative imports
 _original_import = builtins.__import__
 
-def _custom_import(name, *args, **kwargs):
-    if name == '.glific_integration':
+def _custom_import(name, globals=None, locals=None, fromlist=(), level=0):
+    """Custom import handler - intercept relative imports"""
+    # Check if this is a relative import of glific_integration
+    if level > 0 and name == 'glific_integration':
         return mock_glific_integration
-    return _original_import(name, *args, **kwargs)
+    return _original_import(name, globals, locals, fromlist, level)
 
 builtins.__import__ = _custom_import
 
