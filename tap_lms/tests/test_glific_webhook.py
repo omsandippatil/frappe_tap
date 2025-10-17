@@ -26,7 +26,6 @@ _original_import = builtins.__import__
 
 def _custom_import(name, globals=None, locals=None, fromlist=(), level=0):
     """Custom import handler - intercept relative imports"""
-    # Check if this is a relative import of glific_integration
     if level > 0 and name == 'glific_integration':
         return mock_glific_integration
     return _original_import(name, globals, locals, fromlist, level)
@@ -133,9 +132,12 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
     @patch('glific_webhook.frappe')
     def test_prepare_payload_with_changes(self, mock_frappe):
         """Test payload with field changes"""
-        mock_frappe.get_all.return_value = [
-            {"frappe_field": "first_name", "glific_field": "first_name"}
-        ]
+        # Create Mock objects with attributes instead of dicts
+        mapping1 = Mock()
+        mapping1.frappe_field = "first_name"
+        mapping1.glific_field = "first_name"
+        
+        mock_frappe.get_all.return_value = [mapping1]
         mock_frappe.utils.now_datetime().isoformat.return_value = "2024-01-15T10:00:00"
         mock_frappe.db.get_value.return_value = "1"
         
@@ -152,9 +154,12 @@ class TestPrepareUpdatePayload(TestGlificWebhook):
     @patch('glific_webhook.frappe')
     def test_prepare_payload_no_changes(self, mock_frappe):
         """Test payload with no changes"""
-        mock_frappe.get_all.return_value = [
-            {"frappe_field": "first_name", "glific_field": "first_name"}
-        ]
+        # Create Mock objects with attributes
+        mapping1 = Mock()
+        mapping1.frappe_field = "first_name"
+        mapping1.glific_field = "first_name"
+        
+        mock_frappe.get_all.return_value = [mapping1]
         mock_frappe.db.get_value.return_value = "1"
         
         result = glific_webhook.prepare_update_payload(
@@ -247,11 +252,15 @@ class TestUpdateGlificContact(TestGlificWebhook):
     @patch('glific_webhook.frappe')
     def test_update_success_workflow(self, mock_frappe, mock_get, mock_prepare, mock_send):
         """Test complete update workflow"""
+        # Make whitelist decorator passthrough
+        mock_frappe.whitelist.return_value = lambda f: f
+        
         mock_get.return_value = self.mock_glific_contact
         mock_prepare.return_value = {"fields": json.dumps({"test": "data"})}
         mock_send.return_value = True
         
-        glific_webhook.update_glific_contact(self.mock_teacher_doc, "on_update")
+        # Call the actual function (decorator should be bypassed)
+        result = glific_webhook.update_glific_contact.__wrapped__(self.mock_teacher_doc, "on_update")
         
         mock_get.assert_called_once_with("123")
         mock_prepare.assert_called_once()
@@ -260,10 +269,13 @@ class TestUpdateGlificContact(TestGlificWebhook):
     @patch('glific_webhook.frappe')
     def test_update_wrong_doctype(self, mock_frappe):
         """Test with wrong doctype"""
+        # Make whitelist decorator passthrough
+        mock_frappe.whitelist.return_value = lambda f: f
+        
         student_doc = Mock()
         student_doc.doctype = "Student"
         
-        result = glific_webhook.update_glific_contact(student_doc, "on_update")
+        result = glific_webhook.update_glific_contact.__wrapped__(student_doc, "on_update")
         
         self.assertIsNone(result)
     
@@ -271,9 +283,12 @@ class TestUpdateGlificContact(TestGlificWebhook):
     @patch('glific_webhook.frappe')
     def test_update_contact_not_found(self, mock_frappe, mock_get):
         """Test when contact not found"""
+        # Make whitelist decorator passthrough
+        mock_frappe.whitelist.return_value = lambda f: f
+        
         mock_get.return_value = None
         
-        glific_webhook.update_glific_contact(self.mock_teacher_doc, "on_update")
+        glific_webhook.update_glific_contact.__wrapped__(self.mock_teacher_doc, "on_update")
         
         mock_get.assert_called_once_with("123")
         mock_frappe.logger().error.assert_called()
@@ -283,10 +298,13 @@ class TestUpdateGlificContact(TestGlificWebhook):
     @patch('glific_webhook.frappe')
     def test_update_no_changes(self, mock_frappe, mock_get, mock_prepare):
         """Test when no updates needed"""
+        # Make whitelist decorator passthrough
+        mock_frappe.whitelist.return_value = lambda f: f
+        
         mock_get.return_value = self.mock_glific_contact
         mock_prepare.return_value = None
         
-        glific_webhook.update_glific_contact(self.mock_teacher_doc, "on_update")
+        glific_webhook.update_glific_contact.__wrapped__(self.mock_teacher_doc, "on_update")
         
         mock_get.assert_called_once()
         mock_prepare.assert_called_once()
