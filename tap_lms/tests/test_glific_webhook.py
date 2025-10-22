@@ -346,12 +346,23 @@ class TestGlificWebhook(unittest.TestCase):
             })
         }
         
-        # Setup module mocks for each test
-        self.patcher_frappe = patch.dict('sys.modules', {
+        # Create mock for glific_integration
+        mock_glific_integration = MagicMock()
+        mock_glific_integration.get_glific_auth_headers = MagicMock()
+        mock_glific_integration.get_glific_settings = MagicMock()
+        
+        # Setup module mocks for each test - MUST include glific_integration
+        self.patcher_modules = patch.dict('sys.modules', {
             'frappe': MagicMock(),
-            'frappe.utils': MagicMock()
+            'frappe.utils': MagicMock(),
+            'glific_integration': mock_glific_integration,  # CRITICAL: Mock this BEFORE import
+            'tap_lms.tap_lms.glific_integration': mock_glific_integration,  # For package imports
         })
-        self.patcher_frappe.start()
+        self.patcher_modules.start()
+        
+        # Configure frappe mock
+        sys.modules['frappe'].whitelist = lambda: lambda f: f
+        sys.modules['frappe'].logger.return_value = Mock(info=Mock(), error=Mock(), warning=Mock())
         
         # Import glific_webhook AFTER patching
         import glific_webhook
@@ -359,7 +370,7 @@ class TestGlificWebhook(unittest.TestCase):
     
     def tearDown(self):
         """Clean up patches after each test"""
-        self.patcher_frappe.stop()
+        self.patcher_modules.stop()
         
         # Remove the imported module to ensure clean state
         if 'glific_webhook' in sys.modules:
