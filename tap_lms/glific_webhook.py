@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 import json
 import requests
-from .glific_integration import get_glific_auth_headers, get_glific_settings
+from tap_lms.glific_integration import get_glific_auth_headers, get_glific_settings
 
 @frappe.whitelist()
 def update_glific_contact(doc, method):
@@ -153,3 +153,14 @@ def send_glific_update(glific_id, update_payload):
             return False
         return True
     return False
+
+
+
+
+# Change line 5 from:
+# --------------------------------------------
+# pythonfrom .glific_integration import get_glific_auth_headers, get_glific_settings
+
+# To:
+# --------------------------------------------
+# pythonfrom tap_lms.glific_integration import get_glific_auth_headers, get_glific_settings
