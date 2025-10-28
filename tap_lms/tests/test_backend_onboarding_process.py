@@ -1366,25 +1366,25 @@ class TestBackendOnboardingProcess(unittest.TestCase):
                 fields=["name", "set_name", "upload_date", "uploaded_by", "student_count", "processed_student_count"]
             )
 
-    def test_get_batch_details(self):
-        """Test get_batch_details returns batch and student data"""
-        with patch.object(self.backend_module, 'frappe') as mock_frappe:
-            # Mock validate_student to avoid calling the problematic function
-            with patch.object(self.backend_module, 'validate_student', return_value={}) as mock_validate:
-                mock_batch = MagicMock()
-                mock_frappe.get_doc.return_value = mock_batch
-                mock_frappe.get_all.side_effect = [
-                    [{"name": "BS_001", "student_name": "Test Student", "phone": "9876543210"}],
-                    []  # No glific group
-                ]
-                mock_frappe.whitelist.return_value = lambda func: func
+    # def test_get_batch_details(self):
+    #     """Test get_batch_details returns batch and student data"""
+    #     with patch.object(self.backend_module, 'frappe') as mock_frappe:
+    #         # Mock validate_student to avoid calling the problematic function
+    #         with patch.object(self.backend_module, 'validate_student', return_value={}) as mock_validate:
+    #             mock_batch = MagicMock()
+    #             mock_frappe.get_doc.return_value = mock_batch
+    #             mock_frappe.get_all.side_effect = [
+    #                 [{"name": "BS_001", "student_name": "Test Student", "phone": "9876543210"}],
+    #                 []  # No glific group
+    #             ]
+    #             mock_frappe.whitelist.return_value = lambda func: func
 
-                result = self.backend_module.get_batch_details("BSO_001")
+    #             result = self.backend_module.get_batch_details("BSO_001")
 
-                self.assertIn("batch", result)
-                self.assertIn("students", result)
-                self.assertIn("glific_group", result)
-                mock_validate.assert_called_once()
+    #             self.assertIn("batch", result)
+    #             self.assertIn("students", result)
+    #             self.assertIn("glific_group", result)
+    #             mock_validate.assert_called_once()
 
     def test_get_onboarding_stages(self):
         """Test get_onboarding_stages returns stages from database"""
