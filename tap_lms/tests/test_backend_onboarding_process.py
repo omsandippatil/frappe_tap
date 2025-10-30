@@ -1,6 +1,4 @@
 
-
-
 import unittest
 from unittest.mock import Mock, patch, MagicMock, call
 from datetime import datetime, timedelta
