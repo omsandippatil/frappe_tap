@@ -6,6 +6,7 @@ import os
 import importlib.util
 import json
 
+
 # Direct file import approach
 def import_backend_module():
     """Import the backend module directly from file path"""
@@ -566,6 +567,344 @@ class TestBackendOnboardingProcess(unittest.TestCase):
             self.assertEqual(mock_student.processing_status, "Failed")
             self.assertEqual(mock_student.processing_notes, "Error message")
             mock_student.save.assert_called_once()
+
+    # ============= Student Type Determination Tests (HIGH VALUE) =============
+
+    def test_determine_student_type_backend_new_no_enrollments(self):
+        """Test determine_student_type_backend for new student with no enrollments"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'normalize_phone_number', return_value=("919876543210", "9876543210")):
+                mock_frappe.db.sql.side_effect = [
+                    [{"name": "STUD_001", "phone": "919876543210", "name1": "Test Student"}],  # Student exists
+                    []  # No enrollments
+                ]
+                mock_frappe.log_error = MagicMock()
+
+                result = self.backend_module.determine_student_type_backend("9876543210", "Test Student", "Math")
+
+                self.assertEqual(result, "New")
+
+    def test_determine_student_type_backend_old_same_vertical(self):
+        """Test determine_student_type_backend for old student with same vertical"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'normalize_phone_number', return_value=("919876543210", "9876543210")):
+                mock_frappe.db.sql.side_effect = [
+                    [{"name": "STUD_001", "phone": "919876543210", "name1": "Test Student"}],  # Student exists
+                    [{"name": "ENR_001", "course": "MATH_L4", "batch": "BT001", "grade": "4", "school": "SCH001"}],  # Has enrollment
+                    [{"vertical_name": "Math"}]  # Course vertical matches
+                ]
+                mock_frappe.db.exists.return_value = True  # Course exists
+                mock_frappe.log_error = MagicMock()
+
+                result = self.backend_module.determine_student_type_backend("9876543210", "Test Student", "Math")
+
+                self.assertEqual(result, "Old")
+
+    def test_determine_student_type_backend_new_different_vertical(self):
+        """Test determine_student_type_backend for new student with different vertical"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'normalize_phone_number', return_value=("919876543210", "9876543210")):
+                mock_frappe.db.sql.side_effect = [
+                    [{"name": "STUD_001", "phone": "919876543210", "name1": "Test Student"}],  # Student exists
+                    [{"name": "ENR_001", "course": "SCI_L4", "batch": "BT001", "grade": "4", "school": "SCH001"}],  # Has enrollment
+                    [{"vertical_name": "Science"}]  # Course vertical is different
+                ]
+                mock_frappe.db.exists.return_value = True
+                mock_frappe.log_error = MagicMock()
+
+                result = self.backend_module.determine_student_type_backend("9876543210", "Test Student", "Math")
+
+                self.assertEqual(result, "New")
+
+    def test_determine_student_type_backend_old_broken_course(self):
+        """Test determine_student_type_backend for old student with broken course link"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'normalize_phone_number', return_value=("919876543210", "9876543210")):
+                mock_frappe.db.sql.side_effect = [
+                    [{"name": "STUD_001", "phone": "919876543210", "name1": "Test Student"}],  # Student exists
+                    [{"name": "ENR_001", "course": "BROKEN_COURSE", "batch": "BT001", "grade": "4", "school": "SCH001"}]  # Has enrollment with broken course
+                ]
+                mock_frappe.db.exists.return_value = False  # Course doesn't exist
+                mock_frappe.log_error = MagicMock()
+
+                result = self.backend_module.determine_student_type_backend("9876543210", "Test Student", "Math")
+
+                self.assertEqual(result, "Old")
+
+    def test_determine_student_type_backend_old_null_course(self):
+        """Test determine_student_type_backend for old student with null course"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'normalize_phone_number', return_value=("919876543210", "9876543210")):
+                mock_frappe.db.sql.side_effect = [
+                    [{"name": "STUD_001", "phone": "919876543210", "name1": "Test Student"}],  # Student exists
+                    [{"name": "ENR_001", "course": None, "batch": "BT001", "grade": "4", "school": "SCH001"}]  # Has enrollment with null course
+                ]
+                mock_frappe.log_error = MagicMock()
+
+                result = self.backend_module.determine_student_type_backend("9876543210", "Test Student", "Math")
+
+                self.assertEqual(result, "Old")
+
+    def test_determine_student_type_backend_no_existing_student(self):
+        """Test determine_student_type_backend when student doesn't exist"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'normalize_phone_number', return_value=("919876543210", "9876543210")):
+                mock_frappe.db.sql.return_value = []  # No existing student
+                mock_frappe.log_error = MagicMock()
+
+                result = self.backend_module.determine_student_type_backend("9876543210", "Test Student", "Math")
+
+                self.assertEqual(result, "New")
+
+    # ============= Course Level Mapping Tests (HIGH VALUE) =============
+
+    def test_get_course_level_with_mapping_backend_found_mapping(self):
+        """Test get_course_level_with_mapping_backend when mapping is found"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'determine_student_type_backend', return_value="New"):
+                with patch.object(self.backend_module, 'get_current_academic_year_backend', return_value="2025-26"):
+                    mock_frappe.get_all.return_value = [
+                        {"assigned_course_level": "MATH_L5", "mapping_name": "Math Grade 5 New"}
+                    ]
+                    mock_frappe.log_error = MagicMock()
+
+                    result = self.backend_module.get_course_level_with_mapping_backend(
+                        "Math", "5", "9876543210", "Test Student", False
+                    )
+
+                    self.assertEqual(result, "MATH_L5")
+
+    def test_get_course_level_with_mapping_backend_fallback(self):
+        """Test get_course_level_with_mapping_backend fallback to original logic"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'determine_student_type_backend', return_value="New"):
+                with patch.object(self.backend_module, 'get_current_academic_year_backend', return_value="2025-26"):
+                    with patch.object(self.backend_module, 'get_course_level', return_value="MATH_BASIC") as mock_get_course:
+                        mock_frappe.get_all.return_value = []  # No mapping found
+                        mock_frappe.log_error = MagicMock()
+
+                        result = self.backend_module.get_course_level_with_mapping_backend(
+                            "Math", "5", "9876543210", "Test Student", False
+                        )
+
+                        self.assertEqual(result, "MATH_BASIC")
+                        mock_get_course.assert_called_once_with("Math", "5", False)
+
+    def test_get_course_level_with_validation_backend(self):
+        """Test get_course_level_with_validation_backend calls validation"""
+        with patch.object(self.backend_module, 'validate_enrollment_data', return_value={"broken_enrollments": 0}):
+            with patch.object(self.backend_module, 'get_course_level_with_mapping_backend', return_value="MATH_L5") as mock_mapping:
+                with patch.object(self.backend_module, 'frappe') as mock_frappe:
+                    mock_frappe.log_error = MagicMock()
+
+                    result = self.backend_module.get_course_level_with_validation_backend(
+                        "Math", "5", "9876543210", "Test Student", False
+                    )
+
+                    self.assertEqual(result, "MATH_L5")
+                    mock_mapping.assert_called_once()
+
+    # ============= Validation Tests (MEDIUM VALUE) =============
+
+    def test_validate_enrollment_data_no_broken_links(self):
+        """Test validate_enrollment_data with no broken course links"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'normalize_phone_number', return_value=("919876543210", "9876543210")):
+                mock_frappe.db.sql.return_value = [
+                    {"student_id": "STUD_001", "enrollment_id": "ENR_001", "course": "MATH_L5", "batch": "BT001", "grade": "5"}
+                ]
+                mock_frappe.db.exists.return_value = True
+                mock_frappe.log_error = MagicMock()
+
+                result = self.backend_module.validate_enrollment_data("Test Student", "9876543210")
+
+                self.assertEqual(result["total_enrollments"], 1)
+                self.assertEqual(result["valid_enrollments"], 1)
+                self.assertEqual(result["broken_enrollments"], 0)
+
+    def test_validate_enrollment_data_with_broken_links(self):
+        """Test validate_enrollment_data with broken course links"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            with patch.object(self.backend_module, 'normalize_phone_number', return_value=("919876543210", "9876543210")):
+                mock_frappe.db.sql.return_value = [
+                    {"student_id": "STUD_001", "enrollment_id": "ENR_001", "course": "BROKEN_COURSE", "batch": "BT001", "grade": "5"}
+                ]
+                mock_frappe.db.exists.return_value = False
+                mock_frappe.log_error = MagicMock()
+
+                result = self.backend_module.validate_enrollment_data("Test Student", "9876543210")
+
+                self.assertEqual(result["total_enrollments"], 1)
+                self.assertEqual(result["valid_enrollments"], 0)
+                self.assertEqual(result["broken_enrollments"], 1)
+                self.assertEqual(len(result["broken_details"]), 1)
+
+    def test_validate_enrollment_data_invalid_phone(self):
+        """Test validate_enrollment_data with invalid phone"""
+        result = self.backend_module.validate_enrollment_data("Test Student", "invalid")
+        self.assertIn("error", result)
+
+    # ============= Glific Contact Tests (HIGH VALUE) =============
+
+    def test_process_glific_contact_invalid_phone(self):
+        """Test process_glific_contact with invalid phone number"""
+        mock_student = MagicMock()
+        mock_student.phone = "invalid"
+        mock_student.student_name = "Test Student"
+
+        with self.assertRaises(ValueError) as context:
+            self.backend_module.process_glific_contact(mock_student, None)
+        
+        self.assertIn("Invalid phone number", str(context.exception))
+
+    def test_process_glific_contact_existing_contact(self):
+        """Test process_glific_contact with existing contact"""
+        with patch.object(self.backend_module, 'format_phone_number', return_value="919876543210"):
+            with patch.object(self.backend_module, 'get_contact_by_phone', return_value={"id": "contact_123"}):
+                with patch.object(self.backend_module, 'add_contact_to_group') as mock_add_to_group:
+                    with patch.object(self.backend_module, 'update_contact_fields') as mock_update_fields:
+                        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+                            mock_frappe.get_value.return_value = "Test School"
+                            mock_frappe.logger = MagicMock()
+                            
+                            mock_student = MagicMock()
+                            mock_student.phone = "9876543210"
+                            mock_student.student_name = "Test Student"
+                            mock_student.school = "SCH001"
+                            mock_student.batch = "BT001"
+                            mock_student.language = "English"
+                            mock_student.course_vertical = "Math"
+                            mock_student.grade = "5"
+
+                            mock_group = {"group_id": "group_123"}
+
+                            result = self.backend_module.process_glific_contact(
+                                mock_student, mock_group, "MATH_L5"
+                            )
+
+                            self.assertEqual(result["id"], "contact_123")
+                            mock_add_to_group.assert_called_once_with("contact_123", "group_123")
+                            mock_update_fields.assert_called_once()
+
+    def test_process_glific_contact_new_contact(self):
+        """Test process_glific_contact creating new contact"""
+        with patch.object(self.backend_module, 'format_phone_number', return_value="919876543210"):
+            with patch.object(self.backend_module, 'get_contact_by_phone', return_value=None):
+                with patch.object(self.backend_module, 'add_student_to_glific_for_onboarding', return_value={"id": "new_contact_123"}):
+                    with patch.object(self.backend_module, 'frappe') as mock_frappe:
+                        mock_frappe.get_value.side_effect = [
+                            "Test School",  # school name
+                            "BT001",  # batch id
+                            "1",  # language id
+                            "Math Level 5"  # course level name
+                        ]
+                        mock_frappe.logger = MagicMock()
+                        
+                        mock_student = MagicMock()
+                        mock_student.phone = "9876543210"
+                        mock_student.student_name = "Test Student"
+                        mock_student.school = "SCH001"
+                        mock_student.batch = "BT001"
+                        mock_student.language = "English"
+                        mock_student.course_vertical = "Math"
+                        mock_student.grade = "5"
+
+                        mock_group = {"group_id": "group_123"}
+
+                        result = self.backend_module.process_glific_contact(
+                            mock_student, mock_group, "MATH_L5"
+                        )
+
+                        self.assertEqual(result["id"], "new_contact_123")
+
+    # ============= Fix Broken Links Tests (MEDIUM VALUE) =============
+
+    def test_fix_broken_course_links_specific_student(self):
+        """Test fix_broken_course_links with specific student ID"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            mock_frappe.db.sql.return_value = [
+                {"name": "ENR_001", "course": "BROKEN_COURSE"}
+            ]
+            mock_frappe.db.set_value = MagicMock()
+            mock_frappe.db.commit = MagicMock()
+            mock_frappe.whitelist.return_value = lambda func: func
+
+            result = self.backend_module.fix_broken_course_links("STUD_001")
+
+            self.assertIn("Checking student: STUD_001", result)
+            self.assertIn("Total fixed: 1", result)
+            mock_frappe.db.set_value.assert_called_once_with("Enrollment", "ENR_001", "course", None)
+
+    def test_fix_broken_course_links_all_students(self):
+        """Test fix_broken_course_links for all students"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            mock_frappe.get_all.return_value = [
+                {"name": "STUD_001"},
+                {"name": "STUD_002"}
+            ]
+            mock_frappe.db.sql.return_value = []  # No broken links
+            mock_frappe.db.commit = MagicMock()
+            mock_frappe.whitelist.return_value = lambda func: func
+
+            result = self.backend_module.fix_broken_course_links()
+
+            self.assertIn("Checking all 2 students", result)
+            self.assertIn("No broken course links found", result)
+
+    # ============= Additional Status Update Tests =============
+
+    def test_update_backend_student_status_success_with_glific_field(self):
+        """Test update_backend_student_status for success with glific_id field"""
+        mock_student = MagicMock()
+        mock_student.glific_id = None
+        mock_student_doc = MagicMock()
+        mock_student_doc.name = "STUD_001"
+        mock_student_doc.glific_id = "contact_123"
+
+        self.backend_module.update_backend_student_status(mock_student, "Success", mock_student_doc)
+
+        self.assertEqual(mock_student.glific_id, "contact_123")
+
+    def test_update_backend_student_status_long_error(self):
+        """Test update_backend_student_status with error longer than field limit"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            mock_student = MagicMock()
+            mock_student.processing_notes = ""
+
+            mock_meta = MagicMock()
+            mock_field = MagicMock()
+            mock_field.length = 10  # Short limit
+            mock_meta.get_field.return_value = mock_field
+            mock_frappe.get_meta.return_value = mock_meta
+
+            long_error = "This is a very long error message that exceeds the field limit"
+            self.backend_module.update_backend_student_status(mock_student, "Failed", error=long_error)
+
+            self.assertEqual(mock_student.processing_status, "Failed")
+            self.assertEqual(len(mock_student.processing_notes), 10)  # Truncated
+            mock_student.save.assert_called_once()
+
+    def test_is_job_name_exist_found(self):
+        """Test is_job_name_exist when job exists"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            mock_frappe.db.table_exists.return_value = True
+            mock_frappe.db.get_value.return_value = {"name": "job_123", "status": "started"}
+            mock_frappe.whitelist.return_value = lambda func: func
+
+            result = self.backend_module.is_job_name_exist("BSO_001")
+
+            self.assertTrue(result)
+
+    def test_is_job_name_exist_not_found(self):
+        """Test is_job_name_exist when job doesn't exist"""
+        with patch.object(self.backend_module, 'frappe') as mock_frappe:
+            mock_frappe.db.table_exists.return_value = True
+            mock_frappe.db.get_value.return_value = None
+            mock_frappe.whitelist.return_value = lambda func: func
+
+            result = self.backend_module.is_job_name_exist("BSO_001")
+
+            self.assertFalse(result)
 
 
 if __name__ == '__main__':
