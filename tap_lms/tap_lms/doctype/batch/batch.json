@@ -16,7 +16,9 @@
   "title",
   "active",
   "batch_id",
-  "regist_end_date"
+  "regist_end_date",
+  "engagement_end_dae",
+  "regular_activity_start_date"
  ],
  "fields": [
   {
@@ -65,11 +67,21 @@
    "fieldtype": "Date",
    "label": "Registration End Date ",
    "reqd": 1
+  },
+  {
+   "fieldname": "engagement_end_dae",
+   "fieldtype": "Date",
+   "label": "Engagement End Dae"
+  },
+  {
+   "fieldname": "regular_activity_start_date",
+   "fieldtype": "Date",
+   "label": "Regular Activity Start Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-07-11 12:41:09.817061",
+ "modified": "2025-11-20 13:37:33.097859",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "Batch",

@@ -22,18 +22,18 @@
    "fieldname": "from_grade",
    "fieldtype": "Select",
    "label": "From Grade",
-   "options": "4\n5\n6\n7\n8\n9\n10\n11\n12"
+   "options": "\n4\n5\n6\n7\n8\n9\n10\n11\n12"
   },
   {
    "fieldname": "to_grade",
    "fieldtype": "Select",
    "label": "To Grade",
-   "options": "4\n5\n6\n7\n8\n9\n10\n11\n12"
+   "options": "\n4\n5\n6\n7\n8\n9\n10\n11\n12"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-10-04 14:30:22.923463",
+ "modified": "2025-11-14 17:02:27.079721",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "Stage Grades",

@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{language}-{translated_name}",
+ "autoname": "format:{language}-{translated_name}-{####}",
  "creation": "2025-08-09 12:56:18.006331",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -30,7 +30,7 @@
   },
   {
    "fieldname": "translated_description",
-   "fieldtype": "Text Editor",
+   "fieldtype": "Data",
    "label": "Translated Description"
   },
   {
@@ -45,12 +45,12 @@
   },
   {
    "fieldname": "subtitle_file",
-   "fieldtype": "Text Editor",
+   "fieldtype": "Data",
    "label": "Subtitle File"
   },
   {
    "fieldname": "video_transcript",
-   "fieldtype": "Text Editor",
+   "fieldtype": "Data",
    "label": "Video Transcript"
   },
   {
@@ -62,7 +62,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-21 21:13:58.951690",
+ "modified": "2025-11-21 15:09:41.117156",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "VideoTranslation",
