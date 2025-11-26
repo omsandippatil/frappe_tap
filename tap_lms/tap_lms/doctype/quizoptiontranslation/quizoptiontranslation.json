@@ -20,14 +20,14 @@
   },
   {
    "fieldname": "translated_option",
-   "fieldtype": "Data",
+   "fieldtype": "Text",
    "label": "Translated Option"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-06 19:56:36.643924",
+ "modified": "2025-11-21 21:14:37.813794",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "QuizOptionTranslation",

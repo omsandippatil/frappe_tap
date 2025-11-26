@@ -1,13 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{question_name}-{question_number}",
+ "autoname": "format:{question_name}QN{####}",
  "creation": "2024-10-17 16:27:42.303797",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "question_name",
+  "question",
   "question_type",
   "options",
   "points",
@@ -57,13 +58,18 @@
   },
   {
    "fieldname": "question_name",
+   "fieldtype": "Data",
+   "label": "Quiz Name"
+  },
+  {
+   "fieldname": "question",
    "fieldtype": "Text Editor",
    "label": "Question"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-16 12:38:52.068135",
+ "modified": "2025-10-23 13:06:07.812303",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "QuizQuestion",
