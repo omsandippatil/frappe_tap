@@ -3,6 +3,7 @@ import json
 import pika
 import requests
 from urllib.parse import urlparse
+from google.cloud import storage
 import os
 
 
@@ -22,67 +23,134 @@ def get_rabbitmq_settings():
     }
 
 
-def download_and_save_image(img_url, submission_name):
+def get_gcs_client():
     """
-    Download image from external URL and save to Frappe's file system.
-    Returns the new public URL.
+    Get GCS client using credentials from GCS Settings DocType.
+    Returns tuple of (client, bucket_name) or None if disabled.
+    """
+    settings = frappe.get_single("GCS Settings")
+    
+    if not settings.enabled:
+        return None
+    
+    # Parse credentials JSON
+    credentials_dict = json.loads(settings.credentials_json)
+    
+    # Create client from credentials
+    client = storage.Client.from_service_account_info(credentials_dict)
+    
+    return client, settings.bucket_name
+
+
+def get_content_type_from_response(response, filename):
+    """
+    Determine the correct content type from response headers or filename.
+    Returns tuple of (content_type, file_extension)
+    """
+    # First try to get from response headers
+    content_type = response.headers.get('content-type', '').split(';')[0].strip().lower()
+    
+    # Map of content types to extensions
+    content_type_map = {
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'image/bmp': '.bmp',
+        'image/svg+xml': '.svg'
+    }
+    
+    # Reverse map for extension to content type
+    ext_to_content_type = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+        '.bmp': 'image/bmp',
+        '.svg': 'image/svg+xml'
+    }
+    
+    # If we have a valid content type from headers
+    if content_type in content_type_map:
+        return content_type, content_type_map[content_type]
+    
+    # Try to get from filename extension
+    if filename:
+        ext = os.path.splitext(filename)[1].lower()
+        if ext in ext_to_content_type:
+            return ext_to_content_type[ext], ext
+    
+    # Default to jpeg
+    return 'image/jpeg', '.jpg'
+
+
+def upload_image_to_gcs(img_url, submission_name):
+    """
+    Download image from external URL and upload to GCS.
+    Returns the public URL.
     """
     try:
+        # Get GCS client
+        result = get_gcs_client()
+        
+        if result is None:
+            frappe.throw("GCS Storage is not enabled. Enable it in GCS Settings.")
+        
+        client, bucket_name = result
+        
         # Download the image
         response = requests.get(img_url, timeout=30)
         response.raise_for_status()
         
-        # Get the file extension from URL or content-type
+        # Get filename from URL
         parsed_url = urlparse(img_url)
         original_filename = os.path.basename(parsed_url.path)
         
-        # If no extension in URL, try to get from content-type
-        if '.' not in original_filename:
-            content_type = response.headers.get('content-type', '')
-            ext_map = {
-                'image/jpeg': '.jpg',
-                'image/png': '.png',
-                'image/gif': '.gif',
-                'image/webp': '.webp',
-                'image/bmp': '.bmp'
-            }
-            ext = ext_map.get(content_type.split(';')[0], '.jpg')
+        # Determine content type and extension
+        content_type, ext = get_content_type_from_response(response, original_filename)
+        
+        # Create filename if empty or no extension
+        if not original_filename or '.' not in original_filename:
             original_filename = f"image{ext}"
         
-        # Create a unique filename using submission name
-        new_filename = f"{submission_name}_{original_filename}"
+        # Create unique filename with folder structure
+        gcs_filename = f"submissions/{submission_name}_{original_filename}"
         
-        # Save the file using Frappe's file handling
-        file_doc = frappe.get_doc({
-            "doctype": "File",
-            "file_name": new_filename,
-            "attached_to_doctype": "ImgSubmission",
-            "attached_to_name": submission_name,
-            "is_private": 0,  # Public file
-            "content": response.content
-        })
-        file_doc.save(ignore_permissions=True)
+        # Upload to GCS
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(gcs_filename)
         
-        # Get the public URL
-        site_url = frappe.utils.get_url()
-        public_url = f"{site_url}{file_doc.file_url}"
-        
-        frappe.logger("submission").info(
-            f"Image saved: {img_url} -> {public_url}"
+        # Upload with explicit content_type - THIS IS THE FIX
+        blob.upload_from_string(
+            response.content,
+            content_type=content_type
         )
         
-        return public_url, file_doc.file_url
+        # Generate public URL
+        public_url = f"https://storage.googleapis.com/{bucket_name}/{gcs_filename}"
+        
+        frappe.logger("submission").info(
+            f"Image uploaded to GCS: {img_url} -> {public_url} (content_type: {content_type})"
+        )
+        
+        return public_url
         
     except requests.exceptions.RequestException as e:
         frappe.logger("submission").error(f"Failed to download image from {img_url}: {str(e)}")
         raise frappe.ValidationError(f"Failed to download image: {str(e)}")
     except Exception as e:
-        frappe.logger("submission").error(f"Failed to save image: {str(e)}")
-        raise
+        frappe.logger("submission").error(f"Failed to upload to GCS: {str(e)}")
+        raise frappe.ValidationError(f"Failed to upload to GCS: {str(e)}")
 
 
 @frappe.whitelist(allow_guest=True)
 def submit_artwork(api_key, assign_id, student_id, img_url):
+    """
+    API endpoint to submit artwork.
+    Downloads image, uploads to GCS, creates submission, and enqueues to RabbitMQ.
+    """
     # Authenticate the API request using the provided api_key
     api_key_doc = frappe.db.get_value("API Key", {"key": api_key, "enabled": 1}, ["user"], as_dict=True)
     if not api_key_doc:
@@ -100,10 +168,10 @@ def submit_artwork(api_key, assign_id, student_id, img_url):
         submission.status = "Pending"
         submission.insert()
         
-        # Download and save the image, get new public URL
-        public_url, file_url = download_and_save_image(img_url, submission.name)
+        # Upload to GCS and get public URL
+        public_url = upload_image_to_gcs(img_url, submission.name)
         
-        # Update the submission with the new local file URL
+        # Update the submission with the GCS URL
         submission.img_url = public_url
         submission.save()
         
@@ -114,10 +182,10 @@ def submit_artwork(api_key, assign_id, student_id, img_url):
             f"Inserted submission: assign_id={submission.assign_id}, "
             f"student_id={submission.student_id}, "
             f"original_url={img_url}, "
-            f"public_url={public_url}"
+            f"gcs_url={public_url}"
         )
 
-        # Send the submission details to RabbitMQ with the NEW public URL
+        # Send the submission details to RabbitMQ with the GCS public URL
         enqueue_submission(submission.name)
 
         return {
@@ -137,14 +205,18 @@ def submit_artwork(api_key, assign_id, student_id, img_url):
 
 
 def enqueue_submission(submission_id):
+    """
+    Send submission details to RabbitMQ queue.
+    The img_url now contains the GCS public URL.
+    """
     submission = frappe.get_doc("ImgSubmission", submission_id)
     
-    # The img_url now contains the NEW public URL (saved locally)
+    # Payload with GCS public URL
     payload = {
         "submission_id": submission.name,
         "assign_id": submission.assign_id,
         "student_id": submission.student_id,
-        "img_url": submission.img_url
+        "img_url": submission.img_url  # This is now the GCS public URL
     }
 
     # Get RabbitMQ settings from DocType
@@ -178,12 +250,15 @@ def enqueue_submission(submission_id):
     connection.close()
     
     frappe.logger("submission").info(
-        f"Enqueued submission {submission_id} with img_url: {submission.img_url}"
+        f"Enqueued submission {submission_id} with GCS URL: {submission.img_url}"
     )
 
 
 @frappe.whitelist(allow_guest=True)
 def img_feedback(api_key, submission_id):
+    """
+    API endpoint to get feedback for a submission.
+    """
     # Authenticate the API request using the provided api_key
     api_key_doc = frappe.db.get_value("API Key", {"key": api_key, "enabled": 1}, ["user"], as_dict=True)
     if not api_key_doc:
