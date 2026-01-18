@@ -325,15 +325,32 @@ def get_assignment_context(assignment_id, student_id=None):
                 'content': content  # base64 encoded
             })
 
+        rubrics = {}
+        rubric_grades = assignment.get('rubric_grades', [])
+
+        # Process each rubric grade entry
+        for grade in rubric_grades:
+            skill_name = grade.get('skill_name')
+            if skill_name not in rubrics:
+                rubrics[skill_name] = []
+            # Create the grade entry with only grade_value and grade_description
+            grade_entry = {
+                'grade_value': grade.get('grade_value'),
+                'grade_description': grade.get('grade_description')
+            }
+            rubrics[skill_name].append(grade_entry)
+
+
         context = {
             "assignment": {
                 "name": assignment.assignment_name,
                 "description": assignment.description,
-                "type": assignment.assignment_type,
+                "type": assignment.assignment_type, 
                 "subject": assignment.subject,
                 "submission_guidelines": assignment.submission_guidelines,
                 "reference_images": images,
-                "max_score": assignment.max_score
+                "max_score": assignment.max_score,
+                "rubrics": rubrics
             },
             "learning_objectives": [
                 {

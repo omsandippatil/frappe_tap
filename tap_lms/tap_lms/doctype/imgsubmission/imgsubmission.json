@@ -27,6 +27,7 @@
   "ai_detection_source",
   "ai_confidence",
   "feedback_section",
+  "rubric_evaluations", 
   "plagiarism_result",
   "generated_feedback",
   "feedback_summary",
@@ -151,6 +152,12 @@
    "fieldname": "feedback_section",
    "fieldtype": "Section Break",
    "label": "Feedback"
+  },
+   {
+   "fieldname": "rubric_evaluations",
+   "fieldtype": "Table",
+   "label": "Rubric Evaluations",
+   "options": "Rubric Evaluation"
   },
   {
    "fieldname": "plagiarism_result",

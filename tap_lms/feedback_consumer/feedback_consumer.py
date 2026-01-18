@@ -340,6 +340,8 @@ class FeedbackConsumer:
     def update_submission(self, message_data: Dict):
         """Update ImgSubmission with comprehensive plagiarism data"""
         try:
+
+            print(f"Updating submission with data: {json.dumps(message_data, indent=2)}")
             
             submission_id = message_data["submission_id"]
             feedback_data = message_data.get("feedback", {})
@@ -369,6 +371,25 @@ class FeedbackConsumer:
             # Extract grade
             grade = self._extract_grade(feedback_data, submission_id)
 
+            strengths = feedback_data.get("strengths", [])
+            strengths_message = "\n".join([f"• {strength}" for strength in strengths])
+
+            areas_for_improvement = feedback_data.get("areas_for_improvement", [])
+            areas_for_improvement_message = "\n".join([f"• {area}" for area in areas_for_improvement])
+
+            learning_objectives_feedback = feedback_data.get("learning_objectives_feedback", [])
+            learning_objectives_feedback_message = "\n".join([f"• {objective}" for objective in learning_objectives_feedback])
+
+            # Process rubric evaluations
+            rubric_evaluations = feedback_data.get("rubric_evaluations", [])
+            rubric_evaluations_rows = []
+            for rubric in rubric_evaluations:
+                rubric_evaluations_rows.append({
+                    "skill": rubric.get("Skill", ""),
+                    "grade_value": float(rubric.get("grade_value", 0)),
+                    "observation": rubric.get("observation", "")
+                })
+
             # Prepare update data
             update_data = {
                 "status": "Completed",
@@ -393,6 +414,14 @@ class FeedbackConsumer:
                 "overall_feedback": feedback_data.get("overall_feedback", ""),
                 "generated_feedback": json.dumps(feedback_data),
                 "feedback_summary": message_data.get("summary", ""),
+                "learning_objectives_feedback": learning_objectives_feedback_message,
+                "strengths": strengths_message,
+                "areas_for_improvement": areas_for_improvement_message,
+                "encouragement": feedback_data.get("encouragement", ""),
+                
+                # Rubric evaluations field
+                "rubric_evaluations": rubric_evaluations_rows,
+
                 "plagiarism_result": message_data.get("plagiarism_score", 0),
 
             }
@@ -460,7 +489,7 @@ class FeedbackConsumer:
         return "Flagged - Exact Match"
 
     def _extract_grade(self, feedback_data, submission_id):
-        grade_recommendation = feedback_data.get("grade_recommendation", "0")
+        grade_recommendation = feedback_data.get("final_grade", "50")
         
         try:
             if isinstance(grade_recommendation, str):
