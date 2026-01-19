@@ -195,7 +195,6 @@ class FeedbackConsumer:
                 return
             
             frappe.logger().info(f"Processing feedback for submission: {submission_id}")
-            frappe.db.commit()
             
             # Check if submission exists
             if not frappe.db.exists("ImgSubmission", submission_id):
@@ -340,14 +339,13 @@ class FeedbackConsumer:
         """Update ImgSubmission with comprehensive plagiarism data"""
         try:
 
-            print(f"Updating submission with data: {json.dumps(message_data, indent=2)}")
-            
             submission_id = message_data["submission_id"]
             feedback_data = message_data.get("feedback", {})
 
             # Get submission document
             submission = frappe.get_doc("ImgSubmission", submission_id)
             print(f"Updating submission : {submission_id}")
+            print(f"Updating submission with data: {json.dumps(message_data, indent=2)}")
 
             # Extract plagiarism data
             is_plagiarized = message_data.get("is_plagiarized", False)
