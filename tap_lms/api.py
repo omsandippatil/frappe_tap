@@ -2418,7 +2418,7 @@ def glific_list_grades(vertical: str = None):
     return {"results": results}
 
 @frappe.whitelist(allow_guest=True)
-def get_batch_keywords_by_phone(phone_number):
+def get_batch_keywords_by_phone(api_key,phone_number):
     """
     Get batch keywords for a teacher by phone number
     Logic:
@@ -2428,6 +2428,9 @@ def get_batch_keywords_by_phone(phone_number):
     4. Get the latest modified batch onboarding
     5. Return its keywords
     """
+    if not authenticate_api_key(api_key):
+        frappe.throw("Invalid API key")
+    
     try:
         if not phone_number:
             return {
@@ -2513,7 +2516,7 @@ from datetime import datetime, timedelta
 
 
 @frappe.whitelist(allow_guest=True)
-def get_youtube_url(course_vertical, phone_number, language, grade, batch_keyword=None):
+def get_youtube_url(api_key, course_vertical, phone_number, language, grade, batch_keyword=None):
     """
     Get YouTube URL based on course vertical, language, and grade.
     
@@ -2539,6 +2542,8 @@ def get_youtube_url(course_vertical, phone_number, language, grade, batch_keywor
     """
     try:
         # Validate inputs
+        if not authenticate_api_key(api_key):
+            frappe.throw("Invalid API key")
         if not course_vertical:
             return error_response("Course Vertical is required")
         if not language:
@@ -2735,10 +2740,17 @@ def get_current_week_from_teacher_flow(phone_number, batch_keyword):
         
         # Option 1: Query using SQL-like approach with child table
         from frappe.utils import today, getdate
+        from frappe import _
+
+        current_date = getdate(today())
         
         # Get all WeeklyTeacherFlow documents (or filter by date if needed)
         teacher_flows = frappe.get_all(
             "WeeklyTeacherFlow",
+            filters={
+                "week_start_date": ["<=", current_date],
+                "week_end_date": [">=", current_date]
+            },
             fields=["name", "week_start_date", "week_end_date"]
         )
         
@@ -3004,130 +3016,130 @@ def error_response(message):
 
 
 # Alternative JSON-based API endpoint
-@frappe.whitelist(allow_guest=False)
-def get_youtube_url_json(**kwargs):
-    """
-    Get YouTube URL - JSON version for easier API calls.
-    Accepts parameters as JSON body or form data.
+# @frappe.whitelist(allow_guest=False)
+# def get_youtube_url_json(**kwargs):
+#     """
+#     Get YouTube URL - JSON version for easier API calls.
+#     Accepts parameters as JSON body or form data.
     
-    Example POST request:
-        POST /api/method/frappe_tap.api.get_youtube_url_json
-        {
-            "course_vertical": "Coding",
-            "language": "English",
-            "grade": 11,
-            "batch_keyword": "BLBA10UV"
-        }
-    """
-    course_vertical = kwargs.get("course_vertical")
-    language = kwargs.get("language")
-    grade = kwargs.get("grade")
-    batch_keyword = kwargs.get("batch_keyword")
+#     Example POST request:
+#         POST /api/method/frappe_tap.api.get_youtube_url_json
+#         {
+#             "course_vertical": "Coding",
+#             "language": "English",
+#             "grade": 11,
+#             "batch_keyword": "BLBA10UV"
+#         }
+#     """
+#     course_vertical = kwargs.get("course_vertical")
+#     language = kwargs.get("language")
+#     grade = kwargs.get("grade")
+#     batch_keyword = kwargs.get("batch_keyword")
     
-    return get_youtube_url(course_vertical, language, grade, batch_keyword)
+#     return get_youtube_url(course_vertical, language, grade, batch_keyword)
 
 
-# Utility function to get available languages for a course
-@frappe.whitelist(allow_guest=False)
-def get_available_languages(course_vertical, grade):
-    """
-    Get list of available languages for a given course vertical and grade.
+# # Utility function to get available languages for a course
+# @frappe.whitelist(allow_guest=False)
+# def get_available_languages(course_vertical, grade):
+#     """
+#     Get list of available languages for a given course vertical and grade.
     
-    Args:
-        course_vertical (str): Course vertical name
-        grade (int): Grade number
+#     Args:
+#         course_vertical (str): Course vertical name
+#         grade (int): Grade number
     
-    Returns:
-        dict: List of available languages
-    """
-    try:
-        # Get course level
-        course_level = get_course_level_from_mapping(course_vertical, grade)
+#     Returns:
+#         dict: List of available languages
+#     """
+#     try:
+#         # Get course level
+#         course_level = get_course_level_from_mapping(course_vertical, grade)
         
-        if not course_level:
-            return error_response("No course level mapping found")
+#         if not course_level:
+#             return error_response("No course level mapping found")
         
-        # Get all learning units
-        course_level_doc = frappe.get_doc("Course Level", course_level)
+#         # Get all learning units
+#         course_level_doc = frappe.get_doc("Course Level", course_level)
         
-        languages = set()
+#         languages = set()
         
-        if hasattr(course_level_doc, 'learning_units'):
-            for lu_row in course_level_doc.learning_units:
-                lu_doc = frappe.get_doc("LearningUnit", lu_row.learning_unit)
+#         if hasattr(course_level_doc, 'learning_units'):
+#             for lu_row in course_level_doc.learning_units:
+#                 lu_doc = frappe.get_doc("LearningUnit", lu_row.learning_unit)
                 
-                if hasattr(lu_doc, 'content_items'):
-                    for item in lu_doc.content_items:
-                        if item.content_type == "VideoClass":
-                            vc_doc = frappe.get_doc("VideoClass", item.content)
+#                 if hasattr(lu_doc, 'content_items'):
+#                     for item in lu_doc.content_items:
+#                         if item.content_type == "VideoClass":
+#                             vc_doc = frappe.get_doc("VideoClass", item.content)
                             
-                            if hasattr(vc_doc, 'video_translations'):
-                                for translation in vc_doc.video_translations:
-                                    if translation.language:
-                                        languages.add(translation.language)
+#                             if hasattr(vc_doc, 'video_translations'):
+#                                 for translation in vc_doc.video_translations:
+#                                     if translation.language:
+#                                         languages.add(translation.language)
         
-        return {
-            "success": True,
-            "data": {
-                "course_vertical": course_vertical,
-                "grade": grade,
-                "course_level": course_level,
-                "available_languages": sorted(list(languages))
-            }
-        }
+#         return {
+#             "success": True,
+#             "data": {
+#                 "course_vertical": course_vertical,
+#                 "grade": grade,
+#                 "course_level": course_level,
+#                 "available_languages": sorted(list(languages))
+#             }
+#         }
         
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), _("Get Available Languages Error"))
-        return error_response(str(e))
+#     except Exception as e:
+#         frappe.log_error(frappe.get_traceback(), _("Get Available Languages Error"))
+#         return error_response(str(e))
 
 
-# Utility function to get learning units for a course
-@frappe.whitelist(allow_guest=False)
-def get_learning_units(course_vertical, grade):
-    """
-    Get all learning units for a given course vertical and grade.
+# # Utility function to get learning units for a course
+# @frappe.whitelist(allow_guest=False)
+# def get_learning_units(course_vertical, grade):
+#     """
+#     Get all learning units for a given course vertical and grade.
     
-    Args:
-        course_vertical (str): Course vertical name
-        grade (int): Grade number
+#     Args:
+#         course_vertical (str): Course vertical name
+#         grade (int): Grade number
     
-    Returns:
-        dict: List of learning units with week numbers
-    """
-    try:
-        # Get course level
-        course_level = get_course_level_from_mapping(course_vertical, grade)
+#     Returns:
+#         dict: List of learning units with week numbers
+#     """
+#     try:
+#         # Get course level
+#         course_level = get_course_level_from_mapping(course_vertical, grade)
         
-        if not course_level:
-            return error_response("No course level mapping found")
+#         if not course_level:
+#             return error_response("No course level mapping found")
         
-        # Get all learning units
-        course_level_doc = frappe.get_doc("Course Level", course_level)
+#         # Get all learning units
+#         course_level_doc = frappe.get_doc("Course Level", course_level)
         
-        learning_units = []
+#         learning_units = []
         
-        if hasattr(course_level_doc, 'learning_units'):
-            for lu in course_level_doc.learning_units:
-                learning_units.append({
-                    "learning_unit": lu.learning_unit,
-                    "week_no": lu.week_no,
-                    "idx": lu.idx
-                })
+#         if hasattr(course_level_doc, 'learning_units'):
+#             for lu in course_level_doc.learning_units:
+#                 learning_units.append({
+#                     "learning_unit": lu.learning_unit,
+#                     "week_no": lu.week_no,
+#                     "idx": lu.idx
+#                 })
         
-        return {
-            "success": True,
-            "data": {
-                "course_vertical": course_vertical,
-                "grade": grade,
-                "course_level": course_level,
-                "learning_units": learning_units,
-                "total_units": len(learning_units)
-            }
-        }
+#         return {
+#             "success": True,
+#             "data": {
+#                 "course_vertical": course_vertical,
+#                 "grade": grade,
+#                 "course_level": course_level,
+#                 "learning_units": learning_units,
+#                 "total_units": len(learning_units)
+#             }
+#         }
         
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), _("Get Learning Units Error"))
-        return error_response(str(e))
+#     except Exception as e:
+#         frappe.log_error(frappe.get_traceback(), _("Get Learning Units Error"))
+#         return error_response(str(e))
 
 
 
@@ -3169,7 +3181,7 @@ def normalize_phone_number(phone):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_student_by_phone_and_name(phone_number, buddy_name):
+def get_student_by_phone_and_name(api_key, phone_number, buddy_name):
     """
     Get student details by phone number and name
     
@@ -3180,6 +3192,8 @@ def get_student_by_phone_and_name(phone_number, buddy_name):
     Returns:
         dict: Student information including course_level, batch, phone_number, student_id
     """
+    if not authenticate_api_key(api_key):
+        frappe.throw("Invalid API key")
     try:
         # Validate inputs
         if not phone_number or not buddy_name:
@@ -3268,7 +3282,7 @@ def get_student_by_phone_and_name(phone_number, buddy_name):
                 "batch": latest_enrollment.batch if latest_enrollment else None,
                 "batch_name": batch_name,
                 "batch_active": bool(batch_active) if batch_active is not None else None,
-                "current_grade": student.grade,
+                #"current_grade": student.grade,
                 "enrollment_grade": latest_enrollment.grade if latest_enrollment else None,
                 "enrollment_school": latest_enrollment.school if latest_enrollment else None,
                 "date_joining": str(latest_enrollment.date_joining) if latest_enrollment and latest_enrollment.date_joining else None,
@@ -3398,7 +3412,7 @@ def get_student_all_enrollments(phone_number, buddy_name):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_student_video_content(course_level, batch, student_id, language, content_type):
+def get_student_video_content(api_key, course_level, batch, student_id, language, content_type):
     """
     Get video content for a student based on their current week
     
@@ -3412,6 +3426,8 @@ def get_student_video_content(course_level, batch, student_id, language, content
     Returns:
         dict: Video information including name, link, and ID
     """
+    if not authenticate_api_key(api_key):
+        frappe.throw("Invalid API key")
     try:
         # Validate inputs
         if not all([course_level, batch, student_id, language, content_type]):
@@ -4000,7 +4016,7 @@ def get_student_all_week_videos(course_level, batch, student_id, language, conte
 
 
 @frappe.whitelist(allow_guest=True)
-def get_student_quiz_content(course_level, batch, student_id, language, week_start_date=None, week_end_date=None):
+def get_student_quiz_content(api_key, course_level, batch, student_id, language, week_start_date=None, week_end_date=None):
     """
     Get quiz content for a student based on their current week
     
@@ -4017,6 +4033,8 @@ def get_student_quiz_content(course_level, batch, student_id, language, week_sta
     """
     try:
         # Validate inputs
+        if not authenticate_api_key(api_key):
+            frappe.throw("Invalid API key")
         if not all([course_level, batch, student_id, language]):
             return {
                 "success": False,
@@ -4450,7 +4468,7 @@ def get_question_text(question_id, language):
 #     }
 
 @frappe.whitelist(allow_guest=True)
-def get_quiz_question_details(question_id, language):
+def get_quiz_question_details(api_key, question_id, language):
     """
     Get quiz question details with options and translations
     
@@ -4461,6 +4479,9 @@ def get_quiz_question_details(question_id, language):
     Returns:
         dict: Question details with options and answer in specified language
     """
+    if not authenticate_api_key(api_key):
+        frappe.throw("Invalid API key")
+    
     try:
         # Validate inputs
         if not question_id or not language:
@@ -4684,6 +4705,106 @@ def get_multiple_questions(question_ids, language):
         return {
             "success": False,
             "error": f"Internal server error: {str(e)}"
+        }
+
+@frappe.whitelist(allow_guest=True)
+def get_teacher_batch_by_phone(api_key, phone_number, type="teacher"):
+    """
+    API to get teacher details and their batch information by phone number
+    
+    Args:
+        phone_number (str): Teacher's phone number
+        type (str): User type, should be "teacher"
+    
+    Returns:
+        dict: Teacher details with batch information
+    """
+    if not authenticate_api_key(api_key):
+        frappe.throw("Invalid API key")
+    try:
+        # Validate type parameter
+        if type.lower() != "teacher":
+            return {
+                "success": False,
+                "message": "Invalid type parameter. Must be 'teacher'"
+            }
+        
+        # Validate phone number
+        if not phone_number:
+            return {
+                "success": False,
+                "message": "Phone number is required"
+            }
+        
+        # Query teacher by phone number
+        teachers = frappe.get_all(
+            "Teacher",
+            filters={"phone_number": phone_number},
+            fields=[
+                "name",
+                "first_name",
+                "last_name",
+                "school",
+                "teacher_batch",
+                "phone_number",
+            ]
+        )
+        
+        if not teachers:
+            return {
+                "success": False,
+                "message": f"No teacher found with phone number: {phone_number}"
+            }
+        
+        teacher = teachers[0]
+        
+        # Get batch details if teacher has a batch assigned
+        batch_details = None
+        if teacher.get("teacher_batch"):
+            batch = frappe.get_doc("Batch", teacher.get("teacher_batch"))
+            
+            batch_details = {
+                "batch_id": batch.name,
+                "batch_name": batch.name,
+                "title": batch.title,
+                "start_date": batch.start_date,
+                "end_date": batch.end_date,
+                "active": batch.active,
+                "batch_id_field": batch.batch_id,
+                "registration_end_date": batch.regist_end_date,
+                "engagement_end_date": batch.engagement_end_dae if hasattr(batch, 'engagement_end_dae') else None,
+                "regular_activity_start_date": batch.regular_activity_start_date if hasattr(batch, 'regular_activity_start_date') else None
+            }
+        
+        # Prepare flat response structure with only essential fields
+        response = {
+            "success": True,
+            "teacher_id": teacher.name,
+            "teacher_name": f"{teacher.first_name or ''} {teacher.last_name or ''}".strip(),
+        }
+        
+        # Add batch details to the same level if batch exists
+        if batch_details:
+            response.update({
+                "batch_id": batch_details["batch_id"],
+                "batch_name": batch_details["batch_name"],
+                "batch_title": batch_details["title"],
+                "batch_start_date": batch_details["start_date"],
+                "batch_end_date": batch_details["end_date"],
+                "active": batch_details["active"],
+                "batch_id_field": batch_details["batch_id_field"],
+                "registration_end_date": batch_details["registration_end_date"],
+                "engagement_end_date": batch_details["engagement_end_date"],
+                "regular_activity_start_date": batch_details["regular_activity_start_date"]
+            })
+        
+        return response
+        
+    except Exception as e:
+        frappe.log_error(f"Error in get_teacher_by_phone: {str(e)}", "Teacher Batch API Error")
+        return {
+            "success": False,
+            "message": f"An error occurred: {str(e)}"
         }
 
 

@@ -64,6 +64,7 @@ def calculate_current_week_no(regular_activity_start_date, week_start_date):
         return None
     
     current_week_no = (days_diff // 7) + 1
+    print
     return current_week_no
 
 
@@ -92,83 +93,158 @@ def format_phone_for_glific(phone):
         return phone  # Return as-is, might work
 
 
+# def get_eligible_batch_for_teacher(teacher):
+#     """
+#     Find the eligible batch onboarding for a teacher based on their school.
+    
+#     Selection criteria:
+#     - Batch onboarding belongs to teacher's school
+#     - Batch is active
+#     - Batch has regular_activity_start_date set
+#     - Select the batch with latest regular_activity_start_date within the week
+    
+#     Args:
+#         teacher: Teacher document or dict with school_id field
+        
+#     Returns:
+#         dict: Batch onboarding info with batch details, or None if not found
+#     """
+#     teacher_batch = teacher.get('teacher_batch') if isinstance(teacher, dict) else teacher.teacher_batch
+#     school_id = teacher.get('school_id') if isinstance(teacher, dict) else teacher.school_id
+#     #print(school_id)
+#     if not school_id:
+#         return None
+    
+#     if not teacher_batch:
+#         return None
+    
+#     # Get all batch onboardings for this school
+#     # batch_onboardings = frappe.get_all(
+#     #     "Batch onboarding",
+#     #     filters={"school": school_id},
+#     #     fields=["name", "batch", "batch_skeyword", "school"]
+#     # )
+#     # #print(batch_onboardings)
+#     # if not batch_onboardings:
+#     #     return None
+    
+#     # Get current week dates
+#     week_start_date, week_end_date = get_current_week_dates()
+    
+#     eligible_batch = None
+#     latest_activity_start = None
+    
+#     #for bo in batch_onboardings:
+#     if teacher_batch:
+#         # Get batch details
+#         batch = frappe.get_doc("Batch", teacher_batch)
+        
+#         # Check if batch is active
+#         if not batch.active:
+#             continue
+        
+#         # Check if regular_activity_start_date is set
+#         if not batch.regular_activity_start_date:
+#             continue
+        
+#         activity_start = getdate(batch.regular_activity_start_date)
+        
+#         # Check if activity has started (start date is on or before current week)
+#         if activity_start > week_end_date:
+#             continue
+        
+#         # Select the batch with the latest regular_activity_start_date
+#         if latest_activity_start is None or activity_start > latest_activity_start:
+#             latest_activity_start = activity_start
+#             eligible_batch = {
+#                 #"batch_onboarding": bo.name,
+#                 "batch": teacher_batch,
+#                 #"batch_keyword": bo.batch_skeyword,
+#                 #"school": bo.school,
+#                 "regular_activity_start_date": batch.regular_activity_start_date,
+#                 "batch_name": batch.name1
+#             }
+    
+#     return eligible_batch
+
+def get_latest_batch_onboarding(batch, school):
+    bo = frappe.get_all(
+        "Batch onboarding",
+        filters={
+            "batch": batch,
+            "school": school
+        },
+        fields=[
+            "name",             # Batch Onboarding name
+            "batch_skeyword",
+            "creation"
+        ],
+        order_by="creation desc",  # 🔥 latest first
+        limit=1
+    )
+
+    if not bo:
+        return None
+
+    return {
+        "batch_onboarding_name": bo[0].name,
+        "batch_keyword": bo[0].batch_skeyword
+    }
+
+
 def get_eligible_batch_for_teacher(teacher):
     """
     Find the eligible batch onboarding for a teacher based on their school.
-    
-    Selection criteria:
-    - Batch onboarding belongs to teacher's school
-    - Batch is active
-    - Batch has regular_activity_start_date set
-    - Select the batch with latest regular_activity_start_date within the week
-    
-    Args:
-        teacher: Teacher document or dict with school_id field
-        
-    Returns:
-        dict: Batch onboarding info with batch details, or None if not found
     """
+
     teacher_batch = teacher.get('teacher_batch') if isinstance(teacher, dict) else teacher.teacher_batch
     school_id = teacher.get('school_id') if isinstance(teacher, dict) else teacher.school_id
-    #print(school_id)
-    if not school_id:
+
+    if not school_id or not teacher_batch:
         return None
-    
-    if not teacher_batch:
-        return None
-    
-    # Get all batch onboardings for this school
-    # batch_onboardings = frappe.get_all(
-    #     "Batch onboarding",
-    #     filters={"school": school_id},
-    #     fields=["name", "batch", "batch_skeyword", "school"]
-    # )
-    # #print(batch_onboardings)
-    # if not batch_onboardings:
-    #     return None
-    
+
     # Get current week dates
     week_start_date, week_end_date = get_current_week_dates()
-    
-    eligible_batch = None
-    latest_activity_start = None
-    
-    #for bo in batch_onboardings:
-    if teacher_batch:
-        # Get batch details
-        batch = frappe.get_doc("Batch", teacher_batch)
-        
-        # Check if batch is active
-        if not batch.active:
-            continue
-        
-        # Check if regular_activity_start_date is set
-        if not batch.regular_activity_start_date:
-            continue
-        
-        activity_start = getdate(batch.regular_activity_start_date)
-        
-        # Check if activity has started (start date is on or before current week)
-        if activity_start > week_end_date:
-            continue
-        
-        # Select the batch with the latest regular_activity_start_date
-        if latest_activity_start is None or activity_start > latest_activity_start:
-            latest_activity_start = activity_start
-            eligible_batch = {
-                #"batch_onboarding": bo.name,
-                "batch": teacher_batch,
-                #"batch_keyword": bo.batch_skeyword,
-                #"school": bo.school,
-                "regular_activity_start_date": batch.regular_activity_start_date,
-                "batch_name": batch.name1
-            }
-    
-    return eligible_batch
+
+    # Get batch details
+    batch = frappe.get_doc("Batch", teacher_batch)
+
+    # Check if batch is active
+    if not batch.active:
+        return None
+
+    # Check if regular_activity_start_date is set
+    if not batch.regular_activity_start_date:
+        return None
+
+    activity_start = getdate(batch.regular_activity_start_date)
+
+    # Check if activity has started within or before current week
+    if activity_start > week_end_date:
+        return None
+
+    # Eligible batch found
+    batch_onboarding = get_latest_batch_onboarding(
+        batch=teacher_batch,
+        school=school_id
+    )
+
+    if not batch_onboarding:
+        return None
+
+    # ✅ Final eligible batch data
+    return {
+        "batch": teacher_batch,
+        "batch_name": batch.name1,
+        "regular_activity_start_date": batch.regular_activity_start_date,
+        "batch_onboarding": batch_onboarding["batch_onboarding_name"],
+        "batch_keyword": batch_onboarding["batch_keyword"]
+    }
 
 
 @frappe.whitelist()
 def get_weekly_teachers():
+    print("get_weekly_teachers is deprecated")
     """
     Create a weekly snapshot of all eligible teachers and their batch assignments.
     
@@ -266,8 +342,8 @@ def get_weekly_teachers():
                 "teacher_name": teacher_name,
                 "phone_number": teacher.phone_number,
                 "glific_id": teacher.glific_id,
-                #"batch_onboarding": eligible_batch["batch_onboarding"],
-                #"batch_keyword": eligible_batch["batch_keyword"],
+                "batch_onboarding": eligible_batch["batch_onboarding"],
+                "batch_keyword": eligible_batch["batch_keyword"],
                 "regular_activity_start_date": eligible_batch["regular_activity_start_date"],
                 "current_week_no": current_week_no,
                 "flow_trigger_status": "Pending"
@@ -325,15 +401,12 @@ def get_teacher_activity_flow_id():
     Returns:
         str: Flow ID or None if not configured
     """
-    # Try to get from Glific Settings
-    settings = frappe.get_doc("Glific Settings")
-    if hasattr(settings, 'teacher_activity_flow_id') and settings.teacher_activity_flow_id:
-        return settings.teacher_activity_flow_id
+    
     
     # Fallback: Look up in Glific Flow doctype by label
     flow = frappe.db.get_value(
         "Glific Flow",
-        {"label": "Teacher Weekly Activity Flow"},
+        {"label": "teacher-weekly-activity-flow"},
         "flow_id"
     )
     print(flow)

@@ -292,7 +292,7 @@ def get_weekly_students():
                 continue
             
             # Build student name
-            student_name = f"{student.name1 or ''} {student.name1 or ''}".strip()
+            student_name = f"{student.name1 or ''}".strip()
             
             # Add student to child table
             weekly_flow.append("students", {
@@ -361,14 +361,14 @@ def get_student_activity_flow_id():
         str: Flow ID or None if not configured
     """
     # Try to get from Glific Settings
-    settings = frappe.get_doc("Glific Settings")
-    if hasattr(settings, 'student_activity_flow_id') and settings.student_activity_flow_id:
-        return settings.student_activity_flow_id
+    # settings = frappe.get_doc("Glific Settings")
+    # if hasattr(settings, 'student_activity_flow_id') and settings.student_activity_flow_id:
+    #     return settings.student_activity_flow_id
     
     # Fallback: Look up in Glific Flow doctype by label
     flow = frappe.db.get_value(
         "Glific Flow",
-        {"label": "Student Weekly Activity Flow"},
+        {"label": "student-weekly-activity-flow"},
         "flow_id"
     )
     
@@ -463,7 +463,7 @@ def trigger_student_weekly_activity(weekly_flow_name=None):
         
         # Get the flow ID for student activity
         flow_id = get_student_activity_flow_id()
-        
+        print("Flow ID:", flow_id)
         if not flow_id:
             error_msg = "Student activity flow ID not configured in Glific Settings or Glific Flow"
             frappe.log_error(message=error_msg, title="Student Activity Flow Error")
@@ -520,10 +520,10 @@ def trigger_student_weekly_activity(weekly_flow_name=None):
                     "current_week_no": student_row.current_week_no or 0,
                     "student_name": student_row.student_name or "",
                     "student_id": student_row.student or "",
-                    "enrollment_id": student_row.enrollment or "",
+                    #"enrollment_id": student_row.enrollment or "",
                     "batch_id": student_row.batch or "",
-                    "date_joining": str(student_row.date_joining) if student_row.date_joining else "",
-                    "regular_activity_start_date": str(student_row.regular_activity_start_date) if student_row.regular_activity_start_date else "",
+                    #"date_joining": str(student_row.date_joining) if student_row.date_joining else "",
+                    #"regular_activity_start_date": str(student_row.regular_activity_start_date) if student_row.regular_activity_start_date else "",
                     "week_start_date": str(weekly_flow.week_start_date),
                     "week_end_date": str(weekly_flow.week_end_date)
                 }
@@ -556,6 +556,9 @@ def trigger_student_weekly_activity(weekly_flow_name=None):
         
         # UpdateWeekly Student Flow status
         weekly_flow.status = "Completed"
+        weekly_flow.success_count = success_count
+        weekly_flow.failed_count = failed_count
+        weekly_flow.total_students = len(weekly_flow.students)
         weekly_flow.save(ignore_permissions=True)
         frappe.db.commit()
         
