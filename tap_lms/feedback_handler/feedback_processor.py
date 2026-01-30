@@ -86,6 +86,11 @@ class FeedbackProcessor:
         ai_confidence = plagiarism_data.get("ai_confidence", 0.0)
         similar_sources = plagiarism_data.get("similar_sources", [])
 
+        # if is_plagiarized:
+        #     audio_feedback_url = 
+        #     overall_feedback_translated = 
+
+
         plagiarism_status = self._determine_plagiarism_status(
             is_plagiarized, is_ai_generated, match_type, plagiarism_source
         )

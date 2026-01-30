@@ -122,3 +122,14 @@ def generate_feedback_audio(
                 )
 
 
+def get_pre_generated_feedback_audio(feedback_type: str, language_name: str) -> str:
+    if feedback_type == 'plagarised':
+        pass
+
+    elif feedback_type == 'ai-generated':
+        pass
+
+    elif feedback_type == 'system-error':
+        pass
+
+
