@@ -15,6 +15,13 @@
     "result_status",
     "created_at",
     "grade",
+    "overall_feedback",
+    "overall_feedback_translated",
+    "translation_language",
+    "audio_feedback_url",
+    "strengths",
+    "areas_for_improvement",
+    "encouragement",
     "plagiarism_section",
     "plagiarism_status",
     "is_plagiarized",
@@ -29,10 +36,6 @@
     "feedback_section",
     "rubric_evaluations", 
     "plagiarism_result",
-    "strengths",
-    "areas_for_improvement",
-    "encouragement",
-    "overall_feedback",
     "completed_at",
     "generated_feedback"
  ],
@@ -171,10 +174,26 @@
    "fieldtype": "Text",
    "label": "Generated Feedback"
   },
+
   {
    "fieldname": "overall_feedback",
    "fieldtype": "Text",
    "label": "Overall Feedback"
+  },
+  {
+   "fieldname": "overall_feedback_translated",
+   "fieldtype": "Text",
+   "label": "Overall Feedback Translated"
+  },
+  {
+   "fieldname": "translation_language",
+   "fieldtype": "Data",
+   "label": "Translation Language"
+  },
+  {
+    "fieldname": "audio_feedback_url",
+    "fieldtype": "Data",
+    "label": "Audio Feedback URL"
   },
     {
    "fieldname": "strengths",

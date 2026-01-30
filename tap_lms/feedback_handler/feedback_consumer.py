@@ -1,18 +1,19 @@
-# tap_lms/feedback_consumer/feedback_consumer.py
+# tap_lms/feedback_handler/feedback_consumer.py
 
 import frappe
 import json
 import pika
-import time
-from datetime import datetime
-from typing import Dict, Optional
-from ..glific_integration import get_glific_settings, start_contact_flow
+from typing import Dict
+
+from ..glific_integration import start_contact_flow
+from .feedback_processor import FeedbackProcessor
 
 class FeedbackConsumer:
     def __init__(self):
         self.connection = None
         self.channel = None
         self.settings = None
+        self.processor = FeedbackProcessor()
 
     def setup_rabbitmq(self):
         """Setup RabbitMQ connection and channel with proper error handling"""
@@ -179,17 +180,8 @@ class FeedbackConsumer:
             
             # Parse and validate message
             try:
-                message_data = json.loads(body)
-                submission_id = message_data.get("submission_id")
-                print(f"Processing feedback for : {submission_id}")
-
-                if not submission_id:
-                    raise ValueError("Missing submission_id in message")
-                    
-                if not message_data.get("feedback"):
-                    raise ValueError("Missing feedback data in message")
-                    
-            except (json.JSONDecodeError, ValueError) as e:
+                message_data, submission_id = self.processor.parse_and_validate(body)
+            except ValueError as e:
                 frappe.logger().error(f"Invalid message format: {str(e)}. Body: {body}")
                 ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
                 return
@@ -197,16 +189,15 @@ class FeedbackConsumer:
             frappe.logger().info(f"Processing feedback for submission: {submission_id}")
             
             # Check if submission exists
-            if not frappe.db.exists("ImgSubmission", submission_id):
-                frappe.logger().error(f"ImgSubmission {submission_id} not found. Commiting DB.")
-                frappe.db.commit()
-                if not frappe.db.exists("ImgSubmission", submission_id):
-                    frappe.logger().error(f"ImgSubmission {submission_id} not found. Rejecting message.")
-                    ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
-                    return
+            try:
+                self.processor.ensure_submission_exists(submission_id)
+            except ValueError as e:
+                frappe.logger().error(f"{str(e)}. Rejecting message.")
+                ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
+                return
             
             # Process the message
-            self.update_submission(message_data)
+            self.processor.update_submission(message_data)
             
             # Send Glific notification (non-critical - don't fail message if this fails)
             try:
@@ -222,6 +213,7 @@ class FeedbackConsumer:
             ch.basic_ack(delivery_tag=method.delivery_tag)
             
             frappe.logger().info(f"Successfully processed feedback for submission: {submission_id}")
+            print(f"Successfully processed feedback for submission: {submission_id}")
             
         except Exception as e:
             # Rollback database transaction
@@ -231,7 +223,7 @@ class FeedbackConsumer:
             frappe.logger().error(f"Error processing submission {submission_id}: {error_msg}")
             
             # Determine if error is retryable
-            if self.is_retryable_error(e):
+            if self.processor.is_retryable_error(e):
                 frappe.logger().warning(f"Retryable error for submission {submission_id}, will retry")
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
             else:
@@ -239,203 +231,12 @@ class FeedbackConsumer:
                 # Mark submission as failed and reject message
                 try:
                     if submission_id:
-                        self.mark_submission_failed(submission_id, error_msg)
+                        self.processor.mark_submission_failed(submission_id, error_msg)
                         frappe.db.commit()
                 except:
                     frappe.db.rollback()
                 
                 ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
-
-    def is_retryable_error(self, error):
-        """Determine if an error should be retried"""
-        error_str = str(error).lower()
-        
-        # Non-retryable errors - these should not be retried
-        non_retryable_patterns = [
-            'does not exist',
-            'not found',
-            'invalid',
-            'permission denied',
-            'duplicate',
-            'constraint violation',
-            'missing submission_id',
-            'missing feedback data',
-            'validation error'
-        ]
-        
-        for pattern in non_retryable_patterns:
-            if pattern in error_str:
-                return False
-        
-        # All other errors are considered retryable (database locks, network issues, etc.)
-        return True
-
-    def update_submission(self, message_data: Dict):
-        """Update ImgSubmission with comprehensive plagiarism data"""
-        try:
-
-            submission_id = message_data["submission_id"]
-            feedback_data = message_data.get("feedback", {})
-
-            # Get submission document
-            submission = frappe.get_doc("ImgSubmission", submission_id)
-            print(f"Updating submission : {submission_id}")
-            print(f"Updating submission with data: {json.dumps(message_data, indent=2)}")
-
-            # Extract plagiarism data
-            is_plagiarized = message_data.get("is_plagiarized", False)
-            is_ai_generated = message_data.get("is_ai_generated", False)
-            match_type = message_data.get("match_type", "original")
-            plagiarism_source = message_data.get("plagiarism_source", "none")
-            similarity_score = message_data.get("similarity_score", 0.0)
-            ai_detection_source = message_data.get("ai_detection_source")
-            ai_confidence = message_data.get("ai_confidence", 0.0)
-            similar_sources = message_data.get("similar_sources", [])
-
-            # Determine plagiarism_status
-            plagiarism_status = self._determine_plagiarism_status(
-                is_plagiarized, is_ai_generated, match_type, plagiarism_source
-            )
-
-            # Determine result_status
-            result_status = self._determine_result_status(is_plagiarized, is_ai_generated)
-
-            # Extract grade
-            grade = self._extract_grade(feedback_data, submission_id)
-
-            strengths = feedback_data.get("strengths", [])
-            strengths_message = "\n".join([f"• {strength}" for strength in strengths])
-
-            areas_for_improvement = feedback_data.get("areas_for_improvement", [])
-            areas_for_improvement_message = "\n".join([f"• {area}" for area in areas_for_improvement])
-
-            learning_objectives_feedback = feedback_data.get("learning_objectives_feedback", [])
-            learning_objectives_feedback_message = "\n".join([f"• {objective}" for objective in learning_objectives_feedback])
-
-            # Process rubric evaluations
-            rubric_evaluations = feedback_data.get("rubric_evaluations", [])
-            rubric_evaluations_rows = []
-            for rubric in rubric_evaluations:
-                rubric_evaluations_rows.append({
-                    "skill": rubric.get("Skill", ""),
-                    "grade_value": float(rubric.get("grade_value", 0)),
-                    "observation": rubric.get("observation", "")
-                })
-
-            # Prepare update data
-            update_data = {
-                "status": "Completed",
-                "result_status": result_status,
-                "completed_at": datetime.now(),
-
-                # Plagiarism fields
-                "plagiarism_status": plagiarism_status,
-                "is_plagiarized": is_plagiarized,
-                "match_type": match_type,
-                "plagiarism_source": plagiarism_source,
-                "similarity_score": similarity_score * 100,
-                "similar_sources": json.dumps(similar_sources),
-
-                # AI detection fields
-                "is_ai_generated": is_ai_generated,
-                "ai_detection_source": ai_detection_source or "",
-                "ai_confidence": ai_confidence * 100,
-
-                # Feedback fields
-                "grade": grade,
-                "overall_feedback": feedback_data.get("overall_feedback", ""),
-                "generated_feedback": json.dumps(feedback_data),
-                # "feedback_summary": message_data.get("summary", ""),
-                "learning_objectives_feedback": learning_objectives_feedback_message,
-                "strengths": strengths_message,
-                "areas_for_improvement": areas_for_improvement_message,
-                "encouragement": feedback_data.get("encouragement", ""),
-                
-                # Rubric evaluations field
-                "rubric_evaluations": rubric_evaluations_rows,
-
-                "plagiarism_result": message_data.get("plagiarism_score", 0),
-
-            }
-
-            submission.update(update_data)
-            submission.save(ignore_permissions=True)
-            frappe.db.commit()
-
-        except Exception as e:
-            # Update result_status to Failed on error
-            self._mark_submission_failed(submission_id, str(e))
-            frappe.logger().error(f"Error updating ImgSubmission: {str(e)}")
-            raise
-
-    def _determine_result_status(self, is_plagiarized: bool, is_ai_generated: bool) -> str:
-        """Determine overall result status"""
-        if is_plagiarized or is_ai_generated:
-            return "Success - Flagged"
-        return "Success - Original"
-
-    def _mark_submission_failed(self, submission_id: str, error_message: str):
-        """Mark submission as failed"""
-        try:
-            submission = frappe.get_doc("ImgSubmission", submission_id)
-            submission.status = "Failed"
-            
-            # Add error message if field exists
-            if hasattr(submission, 'error_message'):
-                submission.error_message = error_message[:500]  # Limit length to prevent field overflow
-            
-            submission.save(ignore_permissions=True)
-            
-            frappe.logger().error(f"Marked submission {submission_id} as failed: {error_message}")
-            
-        except Exception as e:
-            frappe.logger().error(f"Error marking submission {submission_id} as failed: {str(e)}")
-
-    def _determine_plagiarism_status(
-        self, is_plagiarized, is_ai_generated, match_type, plagiarism_source
-    ) -> str:
-        """Determine human-readable plagiarism status"""
-
-        if is_ai_generated:
-            return "Flagged - AI Generated"
-
-        if not is_plagiarized:
-            if match_type == "resubmission_allowed":
-                return "Resubmission Allowed"
-            return "Original"
-
-        status_map = {
-            "exact_duplicate": "Flagged - Exact Match",
-            "near_duplicate": "Flagged - Near Duplicate",
-            "semantic_match": "Flagged - Semantic Match",
-        }
-
-        if match_type in status_map:
-            return status_map[match_type]
-
-        if plagiarism_source in ["peer", "peer_collusion"]:
-            return "Flagged - Peer Plagiarism"
-        elif plagiarism_source in ["self_cross_assignment", "self_late_resubmission"]:
-            return "Flagged - Self Plagiarism"
-
-        return "Flagged - Exact Match"
-
-    def _extract_grade(self, feedback_data, submission_id):
-        grade_recommendation = feedback_data.get("final_grade", "50")
-        
-        try:
-            if isinstance(grade_recommendation, str):
-                # Remove any non-numeric characters except decimal point
-                grade_clean = ''.join(c for c in grade_recommendation if c.isdigit() or c == '.')
-                grade = float(grade_clean) if grade_clean else 0.0
-            else:
-                grade = float(grade_recommendation)
-        except (ValueError, TypeError):
-            grade = 0.0
-            frappe.logger().warning(f"Could not parse grade '{grade_recommendation}' for submission {submission_id}, using 0.0")
-        
-        return grade
-
 
 
     def send_glific_notification(self, message_data: Dict):
@@ -486,20 +287,8 @@ class FeedbackConsumer:
 
     def mark_submission_failed(self, submission_id: str, error_message: str):
         """Mark submission as failed with error details"""
-        try:
-            submission = frappe.get_doc("ImgSubmission", submission_id)
-            submission.status = "Failed"
-            
-            # Add error message if field exists
-            if hasattr(submission, 'error_message'):
-                submission.error_message = error_message[:500]  # Limit length to prevent field overflow
-            
-            submission.save(ignore_permissions=True)
-            
-            frappe.logger().error(f"Marked submission {submission_id} as failed: {error_message}")
-            
-        except Exception as e:
-            frappe.logger().error(f"Error marking submission {submission_id} as failed: {str(e)}")
+        # Backwards-compatible wrapper (prefer using self.processor directly)
+        self.processor.mark_submission_failed(submission_id, error_message)
 
     def stop_consuming(self):
         """Stop consuming messages gracefully"""

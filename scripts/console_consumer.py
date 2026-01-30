@@ -1,6 +1,6 @@
 # consumer code for testing in bench console
 
-from tap_lms.feedback_consumer.feedback_consumer import FeedbackConsumer
+from tap_lms.feedback_handler.feedback_consumer import FeedbackConsumer
 import frappe
 
 frappe.connect()

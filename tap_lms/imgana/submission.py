@@ -147,8 +147,73 @@ def upload_image_to_gcs(img_url, submission_name):
         raise frappe.ValidationError(f"Failed to upload to GCS: {str(e)}")
 
 
+def upload_audio_to_gcs(local_audio_path: str, submission_id: str, original_filename: str) -> str:
+    """
+    Upload audio file from local path to GCS.
+    Returns the public URL.
+    
+    Args:
+        local_audio_path: Path to the local audio file
+        submission_id: Submission ID for naming
+        original_filename: Original filename for the audio file
+    
+    Returns:
+        Public URL of the uploaded audio file
+    """
+    try:
+        # Get GCS client
+        result = get_gcs_client()
+        
+        if result is None:
+            frappe.throw("GCS Storage is not enabled. Enable it in GCS Settings.")
+        
+        client, bucket_name = result
+        
+        # Ensure the local file exists
+        if not os.path.exists(local_audio_path):
+            raise FileNotFoundError(f"Audio file not found at {local_audio_path}")
+        
+        # Get file extension and determine content type
+        ext = os.path.splitext(original_filename)[1].lower()
+        content_type_map = {
+            '.mp3': 'audio/mpeg',
+            '.wav': 'audio/wav',
+            '.ogg': 'audio/ogg',
+            '.m4a': 'audio/mp4',
+            '.aac': 'audio/aac',
+        }
+        content_type = content_type_map.get(ext, 'audio/mpeg')
+        
+        # Create GCS path: feedback/{submission_id}_{original_filename}
+        gcs_filename = f"audio_feedback/{submission_id}_{original_filename}"
+        
+        # Upload to GCS
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(gcs_filename)
+        
+        # Upload file with explicit content type
+        with open(local_audio_path, 'rb') as f:
+            blob.upload_from_file(f, content_type=content_type)
+        
+        # Generate public URL
+        public_url = f"https://storage.googleapis.com/{bucket_name}/{gcs_filename}"
+        
+        frappe.logger("submission").info(
+            f"Audio uploaded to GCS: {local_audio_path} -> {public_url} (content_type: {content_type})"
+        )
+        
+        return public_url
+        
+    except FileNotFoundError as e:
+        frappe.logger("submission").error(f"Audio file not found: {str(e)}")
+        raise frappe.ValidationError(f"Audio file not found: {str(e)}")
+    except Exception as e:
+        frappe.logger("submission").error(f"Failed to upload audio to GCS: {str(e)}")
+        raise frappe.ValidationError(f"Failed to upload audio to GCS: {str(e)}")
+
+
 @frappe.whitelist(allow_guest=True)
-def submit_artwork(api_key, assign_id, student_id, img_url):
+def submit_artwork(api_key, assign_id, name1, glific_id, img_url):
     """
     API endpoint to submit artwork.
     Downloads image, uploads to GCS, creates submission, and enqueues to RabbitMQ.
@@ -160,6 +225,19 @@ def submit_artwork(api_key, assign_id, student_id, img_url):
 
     # Switch to the user associated with the API key
     frappe.set_user(api_key_doc.user)
+    
+    # Get student document
+    student = frappe.get_doc(
+                    "Student",
+                    {
+                        "name1": name1,
+                        "glific_id": glific_id
+                    },
+                    limit=1
+                )
+    if not student:
+        frappe.throw("Student not found with provided name and glific_id")
+    student_id = student.name
 
     try:
         # Create a new submission first (to get the submission name)
@@ -193,6 +271,7 @@ def submit_artwork(api_key, assign_id, student_id, img_url):
         return {
             "message": "Submission received",
             "submission_id": submission.name,
+            "student_id": student_id,
             "image_url": public_url
         }
 
@@ -285,7 +364,8 @@ def img_feedback(api_key, submission_id):
         if submission.status == "Completed":
             response = {
                 "status": submission.status,
-                "overall_feedback": submission.overall_feedback
+                "overall_feedback": submission.overall_feedback,
+                "audio_feedback_url": submission.audio_feedback_url,
             }
         else:
             response = {
@@ -365,14 +445,6 @@ def get_assignment_context(assignment_id, student_id=None):
             ]
         }
         
-        # Add student context if provided
-        if student_id:
-            student = frappe.get_doc("Student", student_id)
-            context["student"] = {
-                "grade": student.grade,
-                "level": student.level,
-                "language": student.language
-            }
         
         # Add custom feedback prompt if enabled
         if assignment.enable_auto_feedback and assignment.feedback_prompt:
@@ -386,3 +458,38 @@ def get_assignment_context(assignment_id, student_id=None):
             "RAG Context Error"
         )
         return None
+
+
+@frappe.whitelist()
+def get_student_details(student_id):
+    """Get student grade level and language details"""
+    try:
+        student = frappe.get_doc("Student", student_id)
+                    
+        print(student)
+        
+        if not student:
+            frappe.log_error(
+                f"Student {student_id} not found",
+                "Student Details Error"
+            )
+            return None
+
+            
+        
+        return {
+            "student_id": student.name,
+            "grade": student.grade,
+            "level": student.level,
+            "language": student.language
+        }
+        
+    except Exception as e:
+        frappe.log_error(
+            f"Error getting student details: {str(e)}",
+            "Student Details Error"
+        )
+        print(e)
+        return None
+
+
