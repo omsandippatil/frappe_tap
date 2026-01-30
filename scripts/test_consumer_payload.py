@@ -19,34 +19,36 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # EDIT THE PAYLOAD BELOW TO TEST DIFFERENT DATA
 # ============================================================================
 PAYLOAD = {
-  "submission_id": "IMSUB-2601280188",
-  "student_id": "ST00000182",
+  "submission_id": "IMSUB-2601300208",
+  "student_id": "ST00000206",
   "assignment_id": "VA_L1_CA1-Basic",
   "feedback": {
     "rubric_evaluations": [
       {
         "Skill": "Content Knowledge",
         "grade_value": 2,
-        "observation": "The creature uses simple shapes like circles and ovals but lacks the required number of patterns."
+        "observation": "The creature uses basic shapes like circles and ovals but lacks clear patterns and variety."
       },
       {
         "Skill": "Creativity",
         "grade_value": 2,
-        "observation": "The creature has basic features and lacks diverse imaginative elements or patterns."
+        "observation": "The creature has simple features and lacks imaginative elements like magical details or unique patterns."
       }
     ],
     "strengths": [
-      "Neat and tidy arrangement of shapes",
-      "Clear use of color differentiation"
+      "Neat arrangement of shapes",
+      "Good use of color contrast"
     ],
     "areas_for_improvement": [
-      "Incorporate more patterns like stripes or dots",
-      "Add more unique features to enhance creativity"
+      "Incorporate more patterns into the design",
+      "Add unique features to enhance creativity"
     ],
-    "encouragement": "Keep experimenting with shapes and patterns to make your creature more imaginative!",
-    "overall_feedback": "Your creature is neatly constructed using basic shapes and colors. Try adding more patterns and unique features next time to make it even more creative.",
-    "overall_feedback_translated": "आपका प्राणी साफ-सुथरे ढंग से बना है। अगली बार अधिक पैटर्न और अनोखी विशेषताएँ जोड़ने की कोशिश करें।",
-    "learning_objectives_feedback": [],
+    "encouragement": "Great start! Keep experimenting with shapes and patterns to make your creature even more magical.",
+    "overall_feedback": "Your creation is neat and well-colored. To make it more magical, try adding more patterns and unique features. Keep up the creativity!",
+    "overall_feedback_translated": "आपकी रचना साफ-सुथरी और अच्छी तरह से रंगी हुई है। इसे और जादुई बनाने के लिए और पैटर्न और अनोखी विशेषताएँ जोड़ें। रचनात्मकता बनाए रखें!",
+    "learning_objectives_feedback": [
+      "Enhance use of diverse shapes and patterns."
+    ],
     "final_grade": "40",
     "grade_recommendation": 0,
     "plagiarism_output": {
@@ -61,7 +63,7 @@ PAYLOAD = {
     },
     "translation_language": "Hindi"
   },
-  "generated_at": "2026-01-29T09:55:15.963431"
+  "generated_at": "2026-01-30T11:15:32.212972"
 }
 
 # ============================================================================

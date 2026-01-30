@@ -365,6 +365,7 @@ def img_feedback(api_key, submission_id):
             response = {
                 "status": submission.status,
                 "overall_feedback": submission.overall_feedback,
+                "overall_feedback_translated" : submission.overall_feedback_translated,
                 "audio_feedback_url": submission.audio_feedback_url,
             }
         else:
