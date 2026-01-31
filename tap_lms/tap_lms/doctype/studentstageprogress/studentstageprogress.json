@@ -22,7 +22,12 @@
   "retry_scheduled",
   "mastery_level",
   "course_context",
-  "stage_history"
+  "stage_history",
+  "current_week",
+  "current_tier",
+  "current_content_index",
+  "is_on_remedial",
+  "remedial_attempts"
  ],
  "fields": [
   {
@@ -35,7 +40,7 @@
    "fieldname": "stage_type",
    "fieldtype": "Select",
    "label": "Stage Type",
-   "options": "Course Module\nCourse Chapter\nCourse Lesson\nOnboardingStage"
+   "options": "Course Module\nCourse Chapter\nCourse Lesson\nOnboardingStage\nLearningUnit"
   },
   {
    "fieldname": "stage",
@@ -105,11 +110,38 @@
    "fieldname": "stage_history",
    "fieldtype": "Long Text",
    "label": "Stage History"
+  },
+  {
+   "fieldname": "current_week",
+   "fieldtype": "Int",
+   "label": "Current Week"
+  },
+  {
+   "fieldname": "current_tier",
+   "fieldtype": "Select",
+   "label": "Current Tier",
+   "options": "Basic\nIntermediate\nAdvanced\nRemedial"
+  },
+  {
+   "fieldname": "current_content_index",
+   "fieldtype": "Int",
+   "label": "Current Content Index"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_on_remedial",
+   "fieldtype": "Check",
+   "label": "Is On Remedial"
+  },
+  {
+   "fieldname": "remedial_attempts",
+   "fieldtype": "Int",
+   "label": "Remedial Attempts"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-28 01:04:21.453921",
+ "modified": "2026-01-28 14:26:31.193444",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "StudentStageProgress",

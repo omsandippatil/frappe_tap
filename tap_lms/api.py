@@ -4115,6 +4115,241 @@ def get_student_quiz_content(api_key, course_level, batch, student_id, language,
         }
 
 
+@frappe.whitelist(allow_guest=False)
+def get_quiz_by_id(api_key, student_id, quiz_id, language=None):
+    """
+    Get quiz content by quiz_id for a student.
+    Same response format as get_student_quiz_content.
+    
+    Request Body (JSON):
+        {
+            "student_id": "ST00001388",
+            "quiz_id": "BasicQuiz_Quiz_B-basic",
+            "language": "English"  // optional
+        }
+    
+    Returns:
+        dict: Quiz information with questions in flat format
+    """
+    try:
+        # Get data from request body
+        # data = frappe.request.get_json() if frappe.request.data else {}
+        
+        # student_id = data.get("student_id")
+        # quiz_id = data.get("quiz_id")
+        # language = data.get("language")
+
+
+        if api_key:
+            # Validate API key
+           if not authenticate_api_key(api_key):
+                return {
+                    "success": False,
+                    "error": "Invalid API key"
+                }
+
+        # Validate inputs
+        if not student_id or not quiz_id:
+            return {
+                "success": False,
+                "error": "student_id and quiz_id are required"
+            }
+        
+        # Resolve student ID
+        resolved_student = resolve_student_id(student_id)
+        if not resolved_student:
+            return {
+                "success": False,
+                "error": f"Student not found for identifier: {student_id}"
+            }
+        
+        # Get student's language if not provided
+        if not language:
+            student_lang = frappe.db.get_value("Student", resolved_student, "language")
+            language = student_lang if student_lang else "English"
+        
+        # Check if quiz exists
+        if not frappe.db.exists("Quiz", quiz_id):
+            return {
+                "success": False,
+                "error": f"Quiz '{quiz_id}' not found"
+            }
+        
+        # Get quiz with questions
+        quiz_info = _get_quiz_with_questions_flat(quiz_id, language)
+        
+        if not quiz_info:
+            return {
+                "success": False,
+                "error": f"No questions found for quiz '{quiz_id}'"
+            }
+        
+        # Build flat response structure (same as get_student_quiz_content)
+        response = {
+            "success": True,
+            "quiz_count": 1
+        }
+        
+        # Add quiz as quiz_1 with questions as question_1, question_2, etc.
+        quiz_data = {
+            "quiz_id": quiz_info["quiz_id"],
+            "quiz_name": quiz_info["quiz_name"],
+            "total_questions": quiz_info["total_questions"]
+        }
+        
+        # Add questions as individual fields
+        for question in quiz_info["questions"]:
+            question_key = f"question_{question['order']}"
+            quiz_data[question_key] = question["question_text"]
+        
+        quiz_data["language"] = quiz_info["language"]
+        response["quiz_1"] = quiz_data
+        
+        return response
+        
+    except Exception as e:
+        frappe.log_error(
+            f"get_quiz_by_id error: {str(e)}\n"
+            f"student_id: {student_id}, quiz_id: {quiz_id}",
+            "Student Progression API Error"
+        )
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+def _get_quiz_with_questions_flat(quiz_id: str, language: str) -> dict:
+    """
+    Get quiz information with questions and translations.
+    Helper function for get_quiz_by_id.
+    
+    Args:
+        quiz_id: Quiz ID
+        language: Language for translation
+        
+    Returns:
+        dict: Quiz information with questions list
+    """
+    try:
+        # Get Quiz document
+        quiz_doc = frappe.get_doc("Quiz", quiz_id)
+        
+        quiz_name = quiz_doc.quiz_name
+        
+        # Get questions from quiz
+        questions_list = []
+        
+        if hasattr(quiz_doc, 'questions') and quiz_doc.questions:
+            for question_row in quiz_doc.questions:
+                question_id = question_row.question
+                question_number = question_row.question_number if hasattr(question_row, 'question_number') else question_row.idx
+                
+                if not question_id:
+                    continue
+                
+                # Get question details and check for translation
+                question_text = _get_question_text_translated(question_id, language)
+                
+                if question_text:
+                    questions_list.append({
+                        "order": question_number,
+                        "question_id": question_id,
+                        "question_text": question_row.question
+                    })
+        
+        # Skip if no questions
+        if not questions_list:
+            return None
+        
+        # Sort by order
+        questions_list.sort(key=lambda x: x["order"])
+        
+        return {
+            "quiz_id": quiz_id,
+            "quiz_name": quiz_name,
+            "total_questions": len(questions_list),
+            "questions": questions_list,
+            "language": language
+        }
+        
+    except Exception as e:
+        frappe.log_error(
+            f"Error getting quiz with questions: {str(e)}",
+            "Student Progression API"
+        )
+        return None
+
+
+def _get_question_text_translated(question_id: str, language: str) -> str:
+    """
+    Get question text with translation if available.
+    
+    Args:
+        question_id: QuizQuestion ID
+        language: Language for translation
+        
+    Returns:
+        str: Question text (translated if available)
+    """
+    try:
+        # Get QuizQuestion document
+        question_doc = frappe.get_doc("QuizQuestion", question_id)
+        
+        question_text = question_doc.question
+        
+        # Try to find translation for the specified language
+        if language and hasattr(question_doc, 'question_translations') and question_doc.question_translations:
+            for translation in question_doc.question_translations:
+                if translation.language == language and translation.translated_question:
+                    question_text = translation.translated_question
+                    break
+        
+        return question_text
+        
+    except Exception as e:
+        frappe.log_error(
+            f"Error getting question text: {str(e)}",
+            "Student Progression API"
+        )
+        return None
+
+def resolve_student_id(identifier: str) -> str:
+    """
+    Resolve various identifiers to student ID.
+    
+    Args:
+        identifier: Can be student ID, Glific ID, or phone number
+    
+    Returns:
+        str: Student document ID or None
+    """
+    if not identifier:
+        return None
+        
+    # Check if it's already a valid student ID
+    if frappe.db.exists("Student", identifier):
+        return identifier
+    
+    # Try Glific ID
+    student = frappe.db.get_value("Student", {"glific_id": identifier}, "name")
+    if student:
+        return student
+    
+    # Try phone number
+    student = frappe.db.get_value("Student", {"phone": identifier}, "name")
+    if student:
+        return student
+    
+    # Try phone with country code variations
+    if identifier.startswith("91") and len(identifier) > 10:
+        phone_without_code = identifier[2:]
+        student = frappe.db.get_value("Student", {"phone": phone_without_code}, "name")
+        if student:
+            return student
+    
+    return None
+
 def get_learning_units_by_week(course_level, week_no):
     """
     Get learning units for a specific course level and week number
@@ -4516,7 +4751,7 @@ def get_quiz_question_details(api_key, question_id, language):
         response_data = {
             "success": True,
             "question_id": question_id,
-            "question": question_text,
+            "question": strip_html_tags(question_text),
             "question_type": question_doc.question_type,
             "language": language
         }
@@ -4555,6 +4790,23 @@ def get_quiz_question_details(api_key, question_id, language):
                 "error": f"Internal server error: {str(e)}"
             }
         }
+
+import re
+from html import unescape
+
+def strip_html_tags(html_text):
+    """Remove HTML tags from text using regex"""
+    if not html_text:
+        return ""
+    
+    # Remove HTML tags
+    clean = re.sub(r'<[^>]+>', '', html_text)
+    # Decode HTML entities like &nbsp; &amp; etc
+    clean = unescape(clean)
+    # Remove extra whitespace
+    clean = ' '.join(clean.strip().split())
+    
+    return clean
 
 
 def get_question_text_by_language(question_doc, language):

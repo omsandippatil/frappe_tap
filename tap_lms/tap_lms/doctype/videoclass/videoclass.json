@@ -12,6 +12,7 @@
   "video_name",
   "video_youtube_url",
   "duration",
+  "difficulty_tier",
   "description",
   "video_file",
   "video_plio_url",
@@ -21,7 +22,6 @@
   "video_translations",
   "additional_files",
   "estimated_duration",
-  "difficulty_tier",
   "assessments"
  ],
  "fields": [
@@ -110,7 +110,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-10 21:40:00.508166",
+ "modified": "2026-01-27 17:53:59.424003",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "VideoClass",

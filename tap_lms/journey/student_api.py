@@ -1790,3 +1790,213 @@ def get_siblings(phone, glific_id=None):
             "Siblings API Error"
         )
         return {"success": False, "error": str(e)}
+
+
+
+@frappe.whitelist(allow_guest=False)
+def check_student(phone):
+    """
+    Check if a student exists in the system and identify siblings.
+    
+    Args:
+        phone (str): Phone number (10 or 12 digits with 91 prefix)
+        
+    Returns:
+        dict: Student type classification and details
+            - student_type: "new" | "single" | "multiple"
+            - count: Number of students found (as string)
+            - has_siblings: "Yes" | "No"
+            - "1", "2", etc.: Student details (flat structure for Glific)
+    """
+    try:
+        # Authentication check
+        if frappe.session.user == 'Guest':
+            frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+        
+        # Validate phone parameter
+        if not phone:
+            frappe.local.response.http_status_code = 400
+            return {"success": "No", "error": "Phone number is required"}
+        
+        # Format phone number
+        formatted_phone = format_phone_number(phone)
+        
+        # Find all students with the same phone number
+        student_records = frappe.get_all(
+            "Student",
+            filters={"phone": formatted_phone},
+            fields=["name", "name1", "phone", "gender", "grade", "language", "creation"],
+            order_by="creation desc"
+        )
+        
+        # Fallback: If no records found with 91 prefix, try without it
+        if not student_records and formatted_phone and formatted_phone.startswith('91') and len(formatted_phone) == 12:
+            phone_without_prefix = formatted_phone[2:]
+            student_records = frappe.get_all(
+                "Student",
+                filters={"phone": phone_without_prefix},
+                fields=["name", "name1", "phone", "gender", "grade", "language", "creation"],
+                order_by="creation desc"
+            )
+        
+        # Determine student type
+        count = len(student_records)
+        
+        if count == 0:
+            student_type = "new"
+        elif count == 1:
+            student_type = "single"
+        else:
+            student_type = "multiple"
+        
+        has_siblings = "Yes" if count > 1 else "No"
+        
+        # Build response
+        response = {
+            "student_type": student_type,
+            "count": str(count),
+            "has_siblings": has_siblings
+        }
+        
+        # Add student details directly under response (flat structure for Glific)
+        for i, student_record in enumerate(student_records, 1):
+            try:
+                student_data = _get_student_details_flat(student_record)
+                response[str(i)] = student_data
+            except Exception as e:
+                frappe.log_error(
+                    f"Error processing student {student_record.name}: {str(e)}", 
+                    "Check Student API Error"
+                )
+                # Add minimal data on error
+                response[str(i)] = {
+                    "student_id": student_record.name,
+                    "name": student_record.name1 or None,
+                    "gender": None,
+                    "grade": None,
+                    "language": None,
+                    "course_vertical": None,
+                    "course_vertical_short": None,
+                    "course_level": None,
+                    "batch": None,
+                    "batch_active": None
+                }
+        
+        return response
+        
+    except frappe.AuthenticationError as e:
+        frappe.local.response.http_status_code = 401
+        frappe.log_error(f"Authentication error: {str(e)}", "Check Student API Error")
+        return {"success": "No", "error": str(e)}
+    
+    except Exception as e:
+        frappe.local.response.http_status_code = 500
+        error_traceback = traceback.format_exc()
+        frappe.log_error(
+            f"Error checking student: {str(e)}\n{error_traceback}",
+            "Check Student API Error"
+        )
+        return {"success": "No", "error": "Internal server error"}
+
+
+def _get_student_details_flat(student_record):
+    """
+    Get flat student details for Glific compatibility (max 2 levels).
+    
+    Args:
+        student_record: Student record from frappe.get_all
+        
+    Returns:
+        dict: Flat student details with all string values
+    """
+    # Get full student document
+    student = frappe.get_doc("Student", student_record.name)
+    
+    # Initialize response with basic fields
+    student_data = {
+        "student_id": student.name,
+        "name": student.name1 or None,
+        "gender": student.gender or None,
+        "grade": str(student.grade) if student.grade else None,
+        "language": None,
+        "course_vertical": None,
+        "course_vertical_short": None,
+        "course_level": None,
+        "batch": None,
+        "batch_active": None
+    }
+    
+    # Get language name
+    if student.language:
+        try:
+            language_doc = frappe.get_doc("TAP Language", student.language)
+            student_data["language"] = language_doc.language_name if hasattr(language_doc, 'language_name') else None
+        except Exception as e:
+            frappe.log_error(f"Error fetching language: {str(e)}", "Check Student API Error")
+    
+    # Get latest enrollment details
+    latest_enrollment = _get_latest_enrollment(student)
+    
+    if latest_enrollment:
+        # Update grade from enrollment if available
+        if latest_enrollment.grade:
+            student_data["grade"] = str(latest_enrollment.grade)
+        
+        # Get batch details
+        if latest_enrollment.batch:
+            try:
+                batch_doc = frappe.get_doc("Batch", latest_enrollment.batch)
+                student_data["batch"] = batch_doc.name1 if hasattr(batch_doc, 'name1') else None
+                
+                # Check if batch is active
+                batch_active = batch_doc.active if hasattr(batch_doc, 'active') else False
+                student_data["batch_active"] = "Yes" if batch_active else "No"
+            except Exception as e:
+                frappe.log_error(f"Error fetching batch: {str(e)}", "Check Student API Error")
+        
+        # Get course level and vertical details
+        if latest_enrollment.course:
+            try:
+                course_doc = frappe.get_doc("Course Level", latest_enrollment.course)
+                student_data["course_level"] = course_doc.name1 if hasattr(course_doc, 'name1') else None
+                
+                # Get course vertical
+                if hasattr(course_doc, 'vertical') and course_doc.vertical:
+                    try:
+                        vertical_doc = frappe.get_doc("Course Verticals", course_doc.vertical)
+                        student_data["course_vertical"] = vertical_doc.name1 if hasattr(vertical_doc, 'name1') else None
+                        student_data["course_vertical_short"] = vertical_doc.name2 if hasattr(vertical_doc, 'name2') else None
+                    except Exception as e:
+                        frappe.log_error(f"Error fetching vertical: {str(e)}", "Check Student API Error")
+            except Exception as e:
+                frappe.log_error(f"Error fetching course level: {str(e)}", "Check Student API Error")
+    
+    return student_data
+
+
+def _get_latest_enrollment(student):
+    """
+    Get the latest enrollment for a student based on date_joining.
+    
+    Args:
+        student: Student document
+        
+    Returns:
+        Enrollment child record or None
+    """
+    if not hasattr(student, 'enrollment') or not student.enrollment:
+        return None
+    
+    latest_enrollment = None
+    
+    for enrollment in student.enrollment:
+        if not latest_enrollment:
+            latest_enrollment = enrollment
+        elif enrollment.date_joining and latest_enrollment.date_joining:
+            if enrollment.date_joining > latest_enrollment.date_joining:
+                latest_enrollment = enrollment
+        elif enrollment.date_joining and not latest_enrollment.date_joining:
+            # Prefer enrollment with date_joining
+            latest_enrollment = enrollment
+    
+    return latest_enrollment
