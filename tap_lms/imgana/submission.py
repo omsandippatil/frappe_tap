@@ -290,57 +290,61 @@ def enqueue_submission(submission_id):
     Send submission details to RabbitMQ queue.
     The img_url now contains the GCS public URL.
     """
-    submission = frappe.get_doc("ImgSubmission", submission_id)
-    
-    # Payload with GCS public URL
-    payload = {
-        "submission_id": submission.name,
-        "assign_id": submission.assign_id,
-        "student_id": submission.student_id,
-        "img_url": submission.img_url,  # This is now the GCS public URL
-        # Optional: Add metadata for better detection
-        "created_at": str(submission.created_at)
-    }
-
-    # Get RabbitMQ settings from DocType
-    rabbitmq_config = get_rabbitmq_settings()
-
-    # Establish a connection to RabbitMQ
-    credentials = pika.PlainCredentials(
-        rabbitmq_config['username'], 
-        rabbitmq_config['password']
-    )
-    parameters = pika.ConnectionParameters(
-        rabbitmq_config['host'],
-        rabbitmq_config['port'],
-        rabbitmq_config['virtual_host'],
-        credentials
-    )
-    connection = pika.BlockingConnection(parameters)
-    channel = connection.channel()
-
-    # Declare the queue
     try:
-        # First try passive declaration to check if queue exists
-        channel.queue_declare(queue=rabbitmq_config['queue'],durable=True,passive=True)
-    except Exception:
-        # If it doesn't exist, declare it
-        channel.queue_declare(queue=rabbitmq_config['queue'], durable=True)
+        submission = frappe.get_doc("ImgSubmission", submission_id)
+        
+        # Payload with GCS public URL
+        payload = {
+            "submission_id": submission.name,
+            "assign_id": submission.assign_id,
+            "student_id": submission.student_id,
+            "img_url": submission.img_url,  # This is now the GCS public URL
+            # Optional: Add metadata for better detection
+            "created_at": str(submission.created_at)
+        }
+
+        # Get RabbitMQ settings from DocType
+        rabbitmq_config = get_rabbitmq_settings()
+
+        # Establish a connection to RabbitMQ
+        credentials = pika.PlainCredentials(
+            rabbitmq_config['username'], 
+            rabbitmq_config['password']
+        )
+        parameters = pika.ConnectionParameters(
+            rabbitmq_config['host'],
+            rabbitmq_config['port'],
+            rabbitmq_config['virtual_host'],
+            credentials
+        )
+        connection = pika.BlockingConnection(parameters)
+        channel = connection.channel()
+
+        # Declare the queue
+        try:
+            # First try passive declaration to check if queue exists
+            channel.queue_declare(queue=rabbitmq_config['queue'],durable=True,passive=True)
+        except Exception:
+            # If it doesn't exist, declare it
+            channel.queue_declare(queue=rabbitmq_config['queue'], durable=True)
 
 
-    # Publish the message to the queue
-    channel.basic_publish(
-        exchange='',
-        routing_key=rabbitmq_config['queue'],
-        body=json.dumps(payload)
-    )
+        # Publish the message to the queue
+        channel.basic_publish(
+            exchange='',
+            routing_key=rabbitmq_config['queue'],
+            body=json.dumps(payload)
+        )
 
-    # Close the connection
-    connection.close()
-    
-    frappe.logger("submission").info(
-        f"Enqueued submission {submission_id} with GCS URL: {submission.img_url}"
-    )
+        # Close the connection
+        connection.close()
+        
+        frappe.logger("submission").info(
+            f"Enqueued submission {submission_id} with GCS URL: {submission.img_url}"
+        )
+    except Exception as e:
+        frappe.logger("submission").error(f"Failed to enqueue submission {submission_id}: {str(e)}")
+        raise frappe.ValidationError(f"Failed to enqueue submission: {str(e)}")
 
 
 @frappe.whitelist(allow_guest=True)
