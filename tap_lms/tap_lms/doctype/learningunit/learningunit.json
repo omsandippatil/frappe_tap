@@ -10,6 +10,7 @@
  "field_order": [
   "unit_name",
   "unit_type",
+  "activity_type",
   "difficulty_tier",
   "course_vertical",
   "parent_unit",
@@ -22,7 +23,8 @@
   "estimated_duration",
   "completion_criteria",
   "status",
-  "certificate_on_completion"
+  "certificate_on_completion",
+  "sdg_alignment"
  ],
  "fields": [
   {
@@ -117,11 +119,23 @@
    "fieldtype": "Link",
    "label": "Course Vertical",
    "options": "Course Verticals"
+  },
+  {
+   "fieldname": "activity_type",
+   "fieldtype": "Select",
+   "label": "Activity Type",
+   "options": "engagement\nbaseline\nchallenge\nregular"
+  },
+  {
+   "fieldname": "sdg_alignment",
+   "fieldtype": "Table",
+   "label": "SDG Alignment",
+   "options": "LearningUnitSDG"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-11 16:21:09.258790",
+ "modified": "2026-02-19 14:25:49.932799",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "LearningUnit",
@@ -143,5 +157,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

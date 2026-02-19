@@ -39,7 +39,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-15 10:04:43.683137",
+ "modified": "2026-02-19 14:26:52.660009",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "QuizOption",
@@ -61,5 +61,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

@@ -33,7 +33,8 @@
   "mentor_role",
   "mentee_role",
   "preferred_time",
-  "preferred_day"
+  "preferred_day",
+  "swiftchat_id"
  ],
  "fields": [
   {
@@ -173,11 +174,16 @@
    "fieldtype": "Select",
    "label": "Preferred Day",
    "options": "Monday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday\nDaily"
+  },
+  {
+   "fieldname": "swiftchat_id",
+   "fieldtype": "Data",
+   "label": "SwiftChat ID"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-23 17:39:27.928124",
+ "modified": "2026-02-19 14:24:59.264586",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "Student",
