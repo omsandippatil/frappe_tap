@@ -20,7 +20,8 @@
   "glific_id",
   "phone_number",
   "course_level",
-  "teacher_role"
+  "teacher_role",
+  "swiftchat_id"
  ],
  "fields": [
   {
@@ -88,11 +89,16 @@
    "fieldtype": "Link",
    "label": "Teacher Batch",
    "options": "Batch"
+  },
+  {
+   "fieldname": "swiftchat_id",
+   "fieldtype": "Data",
+   "label": "SwiftChat ID"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-26 12:31:45.528830",
+ "modified": "2026-02-19 14:25:27.058718",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "Teacher",

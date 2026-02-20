@@ -141,7 +141,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-28 14:26:31.193444",
+ "modified": "2026-02-06 15:33:20.438137",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "StudentStageProgress",
@@ -163,5 +163,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

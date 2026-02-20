@@ -110,7 +110,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-27 17:53:59.424003",
+ "modified": "2026-02-19 14:26:05.192008",
  "modified_by": "Administrator",
  "module": "TAP LMS",
  "name": "VideoClass",
@@ -132,5 +132,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

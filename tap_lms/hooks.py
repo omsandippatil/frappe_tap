@@ -24,6 +24,11 @@ doc_events = {
     }
 }
 
+fixtures = [
+    {"dt": "SDG Goal", "filters": []},
+]
+
+
 # Scheduled Tasks
 scheduler_events = {
     "daily": [
