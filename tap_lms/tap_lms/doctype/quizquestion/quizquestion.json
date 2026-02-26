@@ -63,13 +63,13 @@
   },
   {
    "fieldname": "question",
-   "fieldtype": "Text Editor",
+   "fieldtype": "Small Text",
    "label": "Question"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-19 14:27:03.807041",
+ "modified": "2026-02-23 16:23:24.563434",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "QuizQuestion",

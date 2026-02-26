@@ -27,7 +27,17 @@
   "current_tier",
   "current_content_index",
   "is_on_remedial",
-  "remedial_attempts"
+  "remedial_attempts",
+  "active_content_type",
+  "active_content_id",
+  "content_started_at",
+  "active_quiz_attempt",
+  "current_question_index",
+  "question_started_at",
+  "total_content_completed",
+  "total_quizzes_passed",
+  "total_quizzes_failed",
+  "total_time_spent_seconds"
  ],
  "fields": [
   {
@@ -137,11 +147,63 @@
    "fieldname": "remedial_attempts",
    "fieldtype": "Int",
    "label": "Remedial Attempts"
+  },
+  {
+   "fieldname": "active_content_type",
+   "fieldtype": "Select",
+   "label": "Active Content Type",
+   "options": "VideoClass\nQuiz\nAssignment\nNoteContent\nCourseProject"
+  },
+  {
+   "fieldname": "active_content_id",
+   "fieldtype": "Data",
+   "label": "Active Content ID"
+  },
+  {
+   "fieldname": "content_started_at",
+   "fieldtype": "Datetime",
+   "label": "Content Started at"
+  },
+  {
+   "fieldname": "active_quiz_attempt",
+   "fieldtype": "Link",
+   "label": "Active Quiz Attempt",
+   "options": "StudentQuizAttempt"
+  },
+  {
+   "fieldname": "current_question_index",
+   "fieldtype": "Int",
+   "label": "Current Question Index"
+  },
+  {
+   "fieldname": "total_content_completed",
+   "fieldtype": "Int",
+   "label": "Total Content Completed"
+  },
+  {
+   "fieldname": "total_quizzes_passed",
+   "fieldtype": "Int",
+   "label": "Total Quizzes Passed"
+  },
+  {
+   "fieldname": "total_quizzes_failed",
+   "fieldtype": "Int",
+   "label": "Total Quizzes Failed"
+  },
+  {
+   "fieldname": "total_time_spent_seconds",
+   "fieldtype": "Int",
+   "label": "Total Time Spent Seconds"
+  },
+  {
+   "fieldname": "question_started_at",
+   "fieldtype": "Datetime",
+   "label": "Question Started At"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-06 15:33:20.438137",
+ "modified": "2026-02-25 16:19:17.163927",
  "modified_by": "Administrator",
  "module": "Tap Lms",
  "name": "StudentStageProgress",
