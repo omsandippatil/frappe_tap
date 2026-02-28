@@ -49,6 +49,16 @@ ACTIVITY_TYPE_MAP = {
     "hol":        "hol",
 }
 
+VALID_ACTIVITY_TYPES = {"engagement", "regular", "baseline", "challenge", "hol"}
+
+MASTERY_LEVEL_MAP = {
+    "Basic":        "Basic",
+    "Intermediate": "Proficient",
+    "Proficient":   "Proficient",
+    "Advanced":     "Advanced",
+    "Remedial":     "Basic",
+}
+
 SDG_LABEL_MAP = {
     1:  "No Poverty",
     2:  "Zero Hunger",
@@ -109,7 +119,12 @@ def norm_activity_type(raw):
     if not raw:
         return None
     key = str(raw).strip().lower()
-    return ACTIVITY_TYPE_MAP.get(key, str(raw).strip())
+    mapped = ACTIVITY_TYPE_MAP.get(key)
+    return mapped if mapped else None
+
+
+def norm_mastery_level(difficulty_tier):
+    return MASTERY_LEVEL_MAP.get(str(difficulty_tier).strip(), "Basic")
 
 
 def parse_sdg_list(raw):
@@ -122,6 +137,32 @@ def parse_sdg_list(raw):
         if 1 <= num <= 17:
             result.append(num)
     return list(dict.fromkeys(result))
+
+
+def make_unique_doc_name(doctype, base_name, max_len=140):
+    base_name = base_name[:max_len]
+    if not frappe.db.exists(doctype, base_name):
+        return base_name
+    counter = 1
+    while True:
+        suffix = "-{}".format(counter)
+        candidate = base_name[: max_len - len(suffix)] + suffix
+        if not frappe.db.exists(doctype, candidate):
+            return candidate
+        counter += 1
+
+
+def make_unique_field_value(doctype, field, base_value, max_len=140):
+    base_value = base_value[:max_len]
+    if not frappe.db.get_value(doctype, {field: base_value}, "name"):
+        return base_value
+    counter = 1
+    while True:
+        suffix = "-{}".format(counter)
+        candidate = base_value[: max_len - len(suffix)] + suffix
+        if not frappe.db.get_value(doctype, {field: candidate}, "name"):
+            return candidate
+        counter += 1
 
 
 def ensure_language(lang_name):
@@ -208,12 +249,16 @@ def get_or_create_vertical(key, is_hol=False):
         raise
 
 
-def get_or_create_course(vertical_key):
+def get_or_create_course(vertical_key, is_hol=False):
     mapping = COURSE_MAPPING.get(vertical_key)
     if not mapping:
         return None
     name1 = mapping["name1"]
     name2 = mapping["name2"]
+
+    if is_hol:
+        name1 = "{} HOL".format(name1)
+        name2 = "{} HOL".format(name2)
 
     existing = (
         frappe.db.get_value("Course", {"name2": name2}, "name")
@@ -266,7 +311,8 @@ def get_or_create_course_level(vertical_key, course, curriculum_type, level="1")
     vs_slug = slugify(vertical_name2(vertical_key))
     if is_hol:
         vs_slug = "{}-HOL".format(vs_slug)
-    doc_id = "{}-{}-{}-Level-{}".format(slugify(course), vs_slug, curr, level_str)[:140]
+    base_doc_id = "{}-{}-{}-Level-{}".format(slugify(course), vs_slug, curr, level_str)
+    doc_id = make_unique_doc_name("Course Level", base_doc_id)
 
     existing3 = frappe.db.get_value("Course Level", doc_id, "name")
     if existing3:
@@ -340,7 +386,8 @@ def get_or_create_learning_objective(activity_name, objective_text, outcomes_tex
     vs_slug = slugify(vertical_name2(vertical_key))
     if is_hol:
         vs_slug = "{}-HOL".format(vs_slug)
-    doc_name = "{}-{}-{}-LO".format(vs_slug, difficulty_tier, slugify(activity_name))[:140]
+    base_doc_name = "{}-{}-{}-LO".format(vs_slug, difficulty_tier, slugify(activity_name))
+    doc_name = make_unique_doc_name("Learning Objective", base_doc_name)
 
     desc = clean(outcomes_text) or clean(objective_text) or ""
 
@@ -383,11 +430,12 @@ def get_or_create_learning_unit(
     row_slug, activity_name, unit_type, difficulty_tier,
     unit_meta, status, competency_name, learning_obj_name, activity_type, is_hol,
 ):
-    unit_doc_name = slugify(row_slug)[:140] if row_slug else "{}-{}-{}".format(
+    base_unit_doc_name = slugify(row_slug)[:140] if row_slug else "{}-{}-{}".format(
         slugify(activity_name), difficulty_tier, course_level_name
     )[:140]
+    unit_doc_name = make_unique_doc_name("LearningUnit", base_unit_doc_name)
 
-    if frappe.db.exists("LearningUnit", unit_doc_name):
+    if frappe.db.exists("LearningUnit", unit_doc_name) and unit_doc_name == base_unit_doc_name:
         return unit_doc_name
 
     vertical_doc_name = get_or_create_vertical(vertical_key, is_hol=is_hol)
@@ -399,6 +447,7 @@ def get_or_create_learning_unit(
     real_world     = have_you_heard or outcomes
     estimated_dur  = clean((unit_meta or {}).get("estimated_duration", ""))
     normalized_at  = norm_activity_type(activity_type)
+    mastery_level  = norm_mastery_level(difficulty_tier)
 
     competencies = []
     if competency_name:
@@ -409,7 +458,7 @@ def get_or_create_learning_unit(
         objectives.append({
             "learning_objectives":  learning_obj_name,
             "importance_level":     "Primary",
-            "target_mastery_level": difficulty_tier or "Basic",
+            "target_mastery_level": mastery_level,
         })
 
     sdg_rows = []
@@ -502,6 +551,7 @@ def create_quiz_option(option_text, option_number, translations_data):
 
 def create_quiz_question(q_data, activity_name, q_index, prefix="AQ"):
     q_name = "{} {}{}QN{:04d}".format(activity_name, prefix, q_index, q_index)
+    q_name = make_unique_doc_name("QuizQuestion", q_name)
     if frappe.db.exists("QuizQuestion", q_name):
         return q_name
 
@@ -567,8 +617,13 @@ def create_quiz_question(q_data, activity_name, q_index, prefix="AQ"):
 
 
 def create_quiz(quiz_doc_name, quiz_display_name, questions_data, activity_name, difficulty_tier, status, prefix):
-    if frappe.db.exists("Quiz", quiz_doc_name):
-        return quiz_doc_name
+    quiz_doc_name = make_unique_doc_name("Quiz", quiz_doc_name)
+
+    existing_by_name = frappe.db.get_value("Quiz", {"quiz_name": quiz_display_name[:140]}, "name")
+    if existing_by_name:
+        return existing_by_name
+
+    unique_display_name = make_unique_field_value("Quiz", "quiz_name", quiz_display_name[:140])
 
     q_rows = []
     for i, q in enumerate(questions_data, 1):
@@ -585,7 +640,7 @@ def create_quiz(quiz_doc_name, quiz_display_name, questions_data, activity_name,
         doc = frappe.get_doc({
             "doctype":            "Quiz",
             "name":               quiz_doc_name,
-            "quiz_name":          quiz_display_name[:140],
+            "quiz_name":          unique_display_name,
             "difficulty_tier":    difficulty_tier or "Basic",
             "total_questions":    len(q_rows),
             "passing_score":      12,
@@ -612,7 +667,7 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
     if is_hol:
         vs_slug = "{}-HOL".format(vs_slug)
 
-    video_doc_name = (
+    base_video_doc_name = (
         slugify("{}-video".format(row_slug))[:140]
         if row_slug
         else "{}-{}-{}-{}".format(
@@ -620,8 +675,9 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
             vs_slug, difficulty_tier, slugify(activity_name)
         )[:140]
     )
+    video_doc_name = make_unique_doc_name("VideoClass", base_video_doc_name)
 
-    if frappe.db.exists("VideoClass", video_doc_name):
+    if frappe.db.exists("VideoClass", video_doc_name) and video_doc_name == base_video_doc_name:
         return video_doc_name
 
     vertical_doc_name   = get_or_create_vertical(vertical_key, is_hol=is_hol)
@@ -719,6 +775,7 @@ def link_content_to_unit(learning_unit_name, content_items, teacher_note):
         lu_doc = frappe.get_doc("LearningUnit", learning_unit_name)
         existing_keys = {(r.content_type, r.content) for r in (lu_doc.content_items or [])}
         changed = False
+        truncated_note = (teacher_note or "")[:140]
         for i, item in enumerate(content_items):
             key = (item["content_type"], item["content"])
             if key not in existing_keys:
@@ -727,7 +784,7 @@ def link_content_to_unit(learning_unit_name, content_items, teacher_note):
                     "content":          item["content"],
                     "is_optional":      0,
                     "order":            i + 1,
-                    "note_for_teacher": teacher_note if item["content_type"] == "VideoClass" else "",
+                    "note_for_teacher": truncated_note if item["content_type"] == "VideoClass" else "",
                 })
                 existing_keys.add(key)
                 changed = True
@@ -775,7 +832,7 @@ def migrate_activity(data):
             }
         created["vertical"] = vertical_name
 
-        course_doc_name = get_or_create_course(vertical_key)
+        course_doc_name = get_or_create_course(vertical_key, is_hol=is_hol)
         if course_doc_name:
             created["course"] = course_doc_name
 
@@ -806,6 +863,8 @@ def migrate_activity(data):
         if activity_quiz_questions:
             vs_slug     = slugify(vertical_name2(vertical_key))
             co_slug     = slugify(course)
+            if is_hol:
+                vs_slug = "{}-HOL".format(vs_slug)
             aq_doc_name = "{}-{}-{}-{}-AQ".format(co_slug, vs_slug, difficulty_tier, slugify(activity_name))[:140]
             activity_quiz_name = create_quiz(
                 aq_doc_name,
