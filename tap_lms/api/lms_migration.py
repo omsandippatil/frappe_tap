@@ -208,15 +208,12 @@ def ensure_sdg_goal(sdg_number):
         raise
 
 
-def get_or_create_vertical(key, is_hol=False):
+def get_or_create_vertical(key):
     mapping = VERTICAL_MAPPING.get(key)
     if not mapping:
         return None
     name1 = mapping["name1"]
     name2 = mapping["name2"]
-
-    if is_hol:
-        name2 = "{} HOL".format(name2)
 
     existing = (
         frappe.db.get_value("Course Verticals", {"name2": name2}, "name")
@@ -248,15 +245,12 @@ def get_or_create_vertical(key, is_hol=False):
         raise
 
 
-def get_or_create_course(vertical_key, is_hol=False):
+def get_or_create_course(vertical_key):
     mapping = COURSE_MAPPING.get(vertical_key)
     if not mapping:
         return None
     name1 = mapping["name1"]
     name2 = mapping["name2"]
-
-    if is_hol:
-        name2 = "{} HOL".format(name2)
 
     existing = (
         frappe.db.get_value("Course", {"name2": name2}, "name")
@@ -290,7 +284,7 @@ def get_or_create_course(vertical_key, is_hol=False):
 
 def get_or_create_course_level(vertical_key, course, curriculum_type, level="1"):
     is_hol = str(curriculum_type).strip().upper() == "HOL"
-    vertical_doc_name = get_or_create_vertical(vertical_key, is_hol=is_hol)
+    vertical_doc_name = get_or_create_vertical(vertical_key)
     if not vertical_doc_name:
         raise ValueError("Cannot resolve vertical for key: {}".format(vertical_key))
 
@@ -307,8 +301,6 @@ def get_or_create_course_level(vertical_key, course, curriculum_type, level="1")
         return existing2, name1
 
     vs_slug = slugify(vertical_name2(vertical_key))
-    if is_hol:
-        vs_slug = "{}-HOL".format(vs_slug)
     base_doc_id = "{}-{}-{}-Level-{}".format(slugify(course), vs_slug, curr, level_str)
     doc_id = make_unique_doc_name("Course Level", base_doc_id)
 
@@ -366,10 +358,10 @@ def get_or_create_competency(name_val):
         raise
 
 
-def get_or_create_learning_objective(activity_name, objective_text, outcomes_text, difficulty_tier, vertical_key, is_hol):
+def get_or_create_learning_objective(activity_name, objective_text, outcomes_text, difficulty_tier, vertical_key):
     if not activity_name:
         return None
-    vertical_doc_name = get_or_create_vertical(vertical_key, is_hol=is_hol)
+    vertical_doc_name = get_or_create_vertical(vertical_key)
     if not vertical_doc_name:
         return None
 
@@ -382,8 +374,6 @@ def get_or_create_learning_objective(activity_name, objective_text, outcomes_tex
         return existing
 
     vs_slug = slugify(vertical_name2(vertical_key))
-    if is_hol:
-        vs_slug = "{}-HOL".format(vs_slug)
     base_doc_name = "{}-{}-{}-LO".format(vs_slug, difficulty_tier, slugify(activity_name))
     doc_name = make_unique_doc_name("Learning Objective", base_doc_name)
 
@@ -426,7 +416,7 @@ def get_next_unit_order(course_level_name):
 def get_or_create_learning_unit(
     vertical_key, course_level_name, curriculum_type,
     row_slug, activity_name, unit_type, difficulty_tier,
-    unit_meta, status, competency_name, learning_obj_name, activity_type, is_hol,
+    unit_meta, status, competency_name, learning_obj_name, activity_type,
 ):
     base_unit_doc_name = slugify(row_slug)[:140] if row_slug else "{}-{}-{}".format(
         slugify(activity_name), difficulty_tier, course_level_name
@@ -436,7 +426,7 @@ def get_or_create_learning_unit(
     if frappe.db.exists("LearningUnit", unit_doc_name) and unit_doc_name == base_unit_doc_name:
         return unit_doc_name
 
-    vertical_doc_name = get_or_create_vertical(vertical_key, is_hol=is_hol)
+    vertical_doc_name = get_or_create_vertical(vertical_key)
     row_order          = get_next_unit_order(course_level_name)
 
     description    = clean((unit_meta or {}).get("content_knowledge", ""))
@@ -678,7 +668,7 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
     if frappe.db.exists("VideoClass", video_doc_name) and video_doc_name == base_video_doc_name:
         return video_doc_name
 
-    vertical_doc_name   = get_or_create_vertical(vertical_key, is_hol=is_hol)
+    vertical_doc_name   = get_or_create_vertical(vertical_key)
     yt_hinglish         = clean(video_data.get("youtube_hinglish",    ""))
     drive_hinglish      = clean(video_data.get("drive_hinglish",      ""))
     plio_hinglish       = clean(video_data.get("plio_hinglish",       ""))
@@ -821,7 +811,7 @@ def migrate_activity(data):
                 "created_records": {},
             }
 
-        vertical_name = get_or_create_vertical(vertical_key, is_hol=is_hol)
+        vertical_name = get_or_create_vertical(vertical_key)
         if not vertical_name:
             return {
                 "success":         False,
@@ -830,7 +820,7 @@ def migrate_activity(data):
             }
         created["vertical"] = vertical_name
 
-        course_doc_name = get_or_create_course(vertical_key, is_hol=is_hol)
+        course_doc_name = get_or_create_course(vertical_key)
         if course_doc_name:
             created["course"] = course_doc_name
 
@@ -851,7 +841,6 @@ def migrate_activity(data):
             clean(unit_meta.get("outcomes", "")),
             difficulty_tier,
             vertical_key,
-            is_hol,
         )
         if objective_name:
             created["learning_objective"] = objective_name
@@ -859,8 +848,8 @@ def migrate_activity(data):
         activity_quiz_questions = data.get("activity_quiz") or []
         activity_quiz_name = None
         if activity_quiz_questions:
-            vs_slug     = slugify(vertical_name2(vertical_key))
-            co_slug     = slugify(course)
+            vs_slug = slugify(vertical_name2(vertical_key))
+            co_slug = slugify(course)
             if is_hol:
                 vs_slug = "{}-HOL".format(vs_slug)
             aq_doc_name = "{}-{}-{}-{}-AQ".format(co_slug, vs_slug, difficulty_tier, slugify(activity_name))[:140]
@@ -912,7 +901,7 @@ def migrate_activity(data):
         learning_unit_name = get_or_create_learning_unit(
             vertical_key, course_level_name, curriculum_type,
             row_slug, activity_name, unit_type, difficulty_tier,
-            unit_meta, status, competency_name, objective_name, activity_type, is_hol,
+            unit_meta, status, competency_name, objective_name, activity_type,
         )
         if not learning_unit_name:
             return {"success": False, "message": "Failed to create LearningUnit", "created_records": created}
