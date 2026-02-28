@@ -216,12 +216,11 @@ def get_or_create_vertical(key, is_hol=False):
     name2 = mapping["name2"]
 
     if is_hol:
-        name1 = "{} HOL".format(name1)
         name2 = "{} HOL".format(name2)
 
     existing = (
         frappe.db.get_value("Course Verticals", {"name2": name2}, "name")
-        or frappe.db.get_value("Course Verticals", {"name1": name1}, "name")
+        or frappe.db.get_value("Course Verticals", {"name1": name1, "name2": name2}, "name")
     )
     if existing:
         return existing
@@ -242,7 +241,7 @@ def get_or_create_vertical(key, is_hol=False):
         frappe.db.rollback()
         existing = (
             frappe.db.get_value("Course Verticals", {"name2": name2}, "name")
-            or frappe.db.get_value("Course Verticals", {"name1": name1}, "name")
+            or frappe.db.get_value("Course Verticals", {"name1": name1, "name2": name2}, "name")
         )
         if existing:
             return existing
@@ -257,12 +256,11 @@ def get_or_create_course(vertical_key, is_hol=False):
     name2 = mapping["name2"]
 
     if is_hol:
-        name1 = "{} HOL".format(name1)
         name2 = "{} HOL".format(name2)
 
     existing = (
         frappe.db.get_value("Course", {"name2": name2}, "name")
-        or frappe.db.get_value("Course", {"name1": name1}, "name")
+        or frappe.db.get_value("Course", {"name1": name1, "name2": name2}, "name")
     )
     if existing:
         return existing
@@ -283,7 +281,7 @@ def get_or_create_course(vertical_key, is_hol=False):
         frappe.db.rollback()
         existing = (
             frappe.db.get_value("Course", {"name2": name2}, "name")
-            or frappe.db.get_value("Course", {"name1": name1}, "name")
+            or frappe.db.get_value("Course", {"name1": name1, "name2": name2}, "name")
         )
         if existing:
             return existing
