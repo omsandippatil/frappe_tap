@@ -80,6 +80,10 @@ SDG_LABEL_MAP = {
 }
 
 
+def strip_html(val):
+    return re.sub(r"<[^>]+>", "", val or "").strip()
+
+
 def clean(val):
     if val is None:
         return ""
@@ -384,7 +388,7 @@ def get_or_create_learning_objective(activity_name, objective_text, outcomes_tex
             "doctype":         "Learning Objective",
             "name":            doc_name,
             "objective_name":  activity_name[:140],
-            "description":     desc[:500] if desc else None,
+            "description":     desc or None,
             "subject":         vertical_doc_name,
             "difficulty_tier": difficulty_tier or "Basic",
         })
@@ -470,8 +474,8 @@ def get_or_create_learning_unit(
             "order":                  row_order,
             "status":                 status or "Published",
             "activity_type":          normalized_at,
-            "description":            description[:500] if description else None,
-            "real_world_connection":  real_world[:500] if real_world else None,
+            "description":            description or None,
+            "real_world_connection":  real_world or None,
             "estimated_duration":     estimated_dur or None,
             "competencies_addressed": competencies,
             "learning_objectives":    objectives,
@@ -672,7 +676,7 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
     yt_hinglish         = clean(video_data.get("youtube_hinglish",    ""))
     drive_hinglish      = clean(video_data.get("drive_hinglish",      ""))
     plio_hinglish       = clean(video_data.get("plio_hinglish",       ""))
-    transcript_hinglish = clean(video_data.get("transcript_hinglish", ""))
+    transcript_hinglish = strip_html(clean(video_data.get("transcript_hinglish", "")))
 
     trans_rows = []
     for lang_display, lang_key in [
@@ -683,8 +687,8 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
         yt_url    = clean(video_data.get("youtube_{}".format(lang_key),    ""))
         drive_url = clean(video_data.get("drive_{}".format(lang_key),      ""))
         plio_url  = clean(video_data.get("plio_{}".format(lang_key),       ""))
-        t_script  = clean(video_data.get("transcript_{}".format(lang_key), ""))
-        t_desc    = clean(video_data.get("description_{}".format(lang_key),""))
+        t_script  = strip_html(clean(video_data.get("transcript_{}".format(lang_key), "")))
+        t_desc    = strip_html(clean(video_data.get("description_{}".format(lang_key), "")))
 
         if not any([yt_url, drive_url, plio_url, t_script, t_desc]):
             continue
@@ -706,7 +710,7 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
     raw_valid    = clean(video_data.get("valid_invalid", "")).upper()
     video_status = "Draft" if raw_valid == "INVALID" else (status or "Published")
 
-    _desc_raw              = clean(video_data.get("description_english", ""))
+    _desc_raw              = strip_html(clean(video_data.get("description_english", "")))
     desc_val               = _desc_raw or None
     estimated_duration_val = clean(video_data.get("estimated_duration", "")) or None
     teacher_note_val       = clean(video_data.get("activity_note", ""))
@@ -744,6 +748,7 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
         if frappe.db.exists("VideoClass", video_doc_name):
             return video_doc_name
         raise
+
 
 def link_quiz_to_video(video_name, quiz_name):
     try:
