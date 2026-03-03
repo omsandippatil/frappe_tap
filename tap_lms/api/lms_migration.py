@@ -696,18 +696,18 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
         trans_rows.append({
             "language":               lang_doc,
             "translated_name":        activity_name[:140],
-            "translated_description": t_desc[:140] if t_desc else None,
+            "translated_description": t_desc or None,
             "video_youtube_url":      yt_url or None,
             "video_file":             drive_url or None,
             "video_plio_url":         plio_url or None,
-            "video_transcript":       t_script[:140] if t_script else None,
+            "video_transcript":       t_script or None,
         })
 
     raw_valid    = clean(video_data.get("valid_invalid", "")).upper()
     video_status = "Draft" if raw_valid == "INVALID" else (status or "Published")
 
     _desc_raw              = clean(video_data.get("description_english", ""))
-    desc_val               = _desc_raw[:500] if _desc_raw else None
+    desc_val               = _desc_raw or None
     estimated_duration_val = clean(video_data.get("estimated_duration", "")) or None
     teacher_note_val       = clean(video_data.get("activity_note", ""))
 
@@ -728,7 +728,7 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
             "video_youtube_url":  yt_hinglish or None,
             "video_file":         drive_hinglish or None,
             "video_plio_url":     plio_hinglish or None,
-            "video_transcript":   transcript_hinglish[:500] if transcript_hinglish else None,
+            "video_transcript":   transcript_hinglish or None,
             "estimated_duration": estimated_duration_val,
             "status":             video_status,
             "video_translations": trans_rows,
@@ -744,7 +744,6 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
         if frappe.db.exists("VideoClass", video_doc_name):
             return video_doc_name
         raise
-
 
 def link_quiz_to_video(video_name, quiz_name):
     try:
