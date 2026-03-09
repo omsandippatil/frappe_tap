@@ -134,11 +134,17 @@ def update_progress(progress_name: str, updates: dict):
 
 def get_first_learning_unit(course_level: str, week_no: int, tier: str) -> str:
     """Get first LU for a week/tier."""
+    # Join with LearningUnit to filter by difficulty_tier
     result = frappe.db.sql("""
-        SELECT learning_unit FROM `tabCourseLevelLU`
-        WHERE parent = %s AND parenttype = 'Course Level'
-          AND week_no = %s AND tier = %s
-        ORDER BY idx ASC LIMIT 1
+        SELECT lul.learning_unit 
+        FROM `tabLearningUnitList` lul
+        INNER JOIN `tabLearningUnit` lu ON lu.name = lul.learning_unit
+        WHERE lul.parent = %s 
+          AND lul.parenttype = 'Course Level'
+          AND lul.week_no = %s 
+          AND lu.difficulty_tier = %s
+        ORDER BY lul.idx ASC 
+        LIMIT 1
     """, (course_level, week_no, tier), as_dict=True)
     return result[0].learning_unit if result else None
 
@@ -146,25 +152,32 @@ def get_first_learning_unit(course_level: str, week_no: int, tier: str) -> str:
 def get_next_learning_unit(course_level: str, week_no: int, tier: str, after_lu: str) -> str:
     """Get next LU after current one in same week/tier."""
     current_idx = frappe.db.get_value(
-        "CourseLevelLU",
+        "LearningUnitList",
         {"parent": course_level, "parenttype": "Course Level", "learning_unit": after_lu},
         "idx"
     )
     if not current_idx:
         return None
     
+    # Join with LearningUnit to filter by difficulty_tier
     result = frappe.db.sql("""
-        SELECT learning_unit FROM `tabCourseLevelLU`
-        WHERE parent = %s AND parenttype = 'Course Level'
-          AND week_no = %s AND tier = %s AND idx > %s
-        ORDER BY idx ASC LIMIT 1
+        SELECT lul.learning_unit 
+        FROM `tabLearningUnitList` lul
+        INNER JOIN `tabLearningUnit` lu ON lu.name = lul.learning_unit
+        WHERE lul.parent = %s 
+          AND lul.parenttype = 'Course Level'
+          AND lul.week_no = %s 
+          AND lu.difficulty_tier = %s 
+          AND lul.idx > %s
+        ORDER BY lul.idx ASC 
+        LIMIT 1
     """, (course_level, week_no, tier, current_idx), as_dict=True)
     return result[0].learning_unit if result else None
 
 
 def check_week_exists(course_level: str, week_no: int) -> bool:
     """Check if a week exists in course level."""
-    return frappe.db.exists("CourseLevelLU", {
+    return frappe.db.exists("LearningUnitList", {
         "parent": course_level, "parenttype": "Course Level", "week_no": week_no
     })
 
@@ -865,13 +878,14 @@ def get_quiz_questions(quiz_doc) -> list:
     questions.sort(key=lambda q: getattr(q, 'question_number', q.idx))
     return questions
 
+
 def get_question_details(question_id: str, language: str = None) -> dict:
     """Get question details with translation support."""
     try:
         q = frappe.get_doc("QuizQuestion", question_id)
         
         # Get question text
-        question_text = q.question or q.question_name or ""
+        question_text = q.question or getattr(q, 'question_name', '') or ""
         
         # Check for translation
         if language and hasattr(q, 'question_translations') and q.question_translations:
@@ -884,7 +898,7 @@ def get_question_details(question_id: str, language: str = None) -> dict:
         from frappe.utils import strip_html_tags
         question_text = strip_html_tags(question_text) if question_text else ""
         
-        # Get options - options child table contains links to QuizOption
+        # Get options - options child table (QuizOptionList) contains links to QuizOption
         options = {"option_a": "", "option_b": "", "option_c": "", "option_d": ""}
         if hasattr(q, 'options') and q.options:
             for i, opt_row in enumerate(q.options[:4]):
