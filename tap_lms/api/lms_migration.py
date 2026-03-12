@@ -79,6 +79,55 @@ SDG_LABEL_MAP = {
     17: "Partnerships for the Goals",
 }
 
+LONG_TEXT_PATCHES = [
+    ("VideoTranslation", "translated_description"),
+    ("VideoTranslation", "translated_name"),
+    ("VideoTranslation", "video_transcript"),
+    ("VideoClass",       "description"),
+    ("VideoClass",       "video_transcript"),
+    ("LearningUnit",     "description"),
+    ("LearningUnit",     "real_world_connection"),
+    ("Learning Objective", "description"),
+    ("QuizQuestion",     "question"),
+    ("QuizQuestion",     "hint"),
+    ("QuizOption",       "option_text"),
+    ("QuizTranslation",  "translated_question"),
+    ("OptionTranslation","translated_option"),
+]
+
+_patches_applied = False
+
+
+def ensure_long_text_fields():
+    global _patches_applied
+    if _patches_applied:
+        return
+    for doctype, fieldname in LONG_TEXT_PATCHES:
+        try:
+            if not frappe.db.exists("DocType", doctype):
+                continue
+            meta = frappe.get_meta(doctype)
+            field = meta.get_field(fieldname)
+            if not field:
+                continue
+            if field.fieldtype in ("Long Text", "Text", "Text Editor", "Small Text"):
+                continue
+            dt_doc = frappe.get_doc("DocType", doctype)
+            for f in dt_doc.fields:
+                if f.fieldname == fieldname:
+                    f.fieldtype = "Long Text"
+                    break
+            dt_doc.save(ignore_permissions=True)
+            table_name = "tab{}".format(doctype)
+            frappe.db.sql(
+                "ALTER TABLE `{}` MODIFY COLUMN `{}` LONGTEXT".format(table_name, fieldname)
+            )
+            frappe.db.commit()
+            frappe.clear_cache(doctype=doctype)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "LongText Patch Error: {}.{}".format(doctype, fieldname))
+    _patches_applied = True
+
 
 def strip_html(val):
     return re.sub(r"<[^>]+>", "", val or "").strip()
@@ -529,7 +578,7 @@ def create_quiz_option(option_text, option_number, translations_data):
     try:
         doc = frappe.get_doc({
             "doctype":             "QuizOption",
-            "option_text":         (clean(option_text) or "Option {}".format(chr(64 + option_number)))[:500],
+            "option_text":         clean(option_text) or "Option {}".format(chr(64 + option_number)),
             "option_number":       option_number,
             "option_translations": trans_rows,
         })
@@ -699,7 +748,7 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
 
         trans_rows.append({
             "language":               lang_doc,
-            "translated_name":        activity_name[:140],
+            "translated_name":        activity_name,
             "translated_description": t_desc or None,
             "video_youtube_url":      yt_url or None,
             "video_file":             drive_url or None,
@@ -710,8 +759,7 @@ def create_video_class(activity_name, video_data, difficulty_tier, vertical_key,
     raw_valid    = clean(video_data.get("valid_invalid", "")).upper()
     video_status = "Draft" if raw_valid == "INVALID" else (status or "Published")
 
-    _desc_raw              = strip_html(clean(video_data.get("description_english", "")))
-    desc_val               = _desc_raw or None
+    desc_val               = strip_html(clean(video_data.get("description_english", ""))) or None
     estimated_duration_val = clean(video_data.get("estimated_duration", "")) or None
     teacher_note_val       = clean(video_data.get("activity_note", ""))
 
@@ -767,7 +815,6 @@ def link_content_to_unit(learning_unit_name, content_items, teacher_note):
         lu_doc = frappe.get_doc("LearningUnit", learning_unit_name)
         existing_keys = {(r.content_type, r.content) for r in (lu_doc.content_items or [])}
         changed = False
-        truncated_note = (teacher_note or "")[:140]
         for i, item in enumerate(content_items):
             key = (item["content_type"], item["content"])
             if key not in existing_keys:
@@ -776,7 +823,7 @@ def link_content_to_unit(learning_unit_name, content_items, teacher_note):
                     "content":          item["content"],
                     "is_optional":      0,
                     "order":            i + 1,
-                    "note_for_teacher": truncated_note if item["content_type"] == "VideoClass" else "",
+                    "note_for_teacher": teacher_note if item["content_type"] == "VideoClass" else "",
                 })
                 existing_keys.add(key)
                 changed = True
@@ -790,6 +837,8 @@ def link_content_to_unit(learning_unit_name, content_items, teacher_note):
 @frappe.whitelist(allow_guest=False)
 def migrate_activity(data):
     try:
+        ensure_long_text_fields()
+
         data = frappe.parse_json(data)
 
         vertical_key    = data.get("vertical", "")
