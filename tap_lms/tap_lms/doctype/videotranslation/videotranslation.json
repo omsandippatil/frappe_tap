@@ -25,12 +25,12 @@
   },
   {
    "fieldname": "translated_name",
-   "fieldtype": "Data",
+   "fieldtype": "Long Text",
    "label": "Translated Name"
   },
   {
    "fieldname": "translated_description",
-   "fieldtype": "Data",
+   "fieldtype": "Long Text",
    "label": "Translated Description"
   },
   {
@@ -50,7 +50,7 @@
   },
   {
    "fieldname": "video_transcript",
-   "fieldtype": "Data",
+   "fieldtype": "Long Text",
    "label": "Video Transcript"
   },
   {
