@@ -90,7 +90,7 @@ bench_is_running() {
 wait_for_http() {
   local deadline=$((SECONDS + WAIT_SECONDS))
 
-  until docker exec "$APP_CONTAINER" curl -fsSI --max-time 3 "$WEB_URL" >/dev/null 2>&1; do
+  until docker exec "$APP_CONTAINER" curl -fsSI -H "Host: $SITE" --max-time 3 "$WEB_URL" >/dev/null 2>&1; do
     [ "$SECONDS" -lt "$deadline" ] || die "Frappe did not respond at $WEB_URL within ${WAIT_SECONDS}s."
     sleep 2
   done
