@@ -1,0 +1,237 @@
+/* Voice AI Shared Common Navigation Bar */
+.voice-ai-common-navbar {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 12px 20px;
+    margin-bottom: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.voice-ai-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none !important;
+    cursor: pointer;
+}
+
+.voice-ai-brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.voice-ai-brand-text {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.voice-ai-brand-sub {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.voice-ai-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.voice-ai-nav-btn {
+    border: 1px solid transparent;
+    background: transparent;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.voice-ai-nav-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.voice-ai-nav-btn.active {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+    font-weight: 700;
+}
+
+.voice-ai-nav-btn.active i {
+    color: #2563eb;
+}
+
+.voice-ai-nav-divider {
+    height: 20px;
+    width: 1px;
+    background: #cbd5e1;
+    margin: 0 4px;
+}
+
+/* Voice AI Central Home Page Styling */
+.vcd-home-page-wrapper {
+    padding: 16px 24px 60px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #0f172a;
+    background: #f8fafc;
+    min-height: 100vh;
+}
+
+/* Hero Welcome Header */
+.vcd-home-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 16px;
+    padding: 32px 36px;
+    color: #ffffff;
+    margin-bottom: 28px;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12);
+    position: relative;
+    overflow: hidden;
+}
+.vcd-home-hero::after {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -10%;
+    width: 380px;
+    height: 380px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+}
+.vcd-home-hero-title {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+}
+.vcd-home-hero-desc {
+    color: #94a3b8;
+    font-size: 14.5px;
+    max-width: 680px;
+    line-height: 1.6;
+}
+
+/* Hero Launchpad Action Cards */
+.vcd-launchpad-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 28px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    transition: all 0.25s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+}
+.vcd-launchpad-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px -6px rgba(0,0,0,0.08);
+    border-color: #93c5fd;
+}
+.vcd-launchpad-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 18px;
+}
+.vcd-launchpad-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+.vcd-launchpad-desc {
+    color: #64748b;
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+.vcd-launchpad-btn {
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 20px;
+    border-radius: 10px;
+}
+
+/* Module Cards */
+.vcd-module-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 22px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    transition: all 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.vcd-module-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.vcd-module-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+.vcd-module-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+.vcd-module-count {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-left: auto;
+}
+.vcd-module-desc {
+    font-size: 12.5px;
+    color: #64748b;
+    line-height: 1.4;
+    margin-bottom: 16px;
+}
+
+/* Health Footer Card */
+.vcd-health-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 20px 24px;
+    border: 1px solid #e2e8f0;
+}
