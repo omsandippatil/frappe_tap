@@ -175,7 +175,7 @@ report_script_custom_doctypes = ["StudentStageProgress"]
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/tap_lms/css/voice_ai_nav.css"
+# app_include_css = "/assets/tap_lms/css/tap_lms.css"
 # app_include_js = "/assets/tap_lms/js/tap_lms.js"
 
 # include js, css files in header of web template
