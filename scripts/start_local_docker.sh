@@ -179,6 +179,10 @@ fi
 
 bench --site "$SITE_NAME" set-config developer_mode 1
 bench --site "$SITE_NAME" set-config host_name "http://tap_lms.localhost:${WEB_PORT:-8000}"
+bench set-config -g default_site "$SITE_NAME"
+if [[ ! -e sites/localhost ]]; then
+  ln -s "$SITE_NAME" sites/localhost
+fi
 
 set_single_value() {
   local doctype="$1"
@@ -225,6 +229,7 @@ set -euo pipefail
 cd /home/frappe/frappe-bench
 
 if ! pgrep -f "frappe.utils.bench_helper frappe serve --port 8000" >/dev/null; then
+  mkdir -p logs
   nohup bench start > logs/local-bench-start.log 2>&1 </dev/null &
   sleep 2
 fi

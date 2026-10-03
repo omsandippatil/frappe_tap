@@ -11,3 +11,5 @@ Postman/
 !.env.example
 env.local
 scripts/private/*
+lms-dev
+scratch_scripts.json
