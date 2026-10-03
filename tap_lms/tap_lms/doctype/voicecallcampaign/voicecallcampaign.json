@@ -20,6 +20,11 @@
         "col2",
         "language_filter",
         "nudge_type_filters",
+        "test_mode_section",
+        "is_test_campaign",
+        "test_phone_list",
+        "test_situation_override",
+        "test_override_call_window",
         "call_settings_section",
         "call_window_start_override",
         "call_window_end_override",
@@ -121,6 +126,41 @@
             "fieldtype": "Table",
             "label": "Nudge Type Filters",
             "options": "VoiceCallCampaignNudgeFilter"
+        },
+        {
+            "collapsible": 1,
+            "fieldname": "test_mode_section",
+            "fieldtype": "Section Break",
+            "label": "Test Mode"
+        },
+        {
+            "default": "0",
+            "fieldname": "is_test_campaign",
+            "fieldtype": "Check",
+            "label": "Is Test Campaign"
+        },
+        {
+            "depends_on": "eval:doc.is_test_campaign",
+            "fieldname": "test_phone_list",
+            "fieldtype": "Link",
+            "label": "Test Phone List",
+            "mandatory_depends_on": "eval:doc.is_test_campaign",
+            "options": "VoiceCallTestList"
+        },
+        {
+            "depends_on": "eval:doc.is_test_campaign",
+            "fieldname": "test_situation_override",
+            "fieldtype": "Select",
+            "label": "Test Situation",
+            "mandatory_depends_on": "eval:doc.is_test_campaign",
+            "options": "\nprogram_paused\ndeadline_live\nstreak_at_risk\ncomplex_submission_stuck\nreturning_not_submitted\ndropped_mid_flow\nfirst_timer\ncelebration"
+        },
+        {
+            "default": "0",
+            "depends_on": "eval:doc.is_test_campaign",
+            "fieldname": "test_override_call_window",
+            "fieldtype": "Check",
+            "label": "Ignore Call Window"
         },
         {
             "fieldname": "call_settings_section",
