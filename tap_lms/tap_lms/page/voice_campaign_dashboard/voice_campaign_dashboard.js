@@ -160,14 +160,14 @@ class VoiceOperationsDashboard {
                 <div class="col-md-3 col-sm-6 mb-3">
                     <div class="vcd-metric-card">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div class="vcd-metric-label">Active Campaigns</div>
+                            <div class="vcd-metric-label">Active Call Scripts</div>
                             <div class="vcd-metric-icon" style="background:#fef3c7; color:#d97706;">
                                 <i class="fa fa-bullhorn"></i>
                             </div>
                         </div>
                         <div class="vcd-metric-value" id="vcd-kpi-scripts">--</div>
-                        <div class="text-xs text-muted mt-2">
-                            <span class="text-primary font-weight-bold">32</span> pre-configured escalation templates
+                        <div class="text-xs text-muted mt-2" id="vcd-kpi-scripts-caption">
+                            ParentCallConfig templates (Vocallabs voice prompts)
                         </div>
                     </div>
                 </div>
@@ -332,11 +332,18 @@ class VoiceOperationsDashboard {
     renderKPIs() {
         var kpis = this.metrics.kpis || {};
         this.$wrapper.find('#vcd-kpi-calls').text(kpis.total_calls_dispatched || 0);
-        this.$wrapper.find('#vcd-kpi-connect-rate').text(`${kpis.connect_rate || 100}%`);
+        var rateText = (kpis.connect_rate === null || kpis.connect_rate === undefined)
+            ? '—'
+            : `${kpis.connect_rate}%`;
+        this.$wrapper.find('#vcd-kpi-connect-rate').text(rateText);
         this.$wrapper.find('#vcd-kpi-failed-count').text(kpis.failed_calls || 0);
         this.$wrapper.find('#vcd-kpi-students').text(kpis.total_students || 0);
         this.$wrapper.find('#vcd-kpi-enrollments').text(`${kpis.active_enrollments || 0} enrollments`);
-        this.$wrapper.find('#vcd-kpi-scripts').text(kpis.active_campaigns || 0);
+        var scriptCount = kpis.active_campaigns || 0;
+        this.$wrapper.find('#vcd-kpi-scripts').text(scriptCount);
+        this.$wrapper.find('#vcd-kpi-scripts-caption').text(
+            scriptCount + ' active in ParentCallConfig (Vocallabs voice prompts)'
+        );
     }
 
     renderLanguages() {
@@ -383,36 +390,38 @@ class VoiceOperationsDashboard {
 
         var logs = this.metrics.recent_event_logs || [];
         if (logs.length === 0) {
+            var days = (this.metrics && this.metrics.days_back) || 7;
             tbody.html(`
                 <tr>
-                    <td>Just now</td>
-                    <td><span class="badge badge-info">Vocallabs Dispatch</span></td>
-                    <td class="font-monospace">ST00000002 (Nigam)</td>
-                    <td>Standard Cohort</td>
-                    <td class="text-muted text-xs">Call dispatched successfully (da66f1b8-64f8-48e5)</td>
-                    <td style="text-align: right;"><span class="badge badge-success">Delivered</span></td>
-                </tr>
-                <tr>
-                    <td>Just now</td>
-                    <td><span class="badge badge-info">Vocallabs Dispatch</span></td>
-                    <td class="font-monospace">ST00000001 (Akash)</td>
-                    <td>Standard Cohort</td>
-                    <td class="text-muted text-xs">Call dispatched successfully (260116b6-a7ae-4d0e)</td>
-                    <td style="text-align: right;"><span class="badge badge-success">Delivered</span></td>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No voice call events in the last ${days} days.
+                        Dispatches appear as <code>escalation_sent</code> (parent call);
+                        outcomes as <code>parent_call_outcome</code> from the Vocallabs webhook.
+                    </td>
                 </tr>
             `);
             return;
         }
 
+        var badgeClass = {
+            success: 'badge-success',
+            warning: 'badge-warning',
+            danger: 'badge-danger',
+            info: 'badge-info',
+            secondary: 'badge-secondary',
+            primary: 'badge-primary'
+        };
+
         logs.forEach(function(l) {
+            var statusCls = badgeClass[l.status_class] || 'badge-secondary';
             var tr = `
                 <tr>
-                    <td class="text-muted text-xs">${l.creation ? l.creation.split('.')[0] : '-'}</td>
+                    <td class="text-muted text-xs">${l.creation ? String(l.creation).split('.')[0] : '-'}</td>
                     <td><span class="badge badge-primary">${l.event_type || 'Voice Event'}</span></td>
                     <td class="font-monospace font-weight-bold">${l.student || '-'}</td>
-                    <td class="text-secondary text-sm">${l.batch || 'Standard'}</td>
-                    <td class="text-muted text-xs">${l.details ? String(l.details).substring(0, 70) + '...' : '-'}</td>
-                    <td style="text-align: right;"><span class="badge badge-success">Completed</span></td>
+                    <td class="text-secondary text-sm">${l.batch || '-'}</td>
+                    <td class="text-muted text-xs">${l.summary || '-'}</td>
+                    <td style="text-align: right;"><span class="badge ${statusCls}">${l.status_label || '-'}</span></td>
                 </tr>
             `;
             tbody.append(tr);

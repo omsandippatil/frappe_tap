@@ -64,6 +64,13 @@ fi
 
 cd /home/frappe/frappe-bench
 
+# Bench venv points at ~/.pyenv/versions/<ver>; that tree is not in the bench
+# volume, so reinstall Python after image rebuilds or new dev containers.
+if [[ -n "$FRAPPE_PYTHON_VERSION" ]]; then
+  pyenv install -s "$FRAPPE_PYTHON_VERSION"
+  export PYENV_VERSION="$FRAPPE_PYTHON_VERSION"
+fi
+
 if [[ "$FRAPPE_BRANCH" == v14* || "$FRAPPE_BRANCH" == version-14* ]]; then
   python - <<\PY
 from pathlib import Path

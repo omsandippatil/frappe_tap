@@ -262,38 +262,15 @@ def launch_test_call(
             raise RuntimeError(f"{data.get('error')}: {data.get('message', '')}")
         return data
 
-    def find_prospect_by_phone_remote(target_phone):
-        target_digits = re.sub(r"\D", "", str(target_phone))[-10:]
-        try:
-            r = requests.get(
-                f"{service_url}/b2b/vocallabs/getContacts",
-                params={"prospect_group_id": settings.default_contact_group_id},
-                headers=headers,
-                timeout=30
-            )
-            if r.status_code == 200:
-                body = r.json()
-                data_wrap = body.get("data") if isinstance(body, dict) else body
-                prospects = []
-                if isinstance(data_wrap, dict):
-                    for k in ("prospects", "contacts", "rows"):
-                        if isinstance(data_wrap.get(k), list):
-                            prospects = data_wrap[k]
-                            break
-                elif isinstance(data_wrap, list):
-                    prospects = data_wrap
-
-                for p in prospects:
-                    if not isinstance(p, dict):
-                        continue
-                    p_phone = re.sub(r"\D", "", str(p.get("phone") or ""))
-                    if p_phone.endswith(target_digits):
-                        pid = p.get("id") or p.get("prospect_id")
-                        if pid:
-                            return str(pid)
-        except Exception:
-            pass
-        return None
+    def lookup_prospect_id(target_phone):
+        """Reuse production getContacts pagination (vocallabs_prospects shape)."""
+        return _lookup_prospect_id_by_phone(
+            service_url,
+            headers,
+            settings.client_id,
+            settings.default_contact_group_id,
+            target_phone,
+        )
 
     # Step 1: Resolve / Register Prospect
     try:
@@ -348,11 +325,13 @@ def launch_test_call(
             try:
                 add_resp = safe_post(f"{service_url}/b2b/vocallabs/addMultipleContactsToGroup", add_payload)
                 prospect_id = _extract_prospect_id(add_resp)
+                if not prospect_id and _is_duplicate_prospect_response(add_resp):
+                    prospect_id = lookup_prospect_id(clean_phone)
             except Exception:
-                prospect_id = find_prospect_by_phone_remote(clean_phone)
+                prospect_id = lookup_prospect_id(clean_phone)
 
             if not prospect_id:
-                prospect_id = find_prospect_by_phone_remote(clean_phone)
+                prospect_id = lookup_prospect_id(clean_phone)
 
         if not prospect_id:
             raise RuntimeError(f"Could not register or find phone {clean_phone} in Vocallabs contact group.")
