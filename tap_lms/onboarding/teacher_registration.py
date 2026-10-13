@@ -4,6 +4,7 @@ import time
 import frappe
 from tap_lms.onboarding.utils import (
     _get_all_school_rows,
+    _get_all_state_district_rows,
     _enqueue_glific_contact_sync,
     _ensure_teacher_enrollment,
     _get_language_id_to_name,
@@ -48,6 +49,19 @@ TRANSIENT_DB_CONFLICT_SNIPPETS = (
     "deadlock detected",
     "current transaction is aborted",
 )
+
+STATE_RESPONSE_PAYLOAD_MAP = {
+    "TELANGANA": {
+        "student_registration_url": "NULL",
+        "student_consent_url": "NULL",
+        "extra": "pdf"
+    },
+    "PUNJAB": {
+        "student_registration_url": "NULL",
+        "student_consent_url": "NULL",
+        "extra": "NULL"
+    }
+}
 
 
 def _iter_exception_chain(exc):
@@ -102,7 +116,28 @@ def _run_teacher_write_with_retry(operation, data, write_fn):
 
 
 @frappe.whitelist(allow_guest=True)
-def list_school_details():
+def list_state_districts():
+    data = _get_request_data()
+    try:
+        if not _validate_api_key_or_respond(data.get("api_key")):
+            return
+
+        locations = _get_all_state_district_rows()
+        states = sorted({location["state"] for location in locations})
+        _respond(200, {"states": states, "districts": locations})
+    except frappe.ValidationError:
+        frappe.db.rollback()
+        log_api_failure("list_state_districts", data, frappe.get_traceback())
+        raise
+    except Exception as exc:
+        frappe.db.rollback()
+        log_api_failure("list_state_districts", data, frappe.get_traceback())
+        frappe.log_error(frappe.get_traceback(), "list_state_districts failed")
+        _respond(500, {"status": "failure", "message": str(exc)})
+
+
+@frappe.whitelist(allow_guest=True)
+def list_school_details(state_name=None, district_name=None):
     data = _get_request_data()
     try:
         api_key = data.get("api_key")
@@ -110,7 +145,16 @@ def list_school_details():
         if not _validate_api_key_or_respond(api_key):
             return
 
-        schools = _get_all_school_rows()
+        state_name = str(state_name or data.get("state_name") or "").strip()
+        district_name = str(district_name or data.get("district_name") or "").strip()
+        if not state_name or not district_name:
+            _respond(400, {
+                "status": "failure",
+                "message": "state_name and district_name are required",
+            })
+            return
+
+        schools = _get_all_school_rows(state_name, district_name)
         _respond(200, {"schools": schools})
     except frappe.ValidationError:
         frappe.db.rollback()
@@ -169,8 +213,29 @@ def check_teacher_exists():
             )
             return
 
-        exists = bool(frappe.db.exists("Teacher", _phone_filter("phone_number", phone)))
-        _respond(200, {"exists": exists})
+        teacher_name = frappe.db.exists(
+            "Teacher", _phone_filter("phone_number", phone)
+        )
+        batch_number = ""
+        if teacher_name:
+            teacher = frappe.get_doc("Teacher", teacher_name)
+            current_year = frappe.utils.getdate().year
+            current_year_enrollments = [
+                enrollment
+                for enrollment in teacher.get("enrollment") or []
+                if enrollment.date_joining
+                and frappe.utils.getdate(enrollment.date_joining).year == current_year
+            ]
+            latest_enrollment = _get_latest_enrollment(
+                {"enrollment": current_year_enrollments}
+            )
+            if latest_enrollment:
+                batch_number = latest_enrollment.batch or ""
+
+        _respond(
+            200,
+            {"exists": bool(teacher_name), "batch_id": batch_number},
+        )
     except frappe.ValidationError:
         frappe.db.rollback()
         log_api_failure("check_teacher_exists", data, frappe.get_traceback())
@@ -402,17 +467,22 @@ def _teacher_whatsapp_response_once(phone_number):
     teacher.save(ignore_permissions=True)
     frappe.db.commit()
 
-    response_payload = {
-        "student_registration_url": (
-            f"http://registration.theapprenticeproject.org/student/"
-            f"{school_id}"
-        ),
-    }
-    if (school_row or {}).get("city") not in {"DoE Zone 27", "DoE Zone 28"}:
-        response_payload["student_consent_url"] = (
-            f"https://api.whatsapp.com/send?phone=918454812392&text=tapschool:"
-            f"{school_id}"
-        )
+    school_state = str((school_row or {}).get("state") or "").strip().upper()
+    response_payload = STATE_RESPONSE_PAYLOAD_MAP.get(school_state)
+    if response_payload:
+        response_payload = response_payload.copy()
+    else:
+        response_payload = {
+            "student_registration_url": (
+                f"http://registration.theapprenticeproject.org/student/"
+                f"{school_id}"
+            ),
+        }
+        if (school_row or {}).get("city") not in {"DoE Zone 27", "DoE Zone 28"}:
+            response_payload["student_consent_url"] = (
+                f"https://api.whatsapp.com/send?phone=918454812392&text=tapschool:"
+                f"{school_id}"
+            )
 
     _respond(200, response_payload)
     return
