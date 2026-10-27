@@ -242,7 +242,7 @@ class FeedbackConsumer:
 
             if is_batch_delivery_enabled():
                 # Feedback is saved; the Glific flow is started by the scheduled
-                # batch (tap_lms.imgana.feedback_delivery.dispatch, 3pm/9pm IST).
+                # batch (tap_lms.imgana.feedback_delivery, 3pm/4:30pm/9pm IST).
                 frappe.db.commit()
                 frappe.logger().info(
                     f"Feedback flow deferred to scheduled batch: submission_id={submission_id}"

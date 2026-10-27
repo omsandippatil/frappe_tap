@@ -83,13 +83,13 @@ scheduler_events = {
         # batched. No-op if "Enable Batch Feedback Delivery" is
         # unchecked in Feedback Delivery Settings.
         "0 15 * * *": [
-            "tap_lms.imgana.feedback_delivery.dispatch",
+            "tap_lms.imgana.feedback_delivery.dispatch_1500_ist",
         ],
         "30 16 * * *": [
-            "tap_lms.imgana.feedback_delivery.dispatch",
+            "tap_lms.imgana.feedback_delivery.dispatch_1630_ist",
         ],
         "0 21 * * *": [
-            "tap_lms.imgana.feedback_delivery.dispatch",
+            "tap_lms.imgana.feedback_delivery.dispatch_2100_ist",
         ],
         "30 20 * * *": [
             "tap_lms.tap_lms.doctype.student_sheet_registration_job."

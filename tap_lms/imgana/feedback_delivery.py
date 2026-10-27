@@ -3,8 +3,8 @@ Scheduled delivery of student feedback through Glific.
 
 The RabbitMQ FeedbackConsumer saves AI feedback as it arrives. When "Enable
 Batch Feedback Delivery" is on in Feedback Delivery Settings, the consumer no
-longer starts the Glific feedback flow; dispatch() does it at 3pm and 9pm IST
-(see hooks.py) for every submission that is ready.
+longer starts the Glific feedback flow; the scheduled dispatch wrappers run it
+at 3pm, 4:30pm, and 9pm IST (see hooks.py) for every submission that is ready.
 
 dispatch() creates a Feedback Delivery Run (which also stops two runs from
 overlapping) and enqueues the first page. process_chunk() delivers one page,
@@ -59,7 +59,7 @@ def is_batch_delivery_enabled():
 
 
 def dispatch():
-    """Cron entry point (3pm and 9pm IST). Starts a delivery run."""
+    """Start a feedback delivery run."""
     settings = frappe.get_cached_doc("Feedback Delivery Settings")
     if not settings.enable_batch_delivery:
         return
@@ -86,6 +86,20 @@ def dispatch():
     ).insert(ignore_permissions=True)
     frappe.db.commit()
     _enqueue_chunk(run.name, None, "", settings)
+
+
+# Frappe identifies Scheduled Job Type records by method name, so each cron
+# expression needs a distinct callable even though all windows do the same work.
+def dispatch_1500_ist():
+    return dispatch()
+
+
+def dispatch_1630_ist():
+    return dispatch()
+
+
+def dispatch_2100_ist():
+    return dispatch()
 
 
 def process_chunk(run_name, cursor_ts=None, cursor_name=""):

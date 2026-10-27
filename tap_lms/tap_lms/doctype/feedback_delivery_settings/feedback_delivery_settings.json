@@ -18,7 +18,7 @@
   "max_age_days"
  ],
  "fields": [
-  {"fieldname": "enable_batch_delivery", "fieldtype": "Check", "label": "Enable Batch Feedback Delivery", "default": "1", "description": "On: feedback is saved immediately but the Glific feedback flow is started only by the scheduled runs (3pm and 9pm IST). Off: the consumer starts the flow immediately, as before."},
+  {"fieldname": "enable_batch_delivery", "fieldtype": "Check", "label": "Enable Batch Feedback Delivery", "default": "1", "description": "On: feedback is saved immediately but the Glific feedback flow is started only by the scheduled runs (3pm, 4:30pm, and 9pm IST). Off: the consumer starts the flow immediately, as before."},
   {"fieldname": "section_throughput", "fieldtype": "Section Break", "label": "Throughput"},
   {"fieldname": "calls_per_second", "fieldtype": "Float", "label": "Glific Calls Per Second", "default": "2", "description": "Applies to every Glific call (contact lookups and flow starts)."},
   {"fieldname": "batch_size", "fieldtype": "Int", "label": "Submissions Per Page Job", "default": "100"},
