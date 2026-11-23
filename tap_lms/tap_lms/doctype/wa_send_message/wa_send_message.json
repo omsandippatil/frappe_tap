@@ -1,0 +1,209 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-10-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "wa_group",
+  "origin",
+  "status",
+  "column_break_wsm_1",
+  "sent_at",
+  "sent_in_test_mode",
+  "bq_status",
+  "origin_section",
+  "batch",
+  "wave_number",
+  "column_break_wsm_2",
+  "contact_phone",
+  "source_turn",
+  "auto_reply_rule",
+  "external_sender_phone",
+  "content_section",
+  "message_body",
+  "media_url",
+  "error",
+  "reconcile_section",
+  "glific_message_id",
+  "our_message_uuid"
+ ],
+ "fields": [
+  {
+   "fieldname": "wa_group",
+   "fieldtype": "Link",
+   "label": "WA Group",
+   "options": "WA Group",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "origin",
+   "fieldtype": "Select",
+   "label": "Origin",
+   "options": "Batch Wave\nDirect Reply\nAuto Reply Rule\nExternal",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "What produced this row. Batch Wave: a WA Send Batch wave. Direct Reply: a manual or AI-approved reply to one turn. Auto Reply Rule: a keyword-rule send. External: discovered via BigQuery, not sent from this dashboard."
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Sent\nFailed",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "A row is written only once there is an outcome. In-flight wave progress lives on WA Send Batch, never a Pending row here."
+  },
+  {
+   "fieldname": "column_break_wsm_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sent_at",
+   "fieldtype": "Datetime",
+   "label": "Sent At",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Single timestamp column for every origin, including External discoveries."
+  },
+  {
+   "fieldname": "sent_in_test_mode",
+   "fieldtype": "Check",
+   "label": "Sent In Test Mode",
+   "default": "0",
+   "description": "Irrelevant for External rows."
+  },
+  {
+   "fieldname": "bq_status",
+   "fieldtype": "Select",
+   "label": "BQ Status",
+   "options": "\nPending\nDelivered\nRead\nFailed",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "Filled by BigQuery echo reconciliation. Same role for every origin."
+  },
+  {
+   "fieldname": "origin_section",
+   "fieldtype": "Section Break",
+   "label": "Origin Detail"
+  },
+  {
+   "fieldname": "batch",
+   "fieldtype": "Link",
+   "label": "Batch",
+   "options": "WA Send Batch",
+   "depends_on": "eval:doc.origin=='Batch Wave'",
+   "description": "Set only when Origin is Batch Wave."
+  },
+  {
+   "fieldname": "wave_number",
+   "fieldtype": "Int",
+   "label": "Wave Number",
+   "depends_on": "eval:doc.origin=='Batch Wave'"
+  },
+  {
+   "fieldname": "column_break_wsm_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "contact_phone",
+   "fieldtype": "Data",
+   "label": "Contact Phone",
+   "depends_on": "eval:['Direct Reply','Auto Reply Rule'].includes(doc.origin)",
+   "in_standard_filter": 1,
+   "description": "Set only when Origin is Direct Reply or Auto Reply Rule. A batch wave or external send targets a group as a whole, not one contact."
+  },
+  {
+   "fieldname": "source_turn",
+   "fieldtype": "Link",
+   "label": "Source Turn",
+   "options": "WA Group Turn",
+   "depends_on": "eval:doc.origin=='Direct Reply'",
+   "in_standard_filter": 1,
+   "description": "Set when Origin is Direct Reply and it came from a specific turn (AI-approved or manual)."
+  },
+  {
+   "fieldname": "auto_reply_rule",
+   "fieldtype": "Link",
+   "label": "Auto Reply Rule",
+   "options": "WA Auto Reply Rule",
+   "depends_on": "eval:doc.origin=='Auto Reply Rule'"
+  },
+  {
+   "fieldname": "external_sender_phone",
+   "fieldtype": "Data",
+   "label": "External Sender Phone",
+   "depends_on": "eval:doc.origin=='External'",
+   "description": "The WA Managed Phone number that actually sent this, as seen in BigQuery."
+  },
+  {
+   "fieldname": "content_section",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "message_body",
+   "fieldtype": "Small Text",
+   "label": "Message Body"
+  },
+  {
+   "fieldname": "media_url",
+   "fieldtype": "Data",
+   "label": "Media URL"
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Small Text",
+   "label": "Error",
+   "depends_on": "eval:doc.status=='Failed'"
+  },
+  {
+   "fieldname": "reconcile_section",
+   "fieldtype": "Section Break",
+   "label": "Reconciliation"
+  },
+  {
+   "fieldname": "glific_message_id",
+   "fieldtype": "Data",
+   "label": "Glific Message ID",
+   "in_standard_filter": 1,
+   "description": "Dedup and reconcile key, same role for every origin."
+  },
+  {
+   "fieldname": "our_message_uuid",
+   "fieldtype": "Data",
+   "label": "Our Message UUID",
+   "in_standard_filter": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Send Message",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "sent_at",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

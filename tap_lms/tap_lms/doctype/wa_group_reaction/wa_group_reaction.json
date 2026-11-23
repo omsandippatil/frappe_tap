@@ -1,0 +1,132 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-10-18 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "wa_group",
+  "contact_phone",
+  "column_break_wgx_1",
+  "reaction_emoji",
+  "normalized_emoji",
+  "occurred_at",
+  "reacted_message_bq_id",
+  "bq_uuid",
+  "reacted_on_our_message",
+  "reacted_section",
+  "reacted_message_body",
+  "reacted_message_media_url",
+  "reacted_message_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "wa_group",
+   "fieldtype": "Link",
+   "label": "WA Group",
+   "options": "WA Group",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "contact_phone",
+   "fieldtype": "Data",
+   "label": "Contact Phone",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_wgx_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reaction_emoji",
+   "fieldtype": "Data",
+   "label": "Reaction Emoji",
+   "in_list_view": 1,
+   "description": "Raw emoji exactly as BigQuery returned it."
+  },
+  {
+   "fieldname": "normalized_emoji",
+   "fieldtype": "Data",
+   "label": "Normalized Emoji",
+   "in_standard_filter": 1,
+   "description": "reaction_emoji with variation selectors and skin-tone modifiers stripped, used for grouping and for the WA Reaction Emoji Count rollup."
+  },
+  {
+   "fieldname": "occurred_at",
+   "fieldtype": "Datetime",
+   "label": "Occurred At",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "reacted_message_bq_id",
+   "fieldtype": "Data",
+   "label": "Reacted Message BQ ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bq_uuid",
+   "fieldtype": "Data",
+   "label": "BQ UUID",
+   "in_standard_filter": 1,
+   "description": "bq_uuid from wa_reactions, used to detect and skip duplicate rows from BigQuery."
+  },
+  {
+   "fieldname": "reacted_on_our_message",
+   "fieldtype": "Check",
+   "label": "Reacted On Our Message",
+   "default": "0",
+   "in_standard_filter": 1,
+   "description": "1 if the reacted-to message was sent by us (a campaign send, an external send, or a direct reply), used to distinguish reactions on our sends from reactions on contact messages."
+  },
+  {
+   "fieldname": "reacted_section",
+   "fieldtype": "Section Break",
+   "label": "Reacted Message"
+  },
+  {
+   "fieldname": "reacted_message_body",
+   "fieldtype": "Small Text",
+   "label": "Reacted Message Body"
+  },
+  {
+   "fieldname": "reacted_message_media_url",
+   "fieldtype": "Data",
+   "label": "Reacted Message Media URL"
+  },
+  {
+   "fieldname": "reacted_message_type",
+   "fieldtype": "Data",
+   "label": "Reacted Message Type"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Group Reaction",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "occurred_at",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

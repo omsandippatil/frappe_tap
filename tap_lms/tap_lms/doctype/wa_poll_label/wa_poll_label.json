@@ -1,0 +1,84 @@
+{
+ "actions": [],
+ "autoname": "field:poll_uuid",
+ "creation": "2026-10-20 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "poll_uuid",
+  "glific_poll_id",
+  "label",
+  "column_break_wpl_1",
+  "poll_text",
+  "options_json",
+  "synced_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "poll_uuid",
+   "fieldtype": "Data",
+   "label": "Poll UUID",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "glific_poll_id",
+   "fieldtype": "Data",
+   "label": "Glific Poll ID",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_wpl_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "poll_text",
+   "fieldtype": "Small Text",
+   "label": "Poll Text"
+  },
+  {
+   "fieldname": "options_json",
+   "fieldtype": "Small Text",
+   "label": "Options JSON"
+  },
+  {
+   "fieldname": "synced_at",
+   "fieldtype": "Datetime",
+   "label": "Synced At",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-20 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Poll Label",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

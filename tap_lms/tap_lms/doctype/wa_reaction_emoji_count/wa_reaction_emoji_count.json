@@ -1,0 +1,96 @@
+{
+ "actions": [],
+ "autoname": "field:count_key",
+ "creation": "2026-10-22 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "count_key",
+  "wa_group",
+  "emoji",
+  "column_break_wrec_1",
+  "reaction_count",
+  "reacted_on_our_message_count",
+  "last_reacted_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "count_key",
+   "fieldtype": "Data",
+   "label": "Count Key",
+   "reqd": 1,
+   "unique": 1,
+   "description": "wa_group + normalized emoji, used as the doc name for atomic upsert."
+  },
+  {
+   "fieldname": "wa_group",
+   "fieldtype": "Link",
+   "label": "WA Group",
+   "options": "WA Group",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "emoji",
+   "fieldtype": "Data",
+   "label": "Emoji",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Normalized emoji (variation selectors stripped) so visually identical reactions count together."
+  },
+  {
+   "fieldname": "column_break_wrec_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reaction_count",
+   "fieldtype": "Int",
+   "label": "Reaction Count",
+   "default": "0",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "reacted_on_our_message_count",
+   "fieldtype": "Int",
+   "label": "Reacted On Our Message Count",
+   "default": "0",
+   "read_only": 1,
+   "description": "Subset of reaction_count where the reacted-to message was one we sent (campaign, external, or direct reply)."
+  },
+  {
+   "fieldname": "last_reacted_at",
+   "fieldtype": "Datetime",
+   "label": "Last Reacted At",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Reaction Emoji Count",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "reaction_count",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

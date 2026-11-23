@@ -1,0 +1,173 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-10-17 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "trigger_section",
+  "match_mode",
+  "trigger_keywords",
+  "event_type",
+  "column_break_tr_1",
+  "wa_group",
+  "applies_to_all",
+  "is_active",
+  "priority",
+  "cooldown_minutes",
+  "response_section",
+  "response_type",
+  "response_body",
+  "column_break_rs_1",
+  "response_flow_id",
+  "response_media_section",
+  "response_media_file",
+  "column_break_rm_1",
+  "response_media_url",
+  "response_media_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "trigger_section",
+   "fieldtype": "Section Break",
+   "label": "Trigger"
+  },
+  {
+   "fieldname": "match_mode",
+   "fieldtype": "Select",
+   "label": "Match Mode",
+   "options": "Exact Word\nContains Phrase\nStarts With\nAny Of\nRegex",
+   "default": "Contains Phrase",
+   "reqd": 1
+  },
+  {
+   "fieldname": "trigger_keywords",
+   "fieldtype": "Small Text",
+   "label": "Trigger Keywords",
+   "description": "Comma-separated for Any Of mode. A single pattern for every other mode."
+  },
+  {
+   "fieldname": "event_type",
+   "fieldtype": "Select",
+   "label": "Event Type",
+   "options": "\nText\nMedia\nVoice\nPoll Response\nReaction\nSystem\nFlow"
+  },
+  {
+   "fieldname": "column_break_tr_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "wa_group",
+   "fieldtype": "Link",
+   "label": "WA Group",
+   "options": "WA Group"
+  },
+  {
+   "fieldname": "applies_to_all",
+   "fieldtype": "Check",
+   "label": "Applies To All Groups",
+   "default": "0"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": "0"
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Int",
+   "label": "Priority",
+   "default": "0",
+   "description": "Higher fires first. A rule with priority 0 is skipped whenever AI drafting would otherwise handle the turn; set above 0 to always win over AI."
+  },
+  {
+   "fieldname": "cooldown_minutes",
+   "fieldtype": "Int",
+   "label": "Cooldown Minutes",
+   "default": "0",
+   "description": "Minimum minutes between this rule firing again for the same contact in the same group."
+  },
+  {
+   "fieldname": "response_section",
+   "fieldtype": "Section Break",
+   "label": "Response"
+  },
+  {
+   "fieldname": "response_type",
+   "fieldtype": "Select",
+   "label": "Response Type",
+   "options": "Text\nMedia\nFlow"
+  },
+  {
+   "fieldname": "response_body",
+   "fieldtype": "Small Text",
+   "label": "Response Body"
+  },
+  {
+   "fieldname": "column_break_rs_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "response_flow_id",
+   "fieldtype": "Data",
+   "label": "Response Flow ID",
+   "depends_on": "eval:doc.response_type=='Flow'"
+  },
+  {
+   "fieldname": "response_media_section",
+   "fieldtype": "Section Break",
+   "label": "Media Response",
+   "depends_on": "eval:doc.response_type=='Media'"
+  },
+  {
+   "fieldname": "response_media_file",
+   "fieldtype": "Attach",
+   "label": "Response Media File",
+   "description": "Upload a file. Takes precedence over Response Media URL if both are set."
+  },
+  {
+   "fieldname": "column_break_rm_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "response_media_url",
+   "fieldtype": "Data",
+   "label": "Response Media URL",
+   "description": "Alternative to Response Media File: a public URL Glific's servers can fetch directly."
+  },
+  {
+   "fieldname": "response_media_type",
+   "fieldtype": "Select",
+   "label": "Response Media Type",
+   "options": "image\nvideo\ndocument\naudio",
+   "description": "Auto-detected from the uploaded file's MIME type. Correct manually if detection is wrong."
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Auto Reply Rule",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "priority",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "creation": "2026-10-22 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "bq_id",
+  "item_type",
+  "occurred_at",
+  "column_break_wti_1",
+  "body",
+  "tagged_user_id",
+  "media_section",
+  "media_gcs_url",
+  "media_mime_type",
+  "column_break_wti_2",
+  "poll_choice",
+  "transcript"
+ ],
+ "fields": [
+  {
+   "fieldname": "bq_id",
+   "fieldtype": "Data",
+   "label": "BQ ID",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "item_type",
+   "fieldtype": "Select",
+   "label": "Item Type",
+   "options": "Text\nMedia\nVoice\nSticker\nPoll Response\nPoll Sent\nReaction",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "occurred_at",
+   "fieldtype": "Datetime",
+   "label": "Occurred At",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_wti_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Small Text",
+   "label": "Body"
+  },
+  {
+   "fieldname": "tagged_user_id",
+   "fieldtype": "Data",
+   "label": "Tagged User ID",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "media_section",
+   "fieldtype": "Section Break",
+   "label": "Media"
+  },
+  {
+   "fieldname": "media_gcs_url",
+   "fieldtype": "Data",
+   "label": "Media GCS URL"
+  },
+  {
+   "fieldname": "media_mime_type",
+   "fieldtype": "Select",
+   "label": "Media MIME Type",
+   "options": "\nimage\nvideo\naudio\nsticker"
+  },
+  {
+   "fieldname": "column_break_wti_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "poll_choice",
+   "fieldtype": "Data",
+   "label": "Poll Choice"
+  },
+  {
+   "fieldname": "transcript",
+   "fieldtype": "Small Text",
+   "label": "Transcript"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Group Turn Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 0
+}

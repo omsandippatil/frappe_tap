@@ -1,0 +1,191 @@
+{
+ "actions": [],
+ "autoname": "field:glific_group_id",
+ "creation": "2026-10-17 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "glific_group_id",
+  "group_name",
+  "wa_managed_phone",
+  "column_break_wg_1",
+  "sync_status",
+  "is_enabled",
+  "member_count",
+  "last_message_at",
+  "disabled_reason",
+  "targeting_section",
+  "school",
+  "group_language",
+  "column_break_wg_2",
+  "district",
+  "city",
+  "state",
+  "members_section",
+  "group_members",
+  "group_members_synced_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "glific_group_id",
+   "fieldtype": "Data",
+   "label": "Glific Group ID",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "group_name",
+   "fieldtype": "Data",
+   "label": "Group Name",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "wa_managed_phone",
+   "fieldtype": "Link",
+   "label": "WA Managed Phone",
+   "options": "WA Managed Phone"
+  },
+  {
+   "fieldname": "column_break_wg_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sync_status",
+   "fieldtype": "Select",
+   "label": "Sync Status",
+   "options": "Active\nInactive\nUnknown",
+   "default": "Unknown",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Written only by the directory sync from Glific wa_groups_phones membership activity. Not hand-maintained."
+  },
+  {
+   "fieldname": "is_enabled",
+   "fieldtype": "Check",
+   "label": "Is Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Human-owned. Every group picker, filter dropdown and campaign target resolver includes only enabled groups by default. Never changed by the directory sync."
+  },
+  {
+   "fieldname": "member_count",
+   "fieldtype": "Int",
+   "label": "Member Count",
+   "read_only": 1,
+   "description": "Participant count from Glific's last directory sync (wa_groups_phones / Maytapi getGroups)."
+  },
+  {
+   "fieldname": "last_message_at",
+   "fieldtype": "Datetime",
+   "label": "Last Message At",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "disabled_reason",
+   "fieldtype": "Small Text",
+   "label": "Disabled Reason",
+   "depends_on": "eval:!doc.is_enabled",
+   "description": "Why this group is disabled, e.g. school closed, duplicate group."
+  },
+  {
+   "fieldname": "targeting_section",
+   "fieldtype": "Section Break",
+   "label": "Targeting"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "in_standard_filter": 1,
+   "description": "Optional, filterable targeting tag. A group may be shared across schools or belong to none. District/City/State below are the authoritative geo targeting fields and are never re-derived from this after creation."
+  },
+  {
+   "fieldname": "group_language",
+   "fieldtype": "Link",
+   "label": "Group Language",
+   "options": "TAP Language",
+   "description": "Overrides the contact's own language for AI reply routing when set. Also used to pick which language variant of a multi-language poll send this group receives."
+  },
+  {
+   "fieldname": "column_break_wg_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "District",
+   "in_standard_filter": 1,
+   "description": "Authoritative targeting field for this group. Defaults once from School at creation if blank, then owned directly here — edit this field, not School, when a group's coverage changes."
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Link",
+   "label": "City",
+   "options": "City",
+   "in_standard_filter": 1,
+   "description": "Authoritative targeting field for this group. See District."
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Link",
+   "label": "State",
+   "options": "State",
+   "in_standard_filter": 1,
+   "description": "Authoritative targeting field for this group. See District."
+  },
+  {
+   "fieldname": "members_section",
+   "fieldtype": "Section Break",
+   "label": "Group Members",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "group_members",
+   "fieldtype": "Table",
+   "label": "Group Members",
+   "options": "WA Group Member",
+   "read_only": 1,
+   "description": "Teachers and Students whose phone number matches a message sender seen in this group. Rebuilt by the Refresh Members action, not synced automatically on every message."
+  },
+  {
+   "fieldname": "group_members_synced_at",
+   "fieldtype": "Datetime",
+   "label": "Group Members Last Synced At",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Group",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,184 @@
+{
+ "actions": [],
+ "autoname": "field:rollup_key",
+ "creation": "2026-10-18 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "rollup_key",
+  "wa_group",
+  "bucket_datetime",
+  "column_break_wer_1",
+  "text_count",
+  "media_count",
+  "voice_count",
+  "column_break_wer_2",
+  "poll_response_count",
+  "reaction_count",
+  "sticker_count",
+  "tagged_reply_count",
+  "ai_section",
+  "ai_turns_drafted",
+  "ai_english_turns",
+  "column_break_wer_3",
+  "ai_indic_turns",
+  "ai_indic_fallback_turns",
+  "ai_vision_calls",
+  "ai_voice_calls",
+  "ai_failed_turns"
+ ],
+ "fields": [
+  {
+   "fieldname": "rollup_key",
+   "fieldtype": "Data",
+   "label": "Rollup Key",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "wa_group",
+   "fieldtype": "Link",
+   "label": "WA Group",
+   "options": "WA Group",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "bucket_datetime",
+   "fieldtype": "Datetime",
+   "label": "Bucket Datetime",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_wer_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "text_count",
+   "fieldtype": "Int",
+   "label": "Text Count",
+   "default": "0"
+  },
+  {
+   "fieldname": "media_count",
+   "fieldtype": "Int",
+   "label": "Media Count",
+   "default": "0"
+  },
+  {
+   "fieldname": "voice_count",
+   "fieldtype": "Int",
+   "label": "Voice Count",
+   "default": "0"
+  },
+  {
+   "fieldname": "column_break_wer_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "poll_response_count",
+   "fieldtype": "Int",
+   "label": "Poll Response Count",
+   "default": "0"
+  },
+  {
+   "fieldname": "reaction_count",
+   "fieldtype": "Int",
+   "label": "Reaction Count",
+   "default": "0"
+  },
+  {
+   "fieldname": "sticker_count",
+   "fieldtype": "Int",
+   "label": "Sticker Count",
+   "default": "0"
+  },
+  {
+   "fieldname": "tagged_reply_count",
+   "fieldtype": "Int",
+   "label": "Tagged Reply Count",
+   "default": "0",
+   "description": "Includes replies sent by AI turns, auto-reply rules, and manual dashboard sends."
+  },
+  {
+   "fieldname": "ai_section",
+   "fieldtype": "Section Break",
+   "label": "AI"
+  },
+  {
+   "fieldname": "ai_turns_drafted",
+   "fieldtype": "Int",
+   "label": "AI Turns Drafted",
+   "default": "0"
+  },
+  {
+   "fieldname": "ai_english_turns",
+   "fieldtype": "Int",
+   "label": "AI English Turns",
+   "default": "0"
+  },
+  {
+   "fieldname": "column_break_wer_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ai_indic_turns",
+   "fieldtype": "Int",
+   "label": "AI Indic Turns",
+   "default": "0"
+  },
+  {
+   "fieldname": "ai_indic_fallback_turns",
+   "fieldtype": "Int",
+   "label": "AI Indic Fallback Turns",
+   "default": "0",
+   "description": "Turns whose language resolved to an Indic code but used the English model because no Indic model was configured."
+  },
+  {
+   "fieldname": "ai_vision_calls",
+   "fieldtype": "Int",
+   "label": "AI Vision Calls",
+   "default": "0"
+  },
+  {
+   "fieldname": "ai_voice_calls",
+   "fieldtype": "Int",
+   "label": "AI Voice Calls",
+   "default": "0"
+  },
+  {
+   "fieldname": "ai_failed_turns",
+   "fieldtype": "Int",
+   "label": "AI Failed Turns",
+   "default": "0",
+   "description": "Turns where AI drafting raised an exception and the turn was left Open for retry."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-20 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Event Rollup",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "bucket_datetime",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

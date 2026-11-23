@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "autoname": "field:media_key",
+ "creation": "2026-10-19 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "media_key",
+  "wa_group",
+  "source_turn",
+  "column_break_wm_1",
+  "bq_id",
+  "is_processed",
+  "category_section",
+  "ai_category",
+  "ai_category_confidence",
+  "column_break_wm_2",
+  "category_override",
+  "category_source"
+ ],
+ "fields": [
+  {
+   "fieldname": "media_key",
+   "fieldtype": "Data",
+   "label": "Media Key",
+   "reqd": 1,
+   "unique": 1,
+   "description": "Same as BQ ID, used as the doc name so re-ingestion of the same message is a no-op upsert."
+  },
+  {
+   "fieldname": "wa_group",
+   "fieldtype": "Link",
+   "label": "WA Group",
+   "options": "WA Group",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "source_turn",
+   "fieldtype": "Link",
+   "label": "Source Turn",
+   "options": "WA Group Turn",
+   "reqd": 1,
+   "description": "The only way to reach this media's file. URL, MIME type, caption, timestamp and contact are all read by joining to this turn's items on bq_id, never copied here."
+  },
+  {
+   "fieldname": "column_break_wm_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bq_id",
+   "fieldtype": "Data",
+   "label": "BQ ID",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "description": "Join key back to the exact WA Group Turn Item row: parent = source_turn, bq_id = bq_id."
+  },
+  {
+   "fieldname": "is_processed",
+   "fieldtype": "Check",
+   "label": "Is Processed",
+   "default": "0",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "1 once this media has an AI or manual category assigned."
+  },
+  {
+   "fieldname": "category_section",
+   "fieldtype": "Section Break",
+   "label": "Category"
+  },
+  {
+   "fieldname": "ai_category",
+   "fieldtype": "Select",
+   "label": "AI Category",
+   "options": "\nSchool Activity\nPoster\nSupport\nEvent\nUnnecessary\nOther",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "ai_category_confidence",
+   "fieldtype": "Select",
+   "label": "AI Category Confidence",
+   "options": "\nHigh\nMedium\nLow",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_wm_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "category_override",
+   "fieldtype": "Select",
+   "label": "Category Override",
+   "options": "\nSchool Activity\nPoster\nSupport\nEvent\nUnnecessary\nOther",
+   "description": "Set this to correct the AI category from the dashboard gallery. Leave blank to keep the AI's category."
+  },
+  {
+   "fieldname": "category_source",
+   "fieldtype": "Select",
+   "label": "Category Source",
+   "options": "AI\nManual",
+   "default": "AI",
+   "read_only": 1,
+   "in_standard_filter": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Media",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-10-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "bq_uuid",
+  "wa_message_id",
+  "phone",
+  "column_break_wrrq_1",
+  "reaction",
+  "body",
+  "inserted_at",
+  "retry_attempts"
+ ],
+ "fields": [
+  {
+   "fieldname": "bq_uuid",
+   "fieldtype": "Data",
+   "label": "BQ UUID",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "wa_message_id",
+   "fieldtype": "Data",
+   "label": "WA Message ID"
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_wrrq_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reaction",
+   "fieldtype": "Data",
+   "label": "Reaction",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Small Text",
+   "label": "Reacted Message Body"
+  },
+  {
+   "fieldname": "inserted_at",
+   "fieldtype": "Datetime",
+   "label": "Inserted At",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "retry_attempts",
+   "fieldtype": "Int",
+   "label": "Retry Attempts",
+   "default": "0",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Reactions whose WA Group could not be resolved yet, waiting to be retried on the next pull. Purged daily once attempts are exhausted."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Reaction Retry Queue",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "inserted_at",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

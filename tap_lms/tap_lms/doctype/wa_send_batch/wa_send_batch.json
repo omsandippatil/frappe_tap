@@ -1,0 +1,333 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-10-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "send_kind",
+  "target_type",
+  "column_break_wsb_1",
+  "status",
+  "scheduled_send_at",
+  "target_section",
+  "wa_group",
+  "wa_group_collection",
+  "column_break_wsb_2",
+  "district",
+  "city",
+  "state",
+  "school",
+  "content_section",
+  "message_body",
+  "column_break_wsb_3",
+  "media_file",
+  "media_url",
+  "media_type",
+  "flow_section",
+  "glific_flow_id",
+  "poll_section",
+  "poll_uuid",
+  "is_multi_language_poll",
+  "poll_languages",
+  "poll_response_window_hours",
+  "wave_section",
+  "wave_size",
+  "wave_gap_minutes",
+  "column_break_wsb_4",
+  "resolved_target_groups",
+  "total_groups",
+  "waves_total",
+  "waves_sent",
+  "next_wave_at",
+  "reach_section",
+  "real_target_group_count",
+  "sent_in_test_mode",
+  "cancelled_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "in_list_view": 1,
+   "description": "Auto-generated: send kind + target label + creation time."
+  },
+  {
+   "fieldname": "send_kind",
+   "fieldtype": "Select",
+   "label": "Send Kind",
+   "options": "Text\nMedia\nFlow\nPoll",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "target_type",
+   "fieldtype": "Select",
+   "label": "Target Type",
+   "options": "Group\nCollection\nGeo",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_wsb_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nScheduled\nThrottling\nSent\nPartially Failed\nFailed\nCancelled",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "scheduled_send_at",
+   "fieldtype": "Datetime",
+   "label": "Scheduled Send At",
+   "description": "When this batch's first wave starts. Blank while Draft. Set to the time Schedule/Send Now was pressed."
+  },
+  {
+   "fieldname": "target_section",
+   "fieldtype": "Section Break",
+   "label": "Target"
+  },
+  {
+   "fieldname": "wa_group",
+   "fieldtype": "Link",
+   "label": "WA Group",
+   "options": "WA Group",
+   "depends_on": "eval:doc.target_type=='Group'"
+  },
+  {
+   "fieldname": "wa_group_collection",
+   "fieldtype": "Link",
+   "label": "WA Group Collection",
+   "options": "WA Group Collection",
+   "depends_on": "eval:doc.target_type=='Collection'"
+  },
+  {
+   "fieldname": "column_break_wsb_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "District",
+   "depends_on": "eval:doc.target_type=='Geo'"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Link",
+   "label": "City",
+   "options": "City",
+   "depends_on": "eval:doc.target_type=='Geo'"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Link",
+   "label": "State",
+   "options": "State",
+   "depends_on": "eval:doc.target_type=='Geo'"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School",
+   "depends_on": "eval:doc.target_type=='Geo'"
+  },
+  {
+   "fieldname": "content_section",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "message_body",
+   "fieldtype": "Text",
+   "label": "Message Body",
+   "depends_on": "eval:['Text','Media'].includes(doc.send_kind)"
+  },
+  {
+   "fieldname": "column_break_wsb_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "media_file",
+   "fieldtype": "Attach",
+   "label": "Media File",
+   "depends_on": "eval:doc.send_kind=='Media'",
+   "description": "Upload a file from this device. Takes precedence over Media URL if both are set."
+  },
+  {
+   "fieldname": "media_url",
+   "fieldtype": "Data",
+   "label": "Media URL",
+   "depends_on": "eval:doc.send_kind=='Media'",
+   "description": "Alternative to Media File: a public URL Glific's servers can fetch directly."
+  },
+  {
+   "fieldname": "media_type",
+   "fieldtype": "Select",
+   "label": "Media Type",
+   "options": "image\nvideo\ndocument\naudio",
+   "depends_on": "eval:doc.send_kind=='Media'",
+   "description": "Auto-detected from the uploaded file's MIME type. Correct manually if detection is wrong."
+  },
+  {
+   "fieldname": "flow_section",
+   "fieldtype": "Section Break",
+   "label": "Flow",
+   "depends_on": "eval:doc.send_kind=='Flow'"
+  },
+  {
+   "fieldname": "glific_flow_id",
+   "fieldtype": "Data",
+   "label": "Glific Flow ID"
+  },
+  {
+   "fieldname": "poll_section",
+   "fieldtype": "Section Break",
+   "label": "Poll",
+   "depends_on": "eval:doc.send_kind=='Poll'"
+  },
+  {
+   "fieldname": "poll_uuid",
+   "fieldtype": "Data",
+   "label": "Poll UUID",
+   "depends_on": "eval:doc.send_kind=='Poll' && !doc.is_multi_language_poll",
+   "description": "Single poll sent to every targeted group regardless of language."
+  },
+  {
+   "fieldname": "is_multi_language_poll",
+   "fieldtype": "Check",
+   "label": "Multi-Language Poll",
+   "default": "0",
+   "description": "Send a different poll variant per group, matched on each group's Group Language."
+  },
+  {
+   "fieldname": "poll_languages",
+   "fieldtype": "Table",
+   "label": "Poll Language Variants",
+   "options": "WA Campaign Poll Language",
+   "depends_on": "eval:doc.send_kind=='Poll' && doc.is_multi_language_poll",
+   "description": "One row per language. Exactly one row should be marked Default, used for any targeted group with no Group Language set or whose language has no matching row here."
+  },
+  {
+   "fieldname": "poll_response_window_hours",
+   "fieldtype": "Int",
+   "label": "Poll Response Window Hours",
+   "default": "4",
+   "depends_on": "eval:doc.send_kind=='Poll'",
+   "description": "How many hours after this poll is sent a reply from a targeted group still counts as a response to this campaign (sets WA Group Turn.related_campaign). Defaults to 4 hours if left blank."
+  },
+  {
+   "fieldname": "wave_section",
+   "fieldtype": "Section Break",
+   "label": "Throttling"
+  },
+  {
+   "fieldname": "wave_size",
+   "fieldtype": "Int",
+   "label": "Wave Size",
+   "description": "Groups sent per wave. Defaults from WA Bot Settings. Only relevant when the resolved target exceeds one wave."
+  },
+  {
+   "fieldname": "wave_gap_minutes",
+   "fieldtype": "Int",
+   "label": "Wave Gap Minutes",
+   "description": "Minutes between waves. Defaults from WA Bot Settings. Editable live, even mid-send."
+  },
+  {
+   "fieldname": "column_break_wsb_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "resolved_target_groups",
+   "fieldtype": "Long Text",
+   "label": "Resolved Target Groups",
+   "read_only": 1,
+   "description": "JSON array of WA Group names, resolved once when the batch is scheduled, not at draft time. Wave membership is a slice of this list, never a separate stored row."
+  },
+  {
+   "fieldname": "total_groups",
+   "fieldtype": "Int",
+   "label": "Total Groups",
+   "read_only": 1
+  },
+  {
+   "fieldname": "waves_total",
+   "fieldtype": "Int",
+   "label": "Waves Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "waves_sent",
+   "fieldtype": "Int",
+   "label": "Waves Sent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "next_wave_at",
+   "fieldtype": "Datetime",
+   "label": "Next Wave At",
+   "read_only": 1,
+   "description": "Polled by the frontend to show time remaining until the next wave fires."
+  },
+  {
+   "fieldname": "reach_section",
+   "fieldtype": "Section Break",
+   "label": "Reach"
+  },
+  {
+   "fieldname": "real_target_group_count",
+   "fieldtype": "Int",
+   "label": "Real Target Group Count",
+   "read_only": 1,
+   "description": "Number of WA Groups this batch would reach in Prod Mode, stamped at expansion time even if Test Mode redirects the actual sends."
+  },
+  {
+   "fieldname": "sent_in_test_mode",
+   "fieldtype": "Check",
+   "label": "Sent In Test Mode",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_at",
+   "fieldtype": "Datetime",
+   "label": "Cancelled At",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-11-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Send Batch",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

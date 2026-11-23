@@ -1,0 +1,65 @@
+{
+ "actions": [],
+ "autoname": "field:glific_collection_id",
+ "creation": "2026-10-17 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "glific_collection_id",
+  "collection_name",
+  "group_count",
+  "last_synced_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "glific_collection_id",
+   "fieldtype": "Data",
+   "label": "Glific Collection ID",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "collection_name",
+   "fieldtype": "Data",
+   "label": "Collection Name",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "group_count",
+   "fieldtype": "Int",
+   "label": "Group Count"
+  },
+  {
+   "fieldname": "last_synced_at",
+   "fieldtype": "Datetime",
+   "label": "Last Synced At"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-17 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Group Collection",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

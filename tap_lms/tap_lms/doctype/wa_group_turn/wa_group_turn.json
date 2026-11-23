@@ -1,0 +1,273 @@
+{
+ "actions": [],
+ "autoname": "field:turn_key",
+ "creation": "2026-10-18 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "turn_key",
+  "wa_group",
+  "contact_phone",
+  "column_break_twk_1",
+  "item_count",
+  "last_item_at",
+  "is_closed",
+  "turn_status",
+  "ai_in_scope",
+  "composition_section",
+  "has_text",
+  "has_media",
+  "has_voice",
+  "column_break_comp_1",
+  "has_poll_response",
+  "has_reaction",
+  "has_sticker",
+  "content_section",
+  "turn_items",
+  "related_campaign",
+  "ai_section",
+  "ai_tags",
+  "ai_reply",
+  "ai_model_used",
+  "ai_urgency",
+  "column_break_ai_t1",
+  "ai_attempt_count",
+  "ai_last_attempt_at",
+  "ai_last_error",
+  "scheduled_send_after"
+ ],
+ "fields": [
+  {
+   "fieldname": "turn_key",
+   "fieldtype": "Data",
+   "label": "Turn Key",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "wa_group",
+   "fieldtype": "Link",
+   "label": "WA Group",
+   "options": "WA Group",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "contact_phone",
+   "fieldtype": "Data",
+   "label": "Contact Phone",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_twk_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_count",
+   "fieldtype": "Int",
+   "label": "Item Count",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_item_at",
+   "fieldtype": "Datetime",
+   "label": "Last Item At",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "is_closed",
+   "fieldtype": "Check",
+   "label": "Is Closed",
+   "default": "0",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "turn_status",
+   "fieldtype": "Select",
+   "label": "Turn Status",
+   "options": "Open\nDrafted\nReady To Go\nSent\nDiscarded\nFailed\nIgnored",
+   "default": "Open",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "ai_in_scope",
+   "fieldtype": "Check",
+   "label": "AI In Scope",
+   "default": "1",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "Set to 0 whenever the turn is marked Ignored (addressed to someone else, or scope unclear)."
+  },
+  {
+   "fieldname": "composition_section",
+   "fieldtype": "Section Break",
+   "label": "Composition",
+   "collapsible": 1,
+   "description": "Denormalized flags kept in sync with turn_items, used to filter turns without scanning the child table."
+  },
+  {
+   "fieldname": "has_text",
+   "fieldtype": "Check",
+   "label": "Has Text",
+   "default": "0",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "has_media",
+   "fieldtype": "Check",
+   "label": "Has Media",
+   "default": "0",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "has_voice",
+   "fieldtype": "Check",
+   "label": "Has Voice",
+   "default": "0",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_comp_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "has_poll_response",
+   "fieldtype": "Check",
+   "label": "Has Poll Response",
+   "default": "0",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "has_reaction",
+   "fieldtype": "Check",
+   "label": "Has Reaction",
+   "default": "0",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "has_sticker",
+   "fieldtype": "Check",
+   "label": "Has Sticker",
+   "default": "0",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "content_section",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "turn_items",
+   "fieldtype": "Table",
+   "label": "Turn Items",
+   "options": "WA Group Turn Item"
+  },
+  {
+   "fieldname": "related_campaign",
+   "fieldtype": "Link",
+   "label": "Related Campaign",
+   "options": "WA Campaign",
+   "in_standard_filter": 1,
+   "description": "Set at ingest when this turn's first item falls inside a Poll or broadcast campaign's response-attribution window for this group."
+  },
+  {
+   "fieldname": "ai_section",
+   "fieldtype": "Section Break",
+   "label": "AI"
+  },
+  {
+   "fieldname": "ai_tags",
+   "fieldtype": "Small Text",
+   "label": "AI Tags",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "ai_reply",
+   "fieldtype": "Small Text",
+   "label": "AI Reply"
+  },
+  {
+   "fieldname": "ai_model_used",
+   "fieldtype": "Data",
+   "label": "AI Model Used",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_urgency",
+   "fieldtype": "Select",
+   "label": "AI Urgency",
+   "options": "\nNormal\nSupport",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "Set by the model itself in the same drafting call. Support-flagged turns skip the natural-delay window; Normal turns wait out the configured delay before sending."
+  },
+  {
+   "fieldname": "column_break_ai_t1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ai_attempt_count",
+   "fieldtype": "Int",
+   "label": "AI Attempt Count",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_last_attempt_at",
+   "fieldtype": "Datetime",
+   "label": "AI Last Attempt At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_last_error",
+   "fieldtype": "Small Text",
+   "label": "AI Last Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scheduled_send_after",
+   "fieldtype": "Datetime",
+   "label": "Scheduled Send After",
+   "read_only": 1,
+   "description": "For Ready To Go turns with Normal urgency: earliest time the send sweep is allowed to deliver this reply. Left blank for Support-flagged turns so they send on the very next sweep."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tap Lms",
+ "name": "WA Group Turn",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "last_item_at",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
